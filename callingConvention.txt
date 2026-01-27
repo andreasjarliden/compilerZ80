@@ -1,0 +1,70 @@
+Calling Convention
+==================
+
+Starting with something *simple*, not fast.
+
+All arguments passed on stack, right to left (c-style).  8 bit values are passed as 16 for simplicity.
+
+  push  arg2
+  push  arg1
+  call  func
+  ld    hl, 4
+  add   hl, sp
+  ld    sp, hl
+
+IX as frame-pointer
+
+func:
+  ; Let IX be frame-pointer
+  push  IX
+  ld    IX, 0
+  add   IX, SP
+  ; Reserve N bytes for local variables
+  ld    HL, -N
+  add   HL, SP
+  ld    SP, HL
+  ; Preserve registers (except ix (already preserved) and return registers a and hl
+
+  ...
+  ; Restore stack pointer (free local variables)
+  ld    sp, ix
+  ; Restore previous frame pointer IX
+  pop   IX
+  ret
+
+  ...
+arg 2:      IX+6
+arg 1:      IX+4
+ret.addr.:  IX+2
+local 1:    IX
+local 2:    IX-1
+  ...
+
+Return values
+-------------
+
+8-bit:  A
+16-bit: HL
+
+Preserved registers
+-------------------
+
+Let callee preserve all registers, except A and HL.
+
+
+IR representation
+-----------------
+
+fun(int8 a, int8 b) {
+  int8 c = 42;
+  return a+b+c;
+}
+
+add address a, int8 arg1 to symbol table
+add address b, int8 arg2 to symbol table
+add address c, int8 var1 to symbol table
+add address c1 = constant int8 42 to symbol table
+assignment c = c42 
+return t1
+  where t1=+ t2 c
+    where t2=+ a b
