@@ -1,4 +1,5 @@
 import ply.lex as lex
+from pprint import pprint
 
 asmFile = open("a.asm", "w")
 
@@ -49,24 +50,42 @@ for tok in lexer:
 
 import ply.yacc as yacc
 
-class Function:
-    def __init__(self, name, statements):
+IR = []
+IR_FUNCTIONS = []
+
+# Stack of symbol tables
+ENV = [ {} ]
+
+class SymEntry:
+    def __init__(self, name):
         self._name = name
-        self._statements = statements
-        self._localSize = 0;
-        self.symbolTable = {}
-        for s in statements:
-            if isinstance(s, VariableDefinition):
-                s.setOffset(self._localSize)
-                self._localSize += 1
-                print("Adding ", s._name, " to symbol table")
-                self.symbolTable[s._name] = s
+        self.impl = None
 
     def __repr__(self):
-        return "Function " + self._name + " locals size " + str(self._localSize) + " with statements " + str(self._statements)
+        return f"SymEntry {self._name} {self.impl}"
 
-    def generate(self, _):
-        asmFile.write(self._name + ":\n");
+def addSymbol(name):
+    entry = SymEntry(name)
+    ENV[-1][name] = entry
+    return entry
+def pushSymbolTable():
+    ENV.append({})
+def popSymbolTable():
+    ENV.pop()
+def currentSymbolTable():
+    return ENV[-1]
+
+class IRDefFun:
+    def __init__(self, function, symbolTable):
+        self._function = function
+        self._symbolTable = symbolTable
+        IR_FUNCTIONS.append(self)
+
+    def __repr__(self):
+        return f"IRDefFun symbolTable {self._symbolTable}"
+
+    def genCode(self):
+        asmFile.write(self._function._name + ":\n");
         # Let IX be frame-pointer
         asmFile.write('\t; Let IX be frame-pointer\n')
         asmFile.write('\tpush\tIX\n')
@@ -74,8 +93,9 @@ class Function:
         asmFile.write('\tadd\tIX, SP\n')
 
         # Reserve space for local variables
-        if self._localSize > 0:
-            negSize=65536-self._localSize
+        localSize = len(self._symbolTable)
+        if localSize > 0:
+            negSize=65536-localSize
             negHexSize=f'{negSize:05x}h'
             asmFile.write('\t; Reserve space for local variables\n')
             asmFile.write(f'\tld\tHL, {negHexSize}\n')
@@ -83,18 +103,113 @@ class Function:
             asmFile.write(f'\tld\tSP, HL\n')
 
         asmFile.write('\t; Function content\n')
-        # Generate code for content
-        for s in self._statements:
-            s.generate(self.symbolTable)
-        asmFile.write("\n");
 
-        # Reserve space for local variables
-        if self._localSize > 0:
+class IRFunExit:
+    def __init__(self, symbolTable):
+        self._symbolTable = symbolTable
+
+    def __repr__(self):
+        return f"IRFunExit symbolTable {self._symbolTable}"
+
+    def genCode(self):
+        if len(self._symbolTable) > 0:
             asmFile.write('\t;Restore stack pointer (free local variables)\n')
             asmFile.write(f'\tld\tSP, IX\n')
         asmFile.write('\t;Restore previous frame pointer IX and return\n')
         asmFile.write(f'\tpop\tIX\n')
         asmFile.write(f'\tret\n\n')
+
+class IRReturn:
+    def __init__(self, exprAddr):
+        self._exprAddr = exprAddr
+
+    def __repr__(self):
+        return "IRReturn " + str(self._exprAddr)
+
+class IRFunCall:
+    def __init__(self, name):
+        self._addr = Temporary()
+        self._name = name
+
+    def __repr__(self):
+        return "IRFunCall " + self._name
+
+class IRAssign:
+    def __init__(self, symEntry, rhsAddress):
+        self._symEntry = symEntry
+        self._rhsAddress = rhsAddress
+
+    def __repr__(self):
+        return f"IRAssign {self._symEntry} = {self._rhsAddress}"
+
+    def genCode(self):
+        if isinstance(self._rhsAddress, Constant):
+            value = self._rhs._value
+            asmFile.write(f'\tld (ix+{offset}), {value}\n')
+
+class IRAdd:
+    def __init__(self, addrLhs, addrRhs):
+        self._addr = Temporary()
+        self._lhsAddr= addrLhs
+        self._rhsAddr = addrRhs
+
+    def __repr__(self):
+        return f"IRAdd {self._addr} = {self._lhsAddr} + {self._rhsAddr}"
+
+# 3 types of addresses. Rename to e.g ConstantAddress?
+
+class Constant:
+    def __init__(self, value):
+        self._value = value
+
+    def __repr__(self):
+        return 'Constant ' + str(self._value)
+
+    # Because it doubles an AST Node
+    def createIR(self, symbolTable):
+        return self
+
+class Symbol:
+    def __init__(self, name):
+        self._name = name
+
+    def __repr__(self):
+        return "Symbol " + self._name
+
+
+class Temporary:
+    NUM_TEMPS = 0
+    def __init__(self):
+        self._name = f"temp{Temporary.NUM_TEMPS}"
+        addSymbol(self._name)
+        Temporary.NUM_TEMPS+=1
+
+    def __repr__(self):
+        return 'Temporary ' + str(self._name)
+
+class Function:
+    def __init__(self, name, statements):
+        self._name = name
+        self._statements = statements
+        self._localSize = 0;
+        self.symbolTable = {}
+        # for s in statements:
+        #     if isinstance(s, VariableDefinition):
+                # s.setOffset(self._localSize)
+                # self._localSize += 1
+                # print("Adding ", s._name, " to symbol table")
+                # self.symbolTable[s._name] = s
+
+    def __repr__(self):
+        return "Function " + self._name + " locals size " + str(self._localSize) + " with statements " + str(self._statements)
+
+    def createIR(self):
+        pushSymbolTable()
+        IR.append(IRDefFun(self, currentSymbolTable()))
+        for s in self._statements:
+            s.createIR(self.symbolTable)
+        IR.append(IRFunExit(self.symbolTable))
+        popSymbolTable()
 
 class VariableDefinition:
     def __init__(self, name):
@@ -107,7 +222,9 @@ class VariableDefinition:
     def setOffset(self, offset):
         self._offset = offset;
 
-    def generate(self, symbolTable):
+    def createIR(self, symbolTable):
+        addSymbol(self._name)
+        # symbolTable[self._name] = -1
         pass
 
 class VariableAssignment:
@@ -117,6 +234,11 @@ class VariableAssignment:
 
     def __repr__(self):
         return "variable assignment " + self._name + " = " + str(self._rhs)
+
+    def createIR(self, symbolTable):
+        symEntry = currentSymbolTable()[self._name]
+        rhsAddr = self._rhs.createIR(symbolTable)
+        IR.append(IRAssign(symEntry, rhsAddr))
 
     def generate(self, symbolTable):
         offset = symbolTable[self._name]._offset
@@ -137,6 +259,9 @@ class VariableDereference:
     def __repr__(self):
         return "variable dereference " + self._name
 
+    def createIR(self, symbolTable):
+        return currentSymbolTable()[self._name]
+
     def indexedAddress(self, symbolTable):
         offset = symbolTable[self._name]._offset
         return f'(ix+{offset})'
@@ -152,15 +277,24 @@ class FunctionCall:
     def __repr__(self):
         return "call " + self._name
 
+    def createIR(self, symbolTable=None):
+        irfuncall = IRFunCall(self._name)
+        IR.append(irfuncall)
+        return irfuncall._addr
+
     def generate(self, symbolTable):
         asmFile.write("\tcall " + self._name + "\n")
 
 class Return:
-    def __init__(self, value):
-        self._value = value
+    def __init__(self, expr):
+        self._expr = expr
 
     def __repr__(self):
-        return "Return " + str(self._value)
+        return "Return " + str(self._expr)
+
+    def createIR(self, symbolTable):
+        exprAddress = self._expr.createIR(symbolTable)
+        IR.append(IRReturn(exprAddress))
 
     def generate(self, symbolTable):
         if isinstance(self._value, VariableDereference):
@@ -177,6 +311,13 @@ class Add:
 
     def __repr__(self):
         return "<Add " + str(self._lhs) + " " + str(self._rhs) + ">"
+
+    def createIR(self, symbolTable):
+        lhsAddr = self._lhs.createIR(symbolTable)
+        rhsAddr = self._rhs.createIR(symbolTable)
+        irAdd = IRAdd(lhsAddr, rhsAddr)
+        IR.append(irAdd)
+        return irAdd._addr
 
     def generate(self, symbolTable):
         # lhs in A
@@ -222,7 +363,7 @@ def p_value_expression_constant(p):
     '''
     value_expression : NUMBER
     '''
-    p[0] = int(p[1])
+    p[0] = Constant(int(p[1]))
 
 def p_value_expression_variable(p):
     '''
@@ -269,11 +410,52 @@ def p_error(p):
 
 parser = yacc.yacc()
 
-r = parser.parse("foo() { char a;char b; b=42; a=b+b+1; return a;} foo();PRINT_HEX();")
-print("r", r)
+ast = parser.parse("foo() { char a;char b; b=42; a=b+b+1; return a;} foo();PRINT_HEX();")
+print("AST")
+pprint(ast)
+print()
 
-asmFile.write("\t.org 08000h\n")
-asmFile.write('\t#include "constants.asm"\n')
-for s in r:
-    s.generate(None)
+def astToThreeCode(ast):
+    for n in ast:
+        n.createIR()
+
+class StackVariable:
+    def __init__(self, offset):
+        self._offset = offset
+
+    def __repr__(self):
+        return f"Stack Variable offset {self._offset}"
+
+def mapSymbols():
+    for f in IR_FUNCTIONS:
+        symbolTable = f._symbolTable
+        offset = 0
+        for symbol in symbolTable:
+            symbolTable[symbol].impl = StackVariable(offset)
+            offset+=1
+
+def genCode():
+    for i in IR:
+        i.genCode()
+
+astToThreeCode(ast)
+
+print("IR")
+pprint(IR)
+
+print("IR_FUNCTIONS")
+pprint(IR_FUNCTIONS)
+
+mapSymbols()
+
+print("\nIR mapped symbols")
+pprint(IR)
+
+# genCode()
+
+# asmFile.write("\t.org 08000h\n")
+# asmFile.write('\t#include "constants.asm"\n')
+
+# for s in r:
+#     s.generate(None)
 
