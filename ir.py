@@ -26,6 +26,9 @@ def popSymbolTable():
     ENV.pop()
 def currentSymbolTable():
     return ENV[-1]
+def addTemporary():
+    t = Temporary()
+    return addSymbol(t._name)
 
 class StackVariable:
     def __init__(self, offset):
@@ -40,11 +43,6 @@ class StackVariable:
             return f"(ix + {self._offset})"
         else:
             return f"(ix - {-self._offset})"
-
-def createTemporary():
-    t = Temporary()
-    addSymbol(t._name)
-    return t
 
 class IRDefFun:
     def __init__(self, function, symbolTable):
@@ -109,9 +107,7 @@ class IRReturn:
 
 class IRFunCall:
     def __init__(self, name):
-        # TODO extract 2 lines
-        t = createTemporary()
-        self._addr = currentSymbolTable()[t._name]
+        self._addr = addTemporary()
         self._name = name
 
     def __repr__(self):
@@ -145,9 +141,7 @@ class IRAssign:
 
 class IRAdd:
     def __init__(self, addrLhs, addrRhs):
-        # TODO extract 2 lines
-        t = createTemporary()
-        self._addr = currentSymbolTable()[t._name]
+        self._addr = addTemporary()
         self._lhsAddr = addrLhs
         self._rhsAddr = addrRhs
 
