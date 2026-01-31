@@ -105,6 +105,17 @@ class IRReturn:
         else:
             error()
 
+# Like call a function, ignoring return value
+class IRProcCall:
+    def __init__(self, name):
+        self._name = name
+
+    def __repr__(self):
+        return "IRProcCall " + self._name
+
+    def genCode(self):
+        asmFile.write(f'\tcall\t{self._name}\n')
+
 class IRFunCall:
     def __init__(self, name):
         self._addr = addTemporary()

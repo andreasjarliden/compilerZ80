@@ -62,14 +62,19 @@ class VariableDereference:
 class FunctionCall:
     def __init__(self, name):
         self._name = name
+        self.storeResult = False
 
     def __repr__(self):
         return "call " + self._name
 
     def createIR(self):
-        irfuncall = IRFunCall(self._name)
-        IR.append(irfuncall)
-        return irfuncall._addr
+        if self.storeResult:
+            irfuncall = IRFunCall(self._name)
+            IR.append(irfuncall)
+            return irfuncall._addr
+        else:
+            irfuncall = IRProcCall(self._name)
+            IR.append(irfuncall)
 
 class Return:
     def __init__(self, expr):
@@ -134,6 +139,8 @@ def p_value_expression_fun(p):
     value_expression : function_expression
     '''
     print("Calling function " + str(p[1]))
+    f = p[1]
+    f.storeResult = True
     p[0] = p[1]
 
 def p_value_expression_variable(p):
