@@ -14,7 +14,7 @@ class SymEntry:
         self.impl = None
 
     def __repr__(self):
-        return f"SymEntry {self._name} {self.impl}"
+        return f"<SymEntry {self._name} {self.impl}>"
 
 def addSymbol(name):
     entry = SymEntry(name)
