@@ -126,6 +126,16 @@ class IRReturn:
     def __repr__(self):
         return "IRReturn " + str(self._exprAddr)
 
+    def genCode(self):
+        # TODO should also add jump to return
+        if isinstance(self._exprAddr.impl, StackVariable):
+            asmFile.write(f'\tld\ta, {self._exprAddr.impl.codeArg()}\n')
+        elif isinstance(self._exprAddr, Constant):
+            asmFile.write(f'\tld\ta, {self._exprAddr.value}\n')
+        else:
+            error()
+        
+
 class IRFunCall:
     def __init__(self, name):
         self._addr = Temporary()
@@ -133,6 +143,10 @@ class IRFunCall:
 
     def __repr__(self):
         return "IRFunCall " + self._name
+
+    def genCode(self):
+        asmFile.write(f'\tcall\t{self._name}\n')
+        # TODO store result
 
 class IRAssign:
     def __init__(self, symEntry, rhsAddress):
@@ -143,18 +157,42 @@ class IRAssign:
         return f"IRAssign {self._symEntry} = {self._rhsAddress}"
 
     def genCode(self):
+        if isinstance(self._symEntry.impl, StackVariable):
+            lhs = self._symEntry.impl.codeArg()
+        else:
+            error()
         if isinstance(self._rhsAddress, Constant):
-            value = self._rhs._value
-            asmFile.write(f'\tld (ix+{offset}), {value}\n')
+            value = self._rhsAddress._value
+            asmFile.write(f'\tld\t{lhs}, {value}\n')
+        elif isinstance(self._rhsAddress.impl, StackVariable):
+            asmFile.write(f'\tld\ta, {self._rhsAddress.impl.codeArg()}\n')
+            asmFile.write(f'\tld\t{lhs}, a\n')
+        else:
+            error()
 
 class IRAdd:
     def __init__(self, addrLhs, addrRhs):
-        self._addr = Temporary()
-        self._lhsAddr= addrLhs
+        t = Temporary()
+        self._addr = currentSymbolTable()[t._name]
+        self._lhsAddr = addrLhs
         self._rhsAddr = addrRhs
 
     def __repr__(self):
         return f"IRAdd {self._addr} = {self._lhsAddr} + {self._rhsAddr}"
+
+    def genCode(self):
+        if isinstance(self._lhsAddr.impl, StackVariable):
+            lhs = self._lhsAddr.impl.codeArg()
+            asmFile.write(f'\tld\ta, {lhs}\n')
+        else:
+            error()
+        if isinstance(self._rhsAddr, Constant):
+            asmFile.write(f'\tadd\ta, {self._rhsAddr._value}\n')
+        elif isinstance(self._rhsAddr.impl, StackVariable):
+            asmFile.write(f'\tadd\ta, {self._rhsAddr.impl.codeArg()}\n')
+        else:
+            error()
+        asmFile.write(f'\tld\t{self._addr.impl.codeArg()}, a\n')
 
 # 3 types of addresses. Rename to e.g ConstantAddress?
 
@@ -166,7 +204,7 @@ class Constant:
         return 'Constant ' + str(self._value)
 
     # Because it doubles an AST Node
-    def createIR(self, symbolTable):
+    def createIR(self):
         return self
 
 class Symbol:
@@ -193,12 +231,6 @@ class Function:
         self._statements = statements
         self._localSize = 0;
         self.symbolTable = {}
-        # for s in statements:
-        #     if isinstance(s, VariableDefinition):
-                # s.setOffset(self._localSize)
-                # self._localSize += 1
-                # print("Adding ", s._name, " to symbol table")
-                # self.symbolTable[s._name] = s
 
     def __repr__(self):
         return "Function " + self._name + " locals size " + str(self._localSize) + " with statements " + str(self._statements)
@@ -207,8 +239,8 @@ class Function:
         pushSymbolTable()
         IR.append(IRDefFun(self, currentSymbolTable()))
         for s in self._statements:
-            s.createIR(self.symbolTable)
-        IR.append(IRFunExit(self.symbolTable))
+            s.createIR()
+        IR.append(IRFunExit(currentSymbolTable()))
         popSymbolTable()
 
 class VariableDefinition:
@@ -222,9 +254,8 @@ class VariableDefinition:
     def setOffset(self, offset):
         self._offset = offset;
 
-    def createIR(self, symbolTable):
+    def createIR(self):
         addSymbol(self._name)
-        # symbolTable[self._name] = -1
         pass
 
 class VariableAssignment:
@@ -235,9 +266,9 @@ class VariableAssignment:
     def __repr__(self):
         return "variable assignment " + self._name + " = " + str(self._rhs)
 
-    def createIR(self, symbolTable):
+    def createIR(self):
         symEntry = currentSymbolTable()[self._name]
-        rhsAddr = self._rhs.createIR(symbolTable)
+        rhsAddr = self._rhs.createIR()
         IR.append(IRAssign(symEntry, rhsAddr))
 
     def generate(self, symbolTable):
@@ -259,7 +290,7 @@ class VariableDereference:
     def __repr__(self):
         return "variable dereference " + self._name
 
-    def createIR(self, symbolTable):
+    def createIR(self):
         return currentSymbolTable()[self._name]
 
     def indexedAddress(self, symbolTable):
@@ -277,7 +308,7 @@ class FunctionCall:
     def __repr__(self):
         return "call " + self._name
 
-    def createIR(self, symbolTable=None):
+    def createIR(self):
         irfuncall = IRFunCall(self._name)
         IR.append(irfuncall)
         return irfuncall._addr
@@ -292,8 +323,8 @@ class Return:
     def __repr__(self):
         return "Return " + str(self._expr)
 
-    def createIR(self, symbolTable):
-        exprAddress = self._expr.createIR(symbolTable)
+    def createIR(self):
+        exprAddress = self._expr.createIR()
         IR.append(IRReturn(exprAddress))
 
     def generate(self, symbolTable):
@@ -312,9 +343,9 @@ class Add:
     def __repr__(self):
         return "<Add " + str(self._lhs) + " " + str(self._rhs) + ">"
 
-    def createIR(self, symbolTable):
-        lhsAddr = self._lhs.createIR(symbolTable)
-        rhsAddr = self._rhs.createIR(symbolTable)
+    def createIR(self):
+        lhsAddr = self._lhs.createIR()
+        rhsAddr = self._rhs.createIR()
         irAdd = IRAdd(lhsAddr, rhsAddr)
         IR.append(irAdd)
         return irAdd._addr
@@ -410,7 +441,7 @@ def p_error(p):
 
 parser = yacc.yacc()
 
-ast = parser.parse("foo() { char a;char b; b=42; a=b+b+1; return a;} foo();PRINT_HEX();")
+ast = parser.parse("main() { foo();PRINT_HEX(); } foo() { char a;char b; b=42; a=b+b+1; return a+1; }") 
 print("AST")
 pprint(ast)
 print()
@@ -426,15 +457,25 @@ class StackVariable:
     def __repr__(self):
         return f"Stack Variable offset {self._offset}"
 
+    def codeArg(self):
+        # Use ix - 1, as "ix-1" is interpreted as identifier "ix-1"
+        if self._offset >= 0:
+            return f"(ix + {self._offset})"
+        else:
+            return f"(ix - {-self._offset})"
+
 def mapSymbols():
     for f in IR_FUNCTIONS:
         symbolTable = f._symbolTable
-        offset = 0
+        # stack pointer points to last byte written, so first variable starts at one byte below SP
+        offset = -1
         for symbol in symbolTable:
             symbolTable[symbol].impl = StackVariable(offset)
-            offset+=1
+            offset-=1
 
 def genCode():
+    asmFile.write("\t.org 08000h\n")
+    asmFile.write('\t#include "constants.asm"\n')
     for i in IR:
         i.genCode()
 
@@ -451,10 +492,8 @@ mapSymbols()
 print("\nIR mapped symbols")
 pprint(IR)
 
-# genCode()
+genCode()
 
-# asmFile.write("\t.org 08000h\n")
-# asmFile.write('\t#include "constants.asm"\n')
 
 # for s in r:
 #     s.generate(None)
