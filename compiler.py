@@ -2,7 +2,24 @@ from pprint import pprint
 from ir import *
 from parser import parser
 
-ast = parser.parse("main() { foo();PRINT_HEX(); } foo() { char a;char b; b=42; a=b+b+1; return a+1; }") 
+ast = parser.parse("""
+main() {
+    foo();
+    PRINT_HEX();
+}
+
+r42() {
+    return 41;
+}
+
+foo() {
+    char a;
+    char b;
+    b=r42();
+    a=b+b+1;
+    return a+1;
+}""") 
+
 print("AST")
 pprint(ast)
 print()

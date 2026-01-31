@@ -100,17 +100,18 @@ class IRReturn:
 
     def genCode(self):
         # TODO should also add jump to return
-        if isinstance(self._exprAddr.impl, StackVariable):
+        if isinstance(self._exprAddr, Constant):
+            asmFile.write(f'\tld\ta, {self._exprAddr._value}\n')
+        elif isinstance(self._exprAddr.impl, StackVariable):
             asmFile.write(f'\tld\ta, {self._exprAddr.impl.codeArg()}\n')
-        elif isinstance(self._exprAddr, Constant):
-            asmFile.write(f'\tld\ta, {self._exprAddr.value}\n')
         else:
             error()
-        
 
 class IRFunCall:
     def __init__(self, name):
-        self._addr = createTemporary()
+        # TODO extract 2 lines
+        t = createTemporary()
+        self._addr = currentSymbolTable()[t._name]
         self._name = name
 
     def __repr__(self):
@@ -118,7 +119,7 @@ class IRFunCall:
 
     def genCode(self):
         asmFile.write(f'\tcall\t{self._name}\n')
-        # TODO store result
+        asmFile.write(f'\tld\t{self._addr.impl.codeArg()}, a\n')
 
 class IRAssign:
     def __init__(self, symEntry, rhsAddress):
@@ -144,6 +145,7 @@ class IRAssign:
 
 class IRAdd:
     def __init__(self, addrLhs, addrRhs):
+        # TODO extract 2 lines
         t = createTemporary()
         self._addr = currentSymbolTable()[t._name]
         self._lhsAddr = addrLhs

@@ -129,6 +129,13 @@ def p_value_expression_constant(p):
     '''
     p[0] = Constant(int(p[1]))
 
+def p_value_expression_fun(p):
+    '''
+    value_expression : function_expression
+    '''
+    print("Calling function " + str(p[1]))
+    p[0] = p[1]
+
 def p_value_expression_variable(p):
     '''
     value_expression : ID
@@ -157,7 +164,7 @@ def p_return_expression(p):
 
 def p_function_expression(p):
     'function_expression : ID LPARA RPARA'
-    print("Calling function "+p[1])
+    print("Calling function " + str(p[1]))
     p[0] = FunctionCall(p[1])
 
 def p_function_definition(p):
