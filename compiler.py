@@ -73,6 +73,7 @@ class IRFunExit:
         asmFile.write(f'\tpop\tIX\n')
         asmFile.write(f'\tret\n\n')
 
+
 class IRReturn:
     def __init__(self, exprAddr):
         self._exprAddr = exprAddr
@@ -161,6 +162,7 @@ class Constant:
     def createIR(self):
         return self
 
+
 class Symbol:
     def __init__(self, name):
         self._name = name
@@ -179,15 +181,15 @@ class Temporary:
     def __repr__(self):
         return 'Temporary ' + str(self._name)
 
+
 class Function:
     def __init__(self, name, statements):
         self._name = name
         self._statements = statements
-        self._localSize = 0;
         self.symbolTable = {}
 
     def __repr__(self):
-        return "Function " + self._name + " locals size " + str(self._localSize) + " with statements " + str(self._statements)
+        return "Function " + self._name + " with statements " + str(self._statements)
 
     def createIR(self):
         pushSymbolTable()
@@ -197,6 +199,7 @@ class Function:
         IR.append(IRFunExit(currentSymbolTable()))
         popSymbolTable()
 
+
 class VariableDefinition:
     def __init__(self, name):
         self._name = name
@@ -204,9 +207,6 @@ class VariableDefinition:
 
     def __repr__(self):
         return "variable definition " + self._name + " at offset " + str(self._offset)
-
-    def setOffset(self, offset):
-        self._offset = offset;
 
     def createIR(self):
         addSymbol(self._name)
@@ -225,17 +225,6 @@ class VariableAssignment:
         rhsAddr = self._rhs.createIR()
         IR.append(IRAssign(symEntry, rhsAddr))
 
-    def generate(self, symbolTable):
-        offset = symbolTable[self._name]._offset
-        if isinstance(self._rhs, VariableDereference):
-            self._rhs.generate(symbolTable)
-            asmFile.write(f'\tld (ix+{offset}), a\n')
-        elif isinstance(self._rhs, int):
-            value = self._rhs
-            asmFile.write(f'\tld (ix+{offset}), {value}\n')
-        else:
-            self._rhs.generate(symbolTable)
-            asmFile.write(f'\tld (ix+{offset}), a\n')
 
 class VariableDereference:
     def __init__(self, name):
@@ -251,9 +240,6 @@ class VariableDereference:
         offset = symbolTable[self._name]._offset
         return f'(ix+{offset})'
 
-    def generate(self, symbolTable):
-        offset = symbolTable[self._name]._offset
-        asmFile.write(f'\tld a, (ix+{offset})\n')
 
 class FunctionCall:
     def __init__(self, name):
@@ -267,8 +253,6 @@ class FunctionCall:
         IR.append(irfuncall)
         return irfuncall._addr
 
-    def generate(self, symbolTable):
-        asmFile.write("\tcall " + self._name + "\n")
 
 class Return:
     def __init__(self, expr):
@@ -281,13 +265,6 @@ class Return:
         exprAddress = self._expr.createIR()
         IR.append(IRReturn(exprAddress))
 
-    def generate(self, symbolTable):
-        if isinstance(self._value, VariableDereference):
-            self._value.generate(symbolTable);
-        else:
-            asmFile.write("\tld a, " + self._value + "\n")
-        # TODO support return at other places then at the end
-        # asmFile.write("\tret" + "\n");
 
 class Add:
     def __init__(self, lhs, rhs):
@@ -303,20 +280,6 @@ class Add:
         irAdd = IRAdd(lhsAddr, rhsAddr)
         IR.append(irAdd)
         return irAdd._addr
-
-    def generate(self, symbolTable):
-        # lhs in A
-        if isinstance(self._lhs, VariableDereference):
-            self._lhs.generate(symbolTable);
-        else:
-            asmFile.write("\tld a, " + self._lhs + "\n")
-        # rhs
-        if isinstance(self._rhs, VariableDereference):
-            asmFile.write("\tadd a, " + self._rhs.indexedAddress() + "\n")
-        elif isinstance(self._rhs, int):
-            asmFile.write("\tadd a, " + str(self._rhs) + "\n")
-        else:
-            error()
 
 def p_statement_list(p):
     '''
