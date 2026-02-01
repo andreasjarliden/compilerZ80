@@ -3,6 +3,14 @@ import ply.yacc as yacc
 from ir import *
 from address import Constant
 
+class Argument:
+    def __init__(self, t, name):
+        self.type = t
+        self.name = name
+
+    def __repr__(self):
+        return f"Argument {self.type} {self.name}"
+
 class Function:
     def __init__(self, name, statements):
         self._name = name
@@ -174,11 +182,31 @@ def p_function_expression(p):
     print("Calling function " + str(p[1]))
     p[0] = FunctionCall(p[1])
 
-def p_function_definition(p):
+def p_function_definition_no_args(p):
     'function_definition : ID LPARA RPARA LCURL statement_list RCURL'
     print("def function " + p[1])
     node = Function(p[1], p[5])
     p[0] = node
+
+def p_function_definition_args(p):
+    'function_definition : ID LPARA arg_list RPARA LCURL statement_list RCURL'
+    print("def function " + p[1] + " with arguments " + str(p[3]))
+    node = Function(p[1], p[6])
+    p[0] = node
+
+def p_arg_list_single(p):
+    'arg_list : arg'
+    print("argument " + str(p[1]))
+    p[0] = [p[1]]
+
+def p_arg_list_multiple(p):
+    'arg_list : arg_list COMMA arg'
+    print("argument " + str(p[1]) + " " + str(p[3]))
+    p[0] = p[1] + [p[3]]
+
+def p_arg(p):
+    'arg : CHAR ID'
+    p[0] = Argument(p[1], p[2])
 
 def p_error(p):
     if p:

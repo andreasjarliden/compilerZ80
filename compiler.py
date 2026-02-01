@@ -3,7 +3,7 @@ from ir import *
 from parser import parser
 
 ast = parser.parse("""
-main() {
+main(char arg1, char arg2) {
     foo();
     PRINT_HEX();
 }

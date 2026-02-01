@@ -15,6 +15,7 @@ tokens = [
         'SEMI',
         'ASSIGN',
         'PLUS',
+        'COMMA',
         ] + list(reserved.values())
 
 t_NUMBER = r'[0-9]+'
@@ -25,6 +26,7 @@ t_RCURL = r'\}'
 t_SEMI = r';'
 t_ASSIGN = r'='
 t_PLUS = r'\+'
+t_COMMA = r','
 
 def t_ID(t):
     r'[a-zA-Z_][0-9a-zA-Z_]*'
