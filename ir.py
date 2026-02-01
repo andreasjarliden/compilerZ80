@@ -116,22 +116,6 @@ class IRReturn:
         else:
             error()
 
-# Like call a function, ignoring return value
-class IRProcCall:
-    def __init__(self, name, numArgs):
-        self._name = name
-        self.numArgs = numArgs
-
-    def __repr__(self):
-        return "IRProcCall " + self._name
-
-    def genCode(self):
-        asmFile.write(f'\tcall\t{self._name}\n')
-        if self.numArgs > 0:
-            asmFile.write(f'\tld\thl, {2*self.numArgs}\n')
-            asmFile.write(f'\tadd\thl, sp\n')
-            asmFile.write(f'\tld\tsp, hl\n')
-
 class IRArgument:
     def __init__(self, exprAddr):
         self.exprAddr = exprAddr
@@ -148,11 +132,12 @@ class IRArgument:
             error()
         asmFile.write(f'\tpush\taf\n')
 
-
-# TODO fix duplication with IRProcCall
 class IRFunCall:
-    def __init__(self, name, numArgs):
-        self._addr = addTemporary()
+    def __init__(self, name, numArgs, ignoreValue=False):
+        if ignoreValue:
+            self._addr = None
+        else:
+            self._addr = addTemporary()
         self._name = name
         self.numArgs = numArgs
 
@@ -165,7 +150,8 @@ class IRFunCall:
             asmFile.write(f'\tld\thl, {2*self.numArgs}\n')
             asmFile.write(f'\tadd\thl, sp\n')
             asmFile.write(f'\tld\tsp, hl\n')
-        asmFile.write(f'\tld\t{self._addr.impl.codeArg()}, a\n')
+        if self._addr:
+            asmFile.write(f'\tld\t{self._addr.impl.codeArg()}, a\n')
 
 class IRAssign:
     def __init__(self, symEntry, rhsAddress):

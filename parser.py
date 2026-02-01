@@ -90,7 +90,7 @@ class FunctionCall:
             IR.append(irfuncall)
             return irfuncall._addr
         else:
-            irfuncall = IRProcCall(self._name, len(self.arguments))
+            irfuncall = IRFunCall(self._name, len(self.arguments), ignoreValue=True)
             IR.append(irfuncall)
 
 class Return:
