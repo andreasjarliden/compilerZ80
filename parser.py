@@ -13,15 +13,24 @@ class Argument:
         return f"Argument {self.type} {self.name}"
 
 class Function:
-    def __init__(self, name, statements):
+    def __init__(self, name, statements, arguments=[]):
         self._name = name
         self._statements = statements
+        self.arguments = arguments
 
     def __repr__(self):
         return "Function " + self._name + " with statements " + str(self._statements)
 
     def createIR(self):
         pushSymbolTable()
+        # return address is at ix+2, ix+3. Rightmost argument (16-bit) is at ix+5, ix+4
+        # If pushing AF, then A is at ix+5
+        offset = 5
+        for a in reversed(self.arguments):
+            symEntry = SymEntry(a.name)
+            symEntry.impl = StackVariable(offset)
+            addSymbolEntry(a.name, symEntry)
+            offset+=2
         IR.append(IRDefFun(self, currentSymbolTable()))
         for s in self._statements:
             s.createIR()
@@ -64,20 +73,24 @@ class VariableDereference:
         return currentSymbolTable()[self._name]
 
 class FunctionCall:
-    def __init__(self, name):
+    def __init__(self, name, arguments=[]):
         self._name = name
+        self.arguments = arguments
         self.storeResult = False
 
     def __repr__(self):
-        return "call " + self._name
+        return f"call {self._name} with args {self.arguments}"
 
     def createIR(self):
+        for a in reversed(self.arguments):
+            exprAddress = a.createIR()
+            IR.append(IRArgument(exprAddress))
         if self.storeResult:
-            irfuncall = IRFunCall(self._name)
+            irfuncall = IRFunCall(self._name, len(self.arguments))
             IR.append(irfuncall)
             return irfuncall._addr
         else:
-            irfuncall = IRProcCall(self._name)
+            irfuncall = IRProcCall(self._name, len(self.arguments))
             IR.append(irfuncall)
 
 class Return:
@@ -181,7 +194,7 @@ def p_function_expression_no_args(p):
 def p_function_expression_args(p):
     'function_expression : ID LPARA expr_list RPARA'
     print(f"Calling function {p[1]} with args {str(p[3])}")
-    p[0] = FunctionCall(p[1])
+    p[0] = FunctionCall(p[1], p[3])
 
 def p_function_definition_no_args(p):
     'function_definition : ID LPARA RPARA LCURL statement_list RCURL'
@@ -192,7 +205,7 @@ def p_function_definition_no_args(p):
 def p_function_definition_args(p):
     'function_definition : ID LPARA arg_list RPARA LCURL statement_list RCURL'
     print("def function " + p[1] + " with arguments " + str(p[3]))
-    node = Function(p[1], p[6])
+    node = Function(p[1], p[6], p[3])
     p[0] = node
 
 def p_expr_list_single(p):
