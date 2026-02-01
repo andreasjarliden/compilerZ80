@@ -20,6 +20,8 @@ def addSymbol(name):
     entry = SymEntry(name)
     ENV[-1][name] = entry
     return entry
+def addSymbolEntry(name, entry):
+    ENV[-1][name] = entry
 def pushSymbolTable():
     ENV.append({})
 def popSymbolTable():
@@ -29,6 +31,7 @@ def currentSymbolTable():
 def addTemporary():
     t = Temporary()
     return addSymbol(t._name)
+
 
 class StackVariable:
     def __init__(self, offset):
@@ -44,6 +47,14 @@ class StackVariable:
         else:
             return f"(ix - {-self._offset})"
 
+# Size of all local stack variables
+def stackFrameSize(symbolTable):
+    smallestOffset = 0
+    print(symbolTable)
+    for s in symbolTable.values():
+        smallestOffset = min(s.impl._offset, smallestOffset)
+    return -smallestOffset
+
 class IRDefFun:
     def __init__(self, function, symbolTable):
         self._function = function
@@ -51,7 +62,7 @@ class IRDefFun:
         IR_FUNCTIONS.append(self)
 
     def __repr__(self):
-        return f"IRDefFun symbolTable {self._symbolTable}"
+        return f"IRDefFun {self._function} symbolTable {self._symbolTable}"
 
     def genCode(self):
         asmFile.write(self._function._name + ":\n");
@@ -62,9 +73,9 @@ class IRDefFun:
         asmFile.write('\tadd\tIX, SP\n')
 
         # Reserve space for local variables
-        localSize = len(self._symbolTable)
-        if localSize > 0:
-            negSize=65536-localSize
+        size = stackFrameSize(self._symbolTable)
+        if size > 0:
+            negSize=65536-size
             negHexSize=f'{negSize:05x}h'
             asmFile.write('\t; Reserve space for local variables\n')
             asmFile.write(f'\tld\tHL, {negHexSize}\n')
@@ -107,25 +118,53 @@ class IRReturn:
 
 # Like call a function, ignoring return value
 class IRProcCall:
-    def __init__(self, name):
+    def __init__(self, name, numArgs):
         self._name = name
+        self.numArgs = numArgs
 
     def __repr__(self):
         return "IRProcCall " + self._name
 
     def genCode(self):
         asmFile.write(f'\tcall\t{self._name}\n')
+        if self.numArgs > 0:
+            asmFile.write(f'\tld\thl, {2*self.numArgs}\n')
+            asmFile.write(f'\tadd\thl, sp\n')
+            asmFile.write(f'\tld\tsp, hl\n')
 
+class IRArgument:
+    def __init__(self, exprAddr):
+        self.exprAddr = exprAddr
+
+    def __repr__(self):
+        return f"IRArgument {self.exprAddr}"
+
+    def genCode(self):
+        if isinstance(self.exprAddr, Constant):
+            asmFile.write(f'\tld\ta, {self.exprAddr._value}\n')
+        elif isinstance(self.exprAddr.impl, StackVariable):
+            asmFile.write(f'\tld\ta, {self.exprAddr.impl.codeArg()}\n')
+        else:
+            error()
+        asmFile.write(f'\tpush\taf\n')
+
+
+# TODO fix duplication with IRProcCall
 class IRFunCall:
-    def __init__(self, name):
+    def __init__(self, name, numArgs):
         self._addr = addTemporary()
         self._name = name
+        self.numArgs = numArgs
 
     def __repr__(self):
         return "IRFunCall " + self._name
 
     def genCode(self):
         asmFile.write(f'\tcall\t{self._name}\n')
+        if self.numArgs > 0:
+            asmFile.write(f'\tld\thl, {2*self.numArgs}\n')
+            asmFile.write(f'\tadd\thl, sp\n')
+            asmFile.write(f'\tld\tsp, hl\n')
         asmFile.write(f'\tld\t{self._addr.impl.codeArg()}, a\n')
 
 class IRAssign:

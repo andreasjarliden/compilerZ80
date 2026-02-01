@@ -4,21 +4,15 @@ from parser import parser
 
 ast = parser.parse("""
 main() {
-    foo();
+    add(1, add(2, 3));
     PRINT_HEX();
 }
 
-r42() {
-    return 41;
+add(char a, char b) {
+    return a + b;
 }
 
-foo() {
-    char a;
-    char b;
-    b=r42();
-    a=b+b+1;
-    return a+1;
-}""") 
+""") 
 
 print("AST")
 pprint(ast)
@@ -34,8 +28,9 @@ def mapSymbols():
         # stack pointer points to last byte written, so first variable starts at one byte below SP
         offset = -1
         for symbol in symbolTable:
-            symbolTable[symbol].impl = StackVariable(offset)
-            offset-=1
+            if not symbolTable[symbol].impl:
+                symbolTable[symbol].impl = StackVariable(offset)
+                offset-=1
 
 def genCode():
     asmFile.write("\t.org 08000h\n")

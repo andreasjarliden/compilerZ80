@@ -33,11 +33,12 @@ func:
   ret
 
   ...
-arg 2:      IX+6
-arg 1:      IX+4
-ret.addr.:  IX+2
-local 1:    IX
-local 2:    IX-1
+arg 2:            IX+6, IX+7
+arg 1:            IX+4, IX+5
+ret.addr.:        IX+2, IX+3
+old ix frame ptr: IX, IX+1
+local 1:          IX-1
+local 2:          IX-2
   ...
 
 Return values
