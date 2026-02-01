@@ -2,6 +2,7 @@ from lexer import tokens
 import ply.yacc as yacc
 from ir import *
 from address import Constant
+import sys
 
 class Argument:
     def __init__(self, t, name):
@@ -177,9 +178,14 @@ def p_return_expression(p):
     'return_expression : RETURN value_expression'
     p[0] = Return(p[2])
 
-def p_function_expression(p):
+def p_function_expression_no_args(p):
     'function_expression : ID LPARA RPARA'
-    print("Calling function " + str(p[1]))
+    print(f"Calling function {str(p[1])} with no args")
+    p[0] = FunctionCall(p[1])
+
+def p_function_expression_args(p):
+    'function_expression : ID LPARA expr_list RPARA'
+    print(f"Calling function {p[1]} with args {str(p[3])}")
     p[0] = FunctionCall(p[1])
 
 def p_function_definition_no_args(p):
@@ -193,6 +199,16 @@ def p_function_definition_args(p):
     print("def function " + p[1] + " with arguments " + str(p[3]))
     node = Function(p[1], p[6])
     p[0] = node
+
+def p_expr_list_single(p):
+    'expr_list : value_expression'
+    print("expr " + str(p[1]))
+    p[0] = [p[1]]
+
+def p_expr_list_multiple(p):
+    'expr_list : expr_list COMMA value_expression'
+    p[0] = p[1] + [p[3]]
+    print("expr " + str(p[0]))
 
 def p_arg_list_single(p):
     'arg_list : arg'
@@ -213,5 +229,6 @@ def p_error(p):
         print("Parse error: " + p.value);
     else:
         print("Unexpected end of file");
+    sys.exit(1);
 
 parser = yacc.yacc()
