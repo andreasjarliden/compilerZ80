@@ -16,7 +16,6 @@ class Function:
     def __init__(self, name, statements):
         self._name = name
         self._statements = statements
-        self.symbolTable = {}
 
     def __repr__(self):
         return "Function " + self._name + " with statements " + str(self._statements)
@@ -63,10 +62,6 @@ class VariableDereference:
 
     def createIR(self):
         return currentSymbolTable()[self._name]
-
-    def indexedAddress(self, symbolTable):
-        offset = symbolTable[self._name]._offset
-        return f'(ix+{offset})'
 
 class FunctionCall:
     def __init__(self, name):
