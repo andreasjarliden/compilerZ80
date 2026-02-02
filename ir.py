@@ -5,50 +5,6 @@ asmFile = open("a.asm", "w")
 IR = []
 IR_FUNCTIONS = []
 
-# Stack of symbol tables
-ENV = [ {} ]
-FUNCTION = None
-FUNCTION_LABELS = 0
-
-class SymEntry:
-    def __init__(self, name):
-        self.name = name
-        self.impl = None
-
-    def __repr__(self):
-        return f"<SymEntry {self.name} {self.impl}>"
-
-def addSymbol(name):
-    entry = SymEntry(name)
-    ENV[-1][name] = entry
-    return entry
-def addSymbolEntry(name, entry):
-    ENV[-1][name] = entry
-def enterFunction(name):
-    global FUNCTION
-    global FUNCTION_LABELS
-    ENV.append({})
-    FUNCTION = name
-    FUNCTION_LABELS = 0
-def exitFunction():
-    global FUNCTION
-    ENV.pop()
-    FUNCTION = None
-def currentSymbolTable():
-    return ENV[-1]
-def addTemporary():
-    t = Temporary()
-    return addSymbol(t.name)
-def createLabel():
-    global FUNCTION
-    global FUNCTION_LABELS
-    FUNCTION_LABELS += 1
-    return f"{FUNCTION}_l{FUNCTION_LABELS}"
-def exitLabel():
-    global FUNCTION
-    return f"{FUNCTION}_exit"
-
-
 class StackVariable:
     def __init__(self, offset):
         self.offset = offset
@@ -184,11 +140,9 @@ class IRArgument:
         asmFile.write(f'\tpush\taf\n')
 
 class IRFunCall:
-    def __init__(self, name, numArgs, ignoreValue=False):
-        if ignoreValue:
-            self.addr = None
-        else:
-            self.addr = addTemporary()
+    # addr=None creates a procedure call which ignores the return value
+    def __init__(self, name, numArgs, addr=None):
+        self.addr = addr
         self.name = name
         self.numArgs = numArgs
 
@@ -227,8 +181,8 @@ class IRAssign:
             error()
 
 class IRAdd:
-    def __init__(self, addrLhs, addrRhs):
-        self.addr = addTemporary()
+    def __init__(self, addr, addrLhs, addrRhs):
+        self.addr = addr
         self.lhsAddr = addrLhs
         self.rhsAddr = addrRhs
 

@@ -4,6 +4,48 @@ from ir import *
 from address import Constant
 import sys
 
+# Stack of symbol tables
+ENV = [ {} ]
+FUNCTION = None
+FUNCTION_LABELS = 0
+
+class SymEntry:
+    def __init__(self, name):
+        self.name = name
+        self.impl = None
+
+    def __repr__(self):
+        return f"<SymEntry {self.name} {self.impl}>"
+
+# TODO this belongs to the AST and should probably be moved to parser
+# Any use should probably also be moved
+def addSymbol(name):
+    entry = SymEntry(name)
+    ENV[-1][name] = entry
+    return entry
+def addSymbolEntry(name, entry):
+    ENV[-1][name] = entry
+def enterFunction(name):
+    global FUNCTION
+    global FUNCTION_LABELS
+    ENV.append({})
+    FUNCTION = name
+    FUNCTION_LABELS = 0
+def exitFunction():
+    global FUNCTION
+    ENV.pop()
+    FUNCTION = None
+def currentSymbolTable():
+    return ENV[-1]
+def addTemporary():
+    t = Temporary()
+    return addSymbol(t.name)
+def createLabel():
+    global FUNCTION
+    global FUNCTION_LABELS
+    FUNCTION_LABELS += 1
+    return f"{FUNCTION}_l{FUNCTION_LABELS}"
+
 class Argument:
     def __init__(self, t, name):
         self.type = t
@@ -104,11 +146,11 @@ class FunctionCall:
             exprAddress = a.createIR()
             IR.append(IRArgument(exprAddress))
         if self.storeResult:
-            irfuncall = IRFunCall(self.name, len(self.arguments))
+            irfuncall = IRFunCall(self.name, len(self.arguments), addr=addTemporary())
             IR.append(irfuncall)
             return irfuncall.addr
         else:
-            irfuncall = IRFunCall(self.name, len(self.arguments), ignoreValue=True)
+            irfuncall = IRFunCall(self.name, len(self.arguments))
             IR.append(irfuncall)
 
 class Return:
@@ -133,7 +175,7 @@ class Add:
     def createIR(self):
         lhsAddr = self.lhs.createIR()
         rhsAddr = self.rhs.createIR()
-        irAdd = IRAdd(lhsAddr, rhsAddr)
+        irAdd = IRAdd(addTemporary(), lhsAddr, rhsAddr)
         IR.append(irAdd)
         return irAdd.addr
 
