@@ -4,12 +4,13 @@ from parser import parser
 
 ast = parser.parse("""
 main() {
-    add(1, add(2, 3));
+    char a;
+    a = 3;
+    if (a) {
+        a = 2;
+    }
+    a = a;
     PRINT_HEX();
-}
-
-add(char a, char b) {
-    return a + b;
 }
 
 """) 

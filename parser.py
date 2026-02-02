@@ -22,7 +22,7 @@ class Function:
         return "Function " + self.name + " with statements " + str(self.statements)
 
     def createIR(self):
-        pushSymbolTable()
+        enterFunction(self.name)
         # return address is at ix+2, ix+3. Rightmost argument (16-bit) is at ix+5, ix+4
         # If pushing AF, then A is at ix+5
         offset = 5
@@ -35,7 +35,25 @@ class Function:
         for s in self.statements:
             s.createIR()
         IR.append(IRFunExit(currentSymbolTable()))
-        popSymbolTable()
+        exitFunction()
+
+class If:
+    def __init__(self, expr, statements):
+        self.expr = expr
+        self.statements = statements
+
+    def __repr__(self):
+        return f"IF {self.expr} with statements {self.statements}"
+
+    def createIR(self):
+        print(f"If.createIR: expr {self.expr}")
+        exprAddr = self.expr.createIR()
+        print(f"exprAddr {exprAddr}")
+        skipLabel = createLabel()
+        IR.append(IRIf(exprAddr, skipLabel))
+        for s in self.statements:
+            s.createIR()
+        IR.append(IRLabel(skipLabel))
 
 class VariableDefinition:
     def __init__(self, name):
@@ -133,6 +151,7 @@ def p_statement(p):
     ''' 
     statement : expression SEMI
               | function_definition
+              | if_expression
     '''
     p[0] = p[1]
 
@@ -208,6 +227,13 @@ def p_function_definition_args(p):
     node = Function(p[1], p[6], p[3])
     p[0] = node
 
+def p_if_expression(p):
+    '''
+    if_expression : IF LPARA value_expression RPARA LCURL statement_list RCURL
+    '''
+    print(f"IF {p[3]} {p[6]}")
+    p[0] = If(p[3], p[6])
+
 def p_expr_list_single(p):
     'expr_list : value_expression'
     print("expr " + str(p[1]))
@@ -234,7 +260,7 @@ def p_arg(p):
 
 def p_error(p):
     if p:
-        print("Parse error: " + p.value);
+        print("Parse error: " + p.value + str(p));
     else:
         print("Unexpected end of file");
     sys.exit(1);

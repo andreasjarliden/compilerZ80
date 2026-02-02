@@ -7,6 +7,8 @@ IR_FUNCTIONS = []
 
 # Stack of symbol tables
 ENV = [ {} ]
+FUNCTION = None
+FUNCTION_LABELS = 0
 
 class SymEntry:
     def __init__(self, name):
@@ -22,15 +24,25 @@ def addSymbol(name):
     return entry
 def addSymbolEntry(name, entry):
     ENV[-1][name] = entry
-def pushSymbolTable():
+def enterFunction(name):
+    global FUNCTION
+    global FUNCTION_LABELS
     ENV.append({})
-def popSymbolTable():
+    FUNCTION = name
+    FUNCTION_LABELS = 0
+def exitFunction():
+    global FUNCTION
     ENV.pop()
+    FUNCTION = None
 def currentSymbolTable():
     return ENV[-1]
 def addTemporary():
     t = Temporary()
     return addSymbol(t.name)
+def createLabel():
+    global FUNCTION_LABELS
+    FUNCTION_LABELS += 1
+    return f"{FUNCTION}_l{FUNCTION_LABELS}"
 
 
 class StackVariable:
@@ -99,6 +111,32 @@ class IRFunExit:
         asmFile.write(f'\tpop\tIX\n')
         asmFile.write(f'\tret\n\n')
 
+class IRIf:
+    def __init__(self, exprAddr, skipLabel):
+        self.exprAddr = exprAddr
+        self.skipLabel = skipLabel
+
+    def __repr__(self):
+        return f"IRIf {self.exprAddr} {self.skipLabel}"
+
+    def genCode(self):
+        # TODO duplication with e.g. IRReturn
+        if isinstance(self.exprAddr, Constant):
+            asmFile.write(f'\tld\ta, {self.exprAddr.value}\n')
+        elif isinstance(self.exprAddr.impl, StackVariable):
+            asmFile.write(f'\tld\ta, {self.exprAddr.impl.codeArg()}\n')
+        asmFile.write(f'\tor\ta\n')
+        asmFile.write(f'\tjr\tz, {self.skipLabel}\n') 
+
+class IRLabel:
+    def __init__(self, label):
+        self.label = label
+
+    def __repr__(self):
+        return f"IRLabel {self.label}"
+
+    def genCode(self):
+        asmFile.write(self.label + ":\n")
 
 class IRReturn:
     def __init__(self, exprAddr):

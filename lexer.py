@@ -2,7 +2,8 @@ import ply.lex as lex
 
 reserved = {
         'return': 'RETURN',
-        'char': 'CHAR'
+        'char': 'CHAR',
+        'if': 'IF'
         }
 
 tokens = [
