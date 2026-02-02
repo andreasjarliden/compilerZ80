@@ -28,3 +28,11 @@ class Temporary:
 
     def __repr__(self):
         return 'Temporary ' + str(self.name)
+
+
+class Flags:
+    def __init__(self):
+        pass
+
+    def __repr__(self):
+        return "Flags"
