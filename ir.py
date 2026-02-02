@@ -1,4 +1,4 @@
-from address import Constant, Temporary, Symbol
+from address import *
 
 asmFile = open("a.asm", "w")
 
@@ -121,12 +121,15 @@ class IRIf:
 
     def genCode(self):
         # TODO duplication with e.g. IRReturn
-        if isinstance(self.exprAddr, Constant):
-            asmFile.write(f'\tld\ta, {self.exprAddr.value}\n')
-        elif isinstance(self.exprAddr.impl, StackVariable):
-            asmFile.write(f'\tld\ta, {self.exprAddr.impl.codeArg()}\n')
-        asmFile.write(f'\tor\ta\n')
-        asmFile.write(f'\tjr\tz, {self.skipLabel}\n') 
+        if isinstance(self.exprAddr, Flags):
+            asmFile.write(f'\tjr\tnz, {self.skipLabel}\n') 
+        else:
+            if isinstance(self.exprAddr, Constant):
+                asmFile.write(f'\tld\ta, {self.exprAddr.value}\n')
+            elif isinstance(self.exprAddr.impl, StackVariable):
+                asmFile.write(f'\tld\ta, {self.exprAddr.impl.codeArg()}\n')
+            asmFile.write(f'\tor\ta\n')
+            asmFile.write(f'\tjr\tz, {self.skipLabel}\n') 
 
 class IRLabel:
     def __init__(self, label):
@@ -235,3 +238,25 @@ class IRAdd:
         else:
             error()
         asmFile.write(f'\tld\t{self.addr.impl.codeArg()}, a\n')
+
+class IREqual:
+    def __init__(self, addrLhs, addrRhs):
+        self.addr = Flags()
+        self.lhsAddr = addrLhs
+        self.rhsAddr = addrRhs
+
+    def __repr__(self):
+        return f"IREqual {self.addr} = {self.lhsAddr} == {self.rhsAddr}"
+
+    def genCode(self):
+        if isinstance(self.lhsAddr.impl, StackVariable):
+            lhs = self.lhsAddr.impl.codeArg()
+            asmFile.write(f'\tld\ta, {lhs}\n')
+        else:
+            error()
+        if isinstance(self.rhsAddr, Constant):
+            asmFile.write(f'\tcp\t{self.rhsAddr.value}\n')
+        elif isinstance(self.rhsAddr.impl, StackVariable):
+            asmFile.write(f'\tcp\t{self.rhsAddr.impl.codeArg()}\n')
+        else:
+            error()

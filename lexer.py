@@ -15,6 +15,7 @@ tokens = [
         'RCURL',
         'SEMI',
         'ASSIGN',
+        'EQUAL',
         'PLUS',
         'COMMA',
         ] + list(reserved.values())
@@ -26,6 +27,7 @@ t_LCURL = r'\{'
 t_RCURL = r'\}'
 t_SEMI = r';'
 t_ASSIGN = r'='
+t_EQUAL = r'=='
 t_PLUS = r'\+'
 t_COMMA = r','
 

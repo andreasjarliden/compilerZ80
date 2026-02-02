@@ -137,6 +137,21 @@ class Add:
         IR.append(irAdd)
         return irAdd.addr
 
+class Equal:
+    def __init__(self, lhs, rhs):
+        self.lhs = lhs
+        self.rhs = rhs
+
+    def __repr__(self):
+        return "<Equal " + str(self.lhs) + " " + str(self.rhs) + ">"
+
+    def createIR(self):
+        lhsAddr = self.lhs.createIR()
+        rhsAddr = self.rhs.createIR()
+        irEqual = IREqual(lhsAddr, rhsAddr)
+        IR.append(irEqual)
+        return irEqual.addr
+
 def p_statement_list(p):
     '''
     statement_list : statement_list statement
@@ -190,6 +205,10 @@ def p_value_expression_add(p):
     value_expression : value_expression PLUS  value_expression
     '''
     p[0] = Add(p[1], p[3])
+
+def p_value_expression_equal(p):
+    ' value_expression : value_expression EQUAL value_expression'
+    p[0] = Equal(p[1], p[3])
 
 def p_variable_definition_expression(p):
     'var_def_expression : CHAR ID'

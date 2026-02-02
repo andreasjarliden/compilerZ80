@@ -7,7 +7,7 @@ main() {
     char a;
     a = 3;
     if (a) {
-        a = 2;
+        a = 16;
     }
     a = a;
     PRINT_HEX();
