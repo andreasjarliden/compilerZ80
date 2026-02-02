@@ -24,7 +24,7 @@ def astToThreeCode(ast):
 
 def mapSymbols():
     for f in IR_FUNCTIONS:
-        symbolTable = f._symbolTable
+        symbolTable = f.symbolTable
         # stack pointer points to last byte written, so first variable starts at one byte below SP
         offset = -1
         for symbol in symbolTable:

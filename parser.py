@@ -14,12 +14,12 @@ class Argument:
 
 class Function:
     def __init__(self, name, statements, arguments=[]):
-        self._name = name
-        self._statements = statements
+        self.name = name
+        self.statements = statements
         self.arguments = arguments
 
     def __repr__(self):
-        return "Function " + self._name + " with statements " + str(self._statements)
+        return "Function " + self.name + " with statements " + str(self.statements)
 
     def createIR(self):
         pushSymbolTable()
@@ -32,92 +32,92 @@ class Function:
             addSymbolEntry(a.name, symEntry)
             offset+=2
         IR.append(IRDefFun(self, currentSymbolTable()))
-        for s in self._statements:
+        for s in self.statements:
             s.createIR()
         IR.append(IRFunExit(currentSymbolTable()))
         popSymbolTable()
 
 class VariableDefinition:
     def __init__(self, name):
-        self._name = name
-        self._offset = None
+        self.name = name
+        self.offset = None
 
     def __repr__(self):
-        return "variable definition " + self._name + " at offset " + str(self._offset)
+        return "variable definition " + self.name + " at offset " + str(self.offset)
 
     def createIR(self):
-        addSymbol(self._name)
+        addSymbol(self.name)
         pass
 
 class VariableAssignment:
     def __init__(self, name, rhs):
-        self._name = name
-        self._rhs = rhs;
+        self.name = name
+        self.rhs = rhs;
 
     def __repr__(self):
-        return "variable assignment " + self._name + " = " + str(self._rhs)
+        return "variable assignment " + self.name + " = " + str(self.rhs)
 
     def createIR(self):
-        symEntry = currentSymbolTable()[self._name]
-        rhsAddr = self._rhs.createIR()
+        symEntry = currentSymbolTable()[self.name]
+        rhsAddr = self.rhs.createIR()
         IR.append(IRAssign(symEntry, rhsAddr))
 
 class VariableDereference:
     def __init__(self, name):
-        self._name = name
+        self.name = name
 
     def __repr__(self):
-        return "variable dereference " + self._name
+        return "variable dereference " + self.name
 
     def createIR(self):
-        return currentSymbolTable()[self._name]
+        return currentSymbolTable()[self.name]
 
 class FunctionCall:
     def __init__(self, name, arguments=[]):
-        self._name = name
+        self.name = name
         self.arguments = arguments
         self.storeResult = False
 
     def __repr__(self):
-        return f"call {self._name} with args {self.arguments}"
+        return f"call {self.name} with args {self.arguments}"
 
     def createIR(self):
         for a in reversed(self.arguments):
             exprAddress = a.createIR()
             IR.append(IRArgument(exprAddress))
         if self.storeResult:
-            irfuncall = IRFunCall(self._name, len(self.arguments))
+            irfuncall = IRFunCall(self.name, len(self.arguments))
             IR.append(irfuncall)
-            return irfuncall._addr
+            return irfuncall.addr
         else:
-            irfuncall = IRFunCall(self._name, len(self.arguments), ignoreValue=True)
+            irfuncall = IRFunCall(self.name, len(self.arguments), ignoreValue=True)
             IR.append(irfuncall)
 
 class Return:
     def __init__(self, expr):
-        self._expr = expr
+        self.expr = expr
 
     def __repr__(self):
-        return "Return " + str(self._expr)
+        return "Return " + str(self.expr)
 
     def createIR(self):
-        exprAddress = self._expr.createIR()
+        exprAddress = self.expr.createIR()
         IR.append(IRReturn(exprAddress))
 
 class Add:
     def __init__(self, lhs, rhs):
-        self._lhs = lhs
-        self._rhs = rhs
+        self.lhs = lhs
+        self.rhs = rhs
 
     def __repr__(self):
-        return "<Add " + str(self._lhs) + " " + str(self._rhs) + ">"
+        return "<Add " + str(self.lhs) + " " + str(self.rhs) + ">"
 
     def createIR(self):
-        lhsAddr = self._lhs.createIR()
-        rhsAddr = self._rhs.createIR()
+        lhsAddr = self.lhs.createIR()
+        rhsAddr = self.rhs.createIR()
         irAdd = IRAdd(lhsAddr, rhsAddr)
         IR.append(irAdd)
-        return irAdd._addr
+        return irAdd.addr
 
 def p_statement_list(p):
     '''
