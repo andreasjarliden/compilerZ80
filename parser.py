@@ -34,7 +34,7 @@ class Function:
         IR.append(IRDefFun(self, currentSymbolTable()))
         for s in self.statements:
             s.createIR()
-        IR.append(IRFunExit(currentSymbolTable()))
+        IR.append(IRFunExit(self, currentSymbolTable()))
         exitFunction()
 
 class If:

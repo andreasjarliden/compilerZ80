@@ -40,9 +40,13 @@ def addTemporary():
     t = Temporary()
     return addSymbol(t.name)
 def createLabel():
+    global FUNCTION
     global FUNCTION_LABELS
     FUNCTION_LABELS += 1
     return f"{FUNCTION}_l{FUNCTION_LABELS}"
+def exitLabel():
+    global FUNCTION
+    return f"{FUNCTION}_exit"
 
 
 class StackVariable:
@@ -77,6 +81,8 @@ class IRDefFun:
         return f"IRDefFun {self.function} symbolTable {self.symbolTable}"
 
     def genCode(self):
+        global IR_FUNCTION
+        IR_FUNCTION=self.function.name
         asmFile.write(self.function.name + ":\n");
         # Let IX be frame-pointer
         asmFile.write('\t; Let IX be frame-pointer\n')
@@ -97,13 +103,17 @@ class IRDefFun:
         asmFile.write('\t; Function content\n')
 
 class IRFunExit:
-    def __init__(self, symbolTable):
+    def __init__(self, function, symbolTable):
+        self.function = function
         self.symbolTable = symbolTable
 
     def __repr__(self):
         return f"IRFunExit symbolTable {self.symbolTable}"
 
     def genCode(self):
+        asmFile.write(f"{self.function.name}_exit:\n")
+        global IR_FUNCTION
+        IR_FUNCTION=None
         if len(self.symbolTable) > 0:
             asmFile.write('\t;Restore stack pointer (free local variables)\n')
             asmFile.write(f'\tld\tSP, IX\n')
@@ -149,13 +159,13 @@ class IRReturn:
         return "IRReturn " + str(self.exprAddr)
 
     def genCode(self):
-        # TODO should also add jump to return
         if isinstance(self.exprAddr, Constant):
             asmFile.write(f'\tld\ta, {self.exprAddr.value}\n')
         elif isinstance(self.exprAddr.impl, StackVariable):
             asmFile.write(f'\tld\ta, {self.exprAddr.impl.codeArg()}\n')
         else:
             error()
+        asmFile.write(f'\tjr\t{IR_FUNCTION}_exit\n')
 
 class IRArgument:
     def __init__(self, exprAddr):
