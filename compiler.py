@@ -1,18 +1,23 @@
 from pprint import pprint
 from ir import *
-from parser import parser
+from parser import parser, addSymbolEntry, Function, Argument
+
+# Add external functions
+addSymbolEntry("printHex16", Function("void", "printHex16", [], [Argument(int, None)]))
 
 ast = parser.parse("""
-main() {
-    add(1);
-    PRINT_HEX();
+int add(int a, int b) {
+    return a+b;
 }
 
-add(char n) {
-    if (n == 5) {
-        return 5;
-    }
-    return n+add(n+1);
+int main() {
+    int a;
+    int b;
+    int c;
+    a = 65530;
+    b = 4;
+    c = add(a, b);
+    printHex16(c);
 }
 
 """) 
@@ -20,6 +25,7 @@ add(char n) {
 print("AST")
 pprint(ast)
 print()
+
 
 def astToThreeCode(ast):
     for n in ast:
@@ -29,17 +35,19 @@ def mapSymbols():
     for f in IR_FUNCTIONS:
         symbolTable = f.symbolTable
         # stack pointer points to last byte written, so first variable starts at one byte below SP
-        offset = -1
-        for symbol in symbolTable:
-            if not symbolTable[symbol].impl:
-                symbolTable[symbol].impl = StackVariable(offset)
-                offset-=1
+        offset = 0
+        for symbol in symbolTable.values():
+            if not symbol.impl:
+                offset -= symbol.size
+                symbol.impl = StackVariable(offset)
 
 def genCode():
     asmFile.write("\t.org 08000h\n")
     asmFile.write('\t#include "constants.asm"\n')
+    asmFile.write('\tjp\tmain\n')
     for i in IR:
         i.genCode()
+    asmFile.write('\n\t#include "libc.asm"\n')
 
 astToThreeCode(ast)
 

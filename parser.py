@@ -9,18 +9,26 @@ ENV = [ {} ]
 FUNCTION = None
 FUNCTION_LABELS = 0
 
+SIZE_FOR_TYPES = { "char": 1,
+                   "int": 2 }
+
 class SymEntry:
-    def __init__(self, name):
+    def __init__(self, t, name):
         self.name = name
+        self.type = t
         self.impl = None
 
+    @property
+    def size(self):
+        return SIZE_FOR_TYPES[self.type]
+
     def __repr__(self):
-        return f"<SymEntry {self.name} {self.impl}>"
+        return f"<SymEntry {self.type} {self.name} {self.impl}>"
 
 # TODO this belongs to the AST and should probably be moved to parser
 # Any use should probably also be moved
-def addSymbol(name):
-    entry = SymEntry(name)
+def addSymbol(t, name):
+    entry = SymEntry(t, name)
     ENV[-1][name] = entry
     return entry
 def addSymbolEntry(name, entry):
@@ -37,9 +45,9 @@ def exitFunction():
     FUNCTION = None
 def currentSymbolTable():
     return ENV[-1]
-def addTemporary():
-    t = Temporary()
-    return addSymbol(t.name)
+def addTemporary(t):
+    temp = Temporary(t)
+    return addSymbol(t, temp.name)
 def createLabel():
     global FUNCTION
     global FUNCTION_LABELS
@@ -55,10 +63,12 @@ class Argument:
         return f"Argument {self.type} {self.name}"
 
 class Function:
-    def __init__(self, name, statements, arguments=[]):
+    def __init__(self, t, name, statements, arguments=[]):
+        self.type = t
         self.name = name
         self.statements = statements
         self.arguments = arguments
+        addSymbolEntry(name, self)
 
     def __repr__(self):
         return "Function " + self.name + " with statements " + str(self.statements)
@@ -67,10 +77,16 @@ class Function:
         enterFunction(self.name)
         # return address is at ix+2, ix+3. Rightmost argument (16-bit) is at ix+5, ix+4
         # If pushing AF, then A is at ix+5
-        offset = 5
+        offset = 4
         for a in reversed(self.arguments):
-            symEntry = SymEntry(a.name)
-            symEntry.impl = StackVariable(offset)
+            symEntry = SymEntry(a.type, a.name)
+            if a.type == "int":
+                symEntry.impl = StackVariable(offset)
+            elif a.type == "char":
+                # 8 bit values are sent in the high byte
+                symEntry.impl = StackVariable(offset+1)
+            else:
+                error()
             addSymbolEntry(a.name, symEntry)
             offset+=2
         IR.append(IRDefFun(self, currentSymbolTable()))
@@ -98,15 +114,16 @@ class If:
         IR.append(IRLabel(skipLabel))
 
 class VariableDefinition:
-    def __init__(self, name):
+    def __init__(self, t, name):
+        self.type = t
         self.name = name
         self.offset = None
 
     def __repr__(self):
-        return "variable definition " + self.name + " at offset " + str(self.offset)
+        return f"variable definition {self.type} {self.name} at offset {self.offset}"
 
     def createIR(self):
-        addSymbol(self.name)
+        addSymbol(self.type, self.name)
         pass
 
 class VariableAssignment:
@@ -137,6 +154,8 @@ class FunctionCall:
         self.name = name
         self.arguments = arguments
         self.storeResult = False
+        self.type = currentSymbolTable()[name].type
+        print(f"Function call for {name} which is returning {self.type}")
 
     def __repr__(self):
         return f"call {self.name} with args {self.arguments}"
@@ -146,11 +165,11 @@ class FunctionCall:
             exprAddress = a.createIR()
             IR.append(IRArgument(exprAddress))
         if self.storeResult:
-            irfuncall = IRFunCall(self.name, len(self.arguments), addr=addTemporary())
+            irfuncall = IRFunCall(self.type, self.name, len(self.arguments), addr=addTemporary(self.type))
             IR.append(irfuncall)
             return irfuncall.addr
         else:
-            irfuncall = IRFunCall(self.name, len(self.arguments))
+            irfuncall = IRFunCall(self.type, self.name, len(self.arguments))
             IR.append(irfuncall)
 
 class Return:
@@ -161,8 +180,10 @@ class Return:
         return "Return " + str(self.expr)
 
     def createIR(self):
+        # Function is in the symbol table above the current one
+        t = ENV[-2][FUNCTION].type
         exprAddress = self.expr.createIR()
-        IR.append(IRReturn(exprAddress))
+        IR.append(IRReturn(t, exprAddress))
 
 class Add:
     def __init__(self, lhs, rhs):
@@ -175,7 +196,8 @@ class Add:
     def createIR(self):
         lhsAddr = self.lhs.createIR()
         rhsAddr = self.rhs.createIR()
-        irAdd = IRAdd(addTemporary(), lhsAddr, rhsAddr)
+        t = lhsAddr.type # TODO promote
+        irAdd = IRAdd(addTemporary(t), lhsAddr, rhsAddr)
         IR.append(irAdd)
         return irAdd.addr
 
@@ -225,7 +247,8 @@ def p_value_expression_constant(p):
     '''
     value_expression : NUMBER
     '''
-    p[0] = Constant(int(p[1]))
+    # TODO all as char for now
+    p[0] = Constant("char", int(p[1]))
 
 def p_value_expression_fun(p):
     '''
@@ -253,9 +276,15 @@ def p_value_expression_equal(p):
     p[0] = Equal(p[1], p[3])
 
 def p_variable_definition_expression(p):
-    'var_def_expression : CHAR ID'
-    print("Variable definition " + p[2])
-    p[0] = VariableDefinition(p[2])
+    'var_def_expression : type ID'
+    print(f"Variable definition {p[1]} {p[2]}")
+    p[0] = VariableDefinition(p[1], p[2])
+
+def p_type(p):
+    '''type : CHAR
+            | INT
+    '''
+    p[0] = p[1]
 
 def p_variable_assignment_expression(p):
     'var_assign_expression : ID ASSIGN value_expression'
@@ -277,15 +306,15 @@ def p_function_expression_args(p):
     p[0] = FunctionCall(p[1], p[3])
 
 def p_function_definition_no_args(p):
-    'function_definition : ID LPARA RPARA LCURL statement_list RCURL'
-    print("def function " + p[1])
-    node = Function(p[1], p[5])
+    'function_definition : type ID LPARA RPARA LCURL statement_list RCURL'
+    print("def function " + p[2])
+    node = Function(p[1], p[2], p[6])
     p[0] = node
 
 def p_function_definition_args(p):
-    'function_definition : ID LPARA arg_list RPARA LCURL statement_list RCURL'
-    print("def function " + p[1] + " with arguments " + str(p[3]))
-    node = Function(p[1], p[6], p[3])
+    'function_definition : type ID LPARA arg_list RPARA LCURL statement_list RCURL'
+    print("def function {p[1]} {p[2]}(...) with arguments {p[4]}")
+    node = Function(p[1], p[2], p[7], p[4])
     p[0] = node
 
 def p_if_expression(p):
@@ -316,7 +345,7 @@ def p_arg_list_multiple(p):
     p[0] = p[1] + [p[3]]
 
 def p_arg(p):
-    'arg : CHAR ID'
+    'arg : type ID'
     p[0] = Argument(p[1], p[2])
 
 def p_error(p):
