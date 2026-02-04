@@ -1,11 +1,12 @@
 # 3 types of addresses. Rename to e.g ConstantAddress?
 
 class Constant:
-    def __init__(self, value):
+    def __init__(self, t, value):
+        self.type = t
         self.value = value
 
     def __repr__(self):
-        return 'Constant ' + str(self.value)
+        return f"Constant {self.type} {self.value}"
 
     # Because it doubles an AST Node
     def createIR(self):
@@ -13,21 +14,23 @@ class Constant:
 
 
 class Symbol:
-    def __init__(self, name):
+    def __init__(self, t, name):
+        self.type = t
         self.name = name
 
     def __repr__(self):
-        return "Symbol " + self.name
+        return f"Symbol {self.type} {self.name}"
 
 
 class Temporary:
     NUM_TEMPS = 0
-    def __init__(self):
+    def __init__(self, t):
+        self.type = t
         self.name = f"temp{Temporary.NUM_TEMPS}"
         Temporary.NUM_TEMPS+=1
 
     def __repr__(self):
-        return 'Temporary ' + str(self.name)
+        return f"Temporary {self.type} {self.name}"
 
 
 class Flags:

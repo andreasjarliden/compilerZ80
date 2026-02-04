@@ -12,12 +12,13 @@ class StackVariable:
     def __repr__(self):
         return f"Stack Variable offset {self.offset}"
 
-    def codeArg(self):
+    def codeArg(self, offset=0):
         # Use ix - 1, as "ix-1" is interpreted as identifier "ix-1"
+        # TODO this should be resolved by removing - from IDs in the lexer
         if self.offset >= 0:
-            return f"(ix + {self.offset})"
+            return f"(ix + {self.offset+offset})"
         else:
-            return f"(ix - {-self.offset})"
+            return f"(ix - {-self.offset-offset})"
 
 # Size of all local stack variables
 def stackFrameSize(symbolTable):
@@ -108,19 +109,29 @@ class IRLabel:
         asmFile.write(self.label + ":\n")
 
 class IRReturn:
-    def __init__(self, exprAddr):
+    def __init__(self, t, exprAddr):
+        self.type = t
         self.exprAddr = exprAddr
 
     def __repr__(self):
-        return "IRReturn " + str(self.exprAddr)
+        return f"IRReturn {self.type} {self.exprAddr}"
 
     def genCode(self):
-        if isinstance(self.exprAddr, Constant):
-            asmFile.write(f'\tld\ta, {self.exprAddr.value}\n')
-        elif isinstance(self.exprAddr.impl, StackVariable):
-            asmFile.write(f'\tld\ta, {self.exprAddr.impl.codeArg()}\n')
-        else:
-            error()
+        if self.type == "char":
+            if isinstance(self.exprAddr, Constant):
+                asmFile.write(f'\tld\ta, {self.exprAddr.value}\n')
+            elif isinstance(self.exprAddr.impl, StackVariable):
+                asmFile.write(f'\tld\ta, {self.exprAddr.impl.codeArg()}\n')
+            else:
+                error()
+        elif self.type =="int":
+            if isinstance(self.exprAddr, Constant):
+                asmFile.write(f'\tld\thl, {self.exprAddr.value}\n')
+            elif isinstance(self.exprAddr.impl, StackVariable):
+                asmFile.write(f'\tld\th, {self.exprAddr.impl.codeArg(+1)}\n')
+                asmFile.write(f'\tld\tl, {self.exprAddr.impl.codeArg()}\n')
+            else:
+                error()
         asmFile.write(f'\tjr\t{IR_FUNCTION}_exit\n')
 
 class IRArgument:
@@ -131,17 +142,31 @@ class IRArgument:
         return f"IRArgument {self.exprAddr}"
 
     def genCode(self):
-        if isinstance(self.exprAddr, Constant):
-            asmFile.write(f'\tld\ta, {self.exprAddr.value}\n')
-        elif isinstance(self.exprAddr.impl, StackVariable):
-            asmFile.write(f'\tld\ta, {self.exprAddr.impl.codeArg()}\n')
+        if self.exprAddr.type == "char":
+            if isinstance(self.exprAddr, Constant):
+                asmFile.write(f'\tld\ta, {self.exprAddr.value}\n')
+            elif isinstance(self.exprAddr.impl, StackVariable):
+                asmFile.write(f'\tld\ta, {self.exprAddr.impl.codeArg()}\n')
+            else:
+                error()
+            asmFile.write(f'\tpush\taf\n')
+        elif self.exprAddr.type == "int":
+            if isinstance(self.exprAddr, Constant):
+                asmFile.write(f'\tld\thl, {self.exprAddr.value}\n')
+            elif isinstance(self.exprAddr.impl, StackVariable):
+                asmFile.write(f'\tld\th, {self.exprAddr.impl.codeArg(+1)}\n')
+                asmFile.write(f'\tld\tl, {self.exprAddr.impl.codeArg()}\n')
+            else:
+                error()
+            asmFile.write(f'\tpush\thl\n')
         else:
             error()
-        asmFile.write(f'\tpush\taf\n')
+
 
 class IRFunCall:
     # addr=None creates a procedure call which ignores the return value
-    def __init__(self, name, numArgs, addr=None):
+    def __init__(self, t, name, numArgs, addr=None):
+        self.type = t
         self.addr = addr
         self.name = name
         self.numArgs = numArgs
@@ -151,12 +176,20 @@ class IRFunCall:
 
     def genCode(self):
         asmFile.write(f'\tcall\t{self.name}\n')
-        if self.numArgs > 0:
-            asmFile.write(f'\tld\thl, {2*self.numArgs}\n')
-            asmFile.write(f'\tadd\thl, sp\n')
-            asmFile.write(f'\tld\tsp, hl\n')
+        for i in range(self.numArgs):
+            asmFile.write('\tpop\tbc\n') # Use a register we don't care about (yet)
+        # if self.numArgs > 0:
+            # asmFile.write(f'\tld\thl, {2*self.numArgs}\n')
+            # asmFile.write(f'\tadd\thl, sp\n')
+            # asmFile.write(f'\tld\tsp, hl\n')
         if self.addr:
-            asmFile.write(f'\tld\t{self.addr.impl.codeArg()}, a\n')
+            if self.type == "char":
+                asmFile.write(f'\tld\t{self.addr.impl.codeArg()}, a\n')
+            elif self.type == "int":
+                asmFile.write(f'\tld\t{self.addr.impl.codeArg(+1)}, h\n')
+                asmFile.write(f'\tld\t{self.addr.impl.codeArg()}, l\n')
+            else:
+                error()
 
 class IRAssign:
     def __init__(self, symEntry, rhsAddress):
@@ -167,16 +200,37 @@ class IRAssign:
         return f"IRAssign {self.symEntry} = {self.rhsAddress}"
 
     def genCode(self):
-        if isinstance(self.symEntry.impl, StackVariable):
-            lhs = self.symEntry.impl.codeArg()
-        else:
-            error()
-        if isinstance(self.rhsAddress, Constant):
-            value = self.rhsAddress.value
-            asmFile.write(f'\tld\t{lhs}, {value}\n')
-        elif isinstance(self.rhsAddress.impl, StackVariable):
-            asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg()}\n')
-            asmFile.write(f'\tld\t{lhs}, a\n')
+        # TODO support widening or narrowing assignments
+        if self.symEntry.type == "char":
+            if isinstance(self.symEntry.impl, StackVariable):
+                lhs = self.symEntry.impl.codeArg()
+            else:
+                error()
+            if isinstance(self.rhsAddress, Constant):
+                value = self.rhsAddress.value
+                asmFile.write(f'\tld\t{lhs}, {value}\n')
+            elif isinstance(self.rhsAddress.impl, StackVariable):
+                asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg()}\n')
+                asmFile.write(f'\tld\t{lhs}, a\n')
+            else:
+                error()
+        elif self.symEntry.type == "int":
+            if isinstance(self.symEntry.impl, StackVariable):
+                lhs_low = self.symEntry.impl.codeArg()
+                lhs_high = self.symEntry.impl.codeArg(+1)
+            else:
+                error()
+            if isinstance(self.rhsAddress, Constant):
+                value = self.rhsAddress.value
+                asmFile.write(f'\tld\t{lhs_low}, {value & 0xff}\n')
+                asmFile.write(f'\tld\t{lhs_high}, {value >> 8 & 0xff}\n')
+            elif isinstance(self.rhsAddress.impl, StackVariable):
+                asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg()}\n')
+                asmFile.write(f'\tld\t{lhs_low}, a\n')
+                asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg(+1)}\n')
+                asmFile.write(f'\tld\t{lhs_high}, a\n')
+            else:
+                error()
         else:
             error()
 
@@ -190,18 +244,43 @@ class IRAdd:
         return f"IRAdd {self.addr} = {self.lhsAddr} + {self.rhsAddr}"
 
     def genCode(self):
-        if isinstance(self.lhsAddr.impl, StackVariable):
-            lhs = self.lhsAddr.impl.codeArg()
-            asmFile.write(f'\tld\ta, {lhs}\n')
+        if self.lhsAddr.type == "char":
+            if isinstance(self.lhsAddr.impl, StackVariable):
+                lhs = self.lhsAddr.impl.codeArg()
+                asmFile.write(f'\tld\ta, {lhs}\n')
+            else:
+                error()
+            if isinstance(self.rhsAddr, Constant):
+                asmFile.write(f'\tadd\ta, {self.rhsAddr.value}\n')
+            elif isinstance(self.rhsAddr.impl, StackVariable):
+                asmFile.write(f'\tadd\ta, {self.rhsAddr.impl.codeArg()}\n')
+            else:
+                error()
+            asmFile.write(f'\tld\t{self.addr.impl.codeArg()}, a\n')
+        elif self.lhsAddr.type == "int":
+            if isinstance(self.lhsAddr.impl, StackVariable):
+                lhs_hi = self.lhsAddr.impl.codeArg(+1)
+                lhs_low = self.lhsAddr.impl.codeArg()
+                asmFile.write(f'\tld\th, {lhs_hi}\n')
+                asmFile.write(f'\tld\tl, {lhs_low}\n')
+            else:
+                error()
+            if isinstance(self.rhsAddr, Constant):
+                asmFile.write(f'\tld\tde, {self.rhsAddr.value}\n')
+                asmFile.write(f'\tadd\thl, de\n')
+            elif isinstance(self.rhsAddr.impl, StackVariable):
+                rhs_hi = self.rhsAddr.impl.codeArg(+1)
+                rhs_low = self.rhsAddr.impl.codeArg()
+                asmFile.write(f'\tld\td, {rhs_hi}\n')
+                asmFile.write(f'\tld\te, {rhs_low}\n')
+                asmFile.write(f'\tadd\thl, de\n')
+            else:
+                error()
+            asmFile.write(f'\tld\t{self.addr.impl.codeArg(+1)}, h\n')
+            asmFile.write(f'\tld\t{self.addr.impl.codeArg()}, l\n')
         else:
             error()
-        if isinstance(self.rhsAddr, Constant):
-            asmFile.write(f'\tadd\ta, {self.rhsAddr.value}\n')
-        elif isinstance(self.rhsAddr.impl, StackVariable):
-            asmFile.write(f'\tadd\ta, {self.rhsAddr.impl.codeArg()}\n')
-        else:
-            error()
-        asmFile.write(f'\tld\t{self.addr.impl.codeArg()}, a\n')
+
 
 class IREqual:
     def __init__(self, addrLhs, addrRhs):
@@ -213,14 +292,35 @@ class IREqual:
         return f"IREqual {self.addr} = {self.lhsAddr} == {self.rhsAddr}"
 
     def genCode(self):
-        if isinstance(self.lhsAddr.impl, StackVariable):
-            lhs = self.lhsAddr.impl.codeArg()
-            asmFile.write(f'\tld\ta, {lhs}\n')
-        else:
-            error()
-        if isinstance(self.rhsAddr, Constant):
-            asmFile.write(f'\tcp\t{self.rhsAddr.value}\n')
-        elif isinstance(self.rhsAddr.impl, StackVariable):
-            asmFile.write(f'\tcp\t{self.rhsAddr.impl.codeArg()}\n')
-        else:
-            error()
+        if self.lhsAddr.type == "char":
+            if isinstance(self.lhsAddr.impl, StackVariable):
+                lhs = self.lhsAddr.impl.codeArg()
+                asmFile.write(f'\tld\ta, {lhs}\n')
+            else:
+                error()
+            if isinstance(self.rhsAddr, Constant):
+                asmFile.write(f'\tcp\t{self.rhsAddr.value}\n')
+            elif isinstance(self.rhsAddr.impl, StackVariable):
+                asmFile.write(f'\tcp\t{self.rhsAddr.impl.codeArg()}\n')
+            else:
+                error()
+        elif self.lhsAddr.type == "int":
+            if isinstance(self.lhsAddr.impl, StackVariable):
+                lhs_hi = self.lhsAddr.impl.codeArg(+1)
+                lhs_low = self.lhsAddr.impl.codeArg()
+                asmFile.write(f'\tld\th, {lhs_hi}\n')
+                asmFile.write(f'\tld\tl, {lhs_low}\n')
+            else:
+                error()
+            if isinstance(self.rhsAddr, Constant):
+                asmFile.write(f'\tld\tde, {self.rhsAddr.value}\n')
+                asmFile.write(f'\tsbc\thl, de\n')
+            elif isinstance(self.rhsAddr.impl, StackVariable):
+                rhs_hi = self.rhsAddr.impl.codeArg(+1)
+                rhs_low = self.rhsAddr.impl.codeArg()
+                asmFile.write(f'\tld\th, {rhs_hi}\n')
+                asmFile.write(f'\tld\tl, {rhs_low}\n')
+                asmFile.write(f'\tsbc\thl, de\n')
+            else:
+                error()
+
