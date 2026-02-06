@@ -81,10 +81,10 @@ class Function:
         for a in reversed(self.arguments):
             symEntry = SymEntry(a.type, a.name)
             if a.type == "int":
-                symEntry.impl = StackVariable(offset)
+                symEntry.impl = StackVariable(a.type, offset)
             elif a.type == "char":
                 # 8 bit values are sent in the high byte
-                symEntry.impl = StackVariable(offset+1)
+                symEntry.impl = StackVariable(a.type, offset+1)
             else:
                 error()
             addSymbolEntry(a.name, symEntry)
@@ -143,12 +143,14 @@ class VariableAssignment:
 
 class Variable:
     def __init__(self, name):
+        self.type = None
         self.name = name
 
     def __repr__(self):
-        return "Variable " + self.name
+        return f"Variable type {self.type} {self.name}"
 
     def createIR(self):
+        self.type = currentSymbolTable()[self.name].type
         return currentSymbolTable()[self.name]
 
 class AddressOf:
@@ -173,8 +175,8 @@ class Dereference:
 
     def createIR(self):
         resAddr = self.expr.createIR()
-        print(f"Dereference: created code for pointer receiving {self.expr}")
-        return Pointer(resAddr)
+        print(f"Dereference: created code for pointer receiving {self.expr} address {resAddr}")
+        return Pointer(resAddr.type, resAddr)
 
 class FunctionCall:
     def __init__(self, name, arguments=[]):

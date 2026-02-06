@@ -6,11 +6,12 @@ IR = []
 IR_FUNCTIONS = []
 
 class StackVariable:
-    def __init__(self, offset):
+    def __init__(self, t, offset):
+        self.type = t
         self.offset = offset
 
     def __repr__(self):
-        return f"Stack Variable offset {self.offset}"
+        return f"Stack Variable type {self.type} offset {self.offset}"
 
     def codeArg(self, offset=0):
         # Use ix - 1, as "ix-1" is interpreted as identifier "ix-1"
@@ -21,11 +22,12 @@ class StackVariable:
             return f"(ix - {-self.offset-offset})"
 
 class Pointer:
-    def __init__(self, address):
+    def __init__(self, t, address):
+        self.type = t
         self.address = address
 
     def __repr__(self):
-        return f"Pointer address {self.address}"
+        return f"Pointer type {self.type} address {self.address}"
 
 # Size of all local stack variables
 def stackFrameSize(symbolTable):
@@ -231,19 +233,19 @@ class IRAddressOf:
             error()
 
 class IRAssign:
-    def __init__(self, symEntry, rhsAddress):
+    def __init__(self, lvalue, rhsAddress):
         # TODO rename symEntry to lvalue as it might be a Pointer
-        self.symEntry = symEntry
+        self.lvalue = lvalue
         self.rhsAddress = rhsAddress
 
     def __repr__(self):
-        return f"IRAssign {self.symEntry} = {self.rhsAddress}"
+        return f"IRAssign {self.lvalue} = {self.rhsAddress}"
 
     def genCode(self):
-        print(f"IRAssign::genCode symEntry {self.symEntry} rhsAddress {self.rhsAddress}")
+        print(f"IRAssign::genCode lvalue {self.lvalue} rhsAddress {self.rhsAddress}")
         # TODO support widening or narrowing assignments
-        if isinstance(self.symEntry, Pointer):
-            impl = self.symEntry.address.impl
+        if isinstance(self.lvalue, Pointer):
+            impl = self.lvalue.address.impl
             if not isinstance(impl, StackVariable):
                 error()
             # Load the pointer into hl
@@ -262,11 +264,11 @@ class IRAssign:
             else:
                 error()
         else:
-            if self.symEntry.type == "char":
+            if self.lvalue.type == "char":
                 # Prepare lvalue
-                if isinstance(self.symEntry.impl, StackVariable):
-                    lhs = self.symEntry.impl.codeArg()
-                elif isinstance(self.symEntry.impl, Pointer):
+                if isinstance(self.lvalue.impl, StackVariable):
+                    lhs = self.lvalue.impl.codeArg()
+                elif isinstance(self.lvalue.impl, Pointer):
                     asmFile.write("\tld\tde, <pointer address>\n")
                     lhs = "(de)"
                 else:
@@ -281,10 +283,10 @@ class IRAssign:
                     asmFile.write(f'\tld\t{lhs}, a\n')
                 else:
                     error()
-            elif self.symEntry.type == "int":
-                if isinstance(self.symEntry.impl, StackVariable):
-                    lhs_low = self.symEntry.impl.codeArg()
-                    lhs_high = self.symEntry.impl.codeArg(+1)
+            elif self.lvalue.type == "int":
+                if isinstance(self.lvalue.impl, StackVariable):
+                    lhs_low = self.lvalue.impl.codeArg()
+                    lhs_high = self.lvalue.impl.codeArg(+1)
                 else:
                     error()
                 if isinstance(self.rhsAddress, Constant):
