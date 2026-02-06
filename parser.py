@@ -127,27 +127,54 @@ class VariableDefinition:
         pass
 
 class VariableAssignment:
-    def __init__(self, name, rhs):
-        self.name = name
+    def __init__(self, lvalue, rhs):
+        self.lvalue = lvalue
         self.rhs = rhs;
 
     def __repr__(self):
-        return "variable assignment " + self.name + " = " + str(self.rhs)
+        return f"variable assignment {self.lvalue} = {self.rhs}"
 
     def createIR(self):
-        symEntry = currentSymbolTable()[self.name]
+        lvalue = self.lvalue.createIR()
+        print(f"Variable assignment lvalue {lvalue}")
+        # symEntry = currentSymbolTable()[self.lvalue]
         rhsAddr = self.rhs.createIR()
-        IR.append(IRAssign(symEntry, rhsAddr))
+        IR.append(IRAssign(lvalue, rhsAddr))
 
-class VariableDereference:
+class Variable:
     def __init__(self, name):
         self.name = name
 
     def __repr__(self):
-        return "variable dereference " + self.name
+        return "Variable " + self.name
 
     def createIR(self):
         return currentSymbolTable()[self.name]
+
+class AddressOf:
+    def __init__(self, expr):
+        self.expr = expr
+
+    def __repr__(self):
+        return f"AddressOf {self.expr}"
+
+    def createIR(self):
+        exprAddr = self.expr.createIR()
+        irAddressOf = IRAddressOf(exprAddr, addTemporary("int"))
+        IR.append(irAddressOf)
+        return irAddressOf.resAddr
+
+class Dereference:
+    def __init__(self, expr):
+        self.expr = expr
+
+    def __repr__(self):
+        return f"Dereference {self.expr}"
+
+    def createIR(self):
+        resAddr = self.expr.createIR()
+        print(f"Dereference: created code for pointer receiving {self.expr}")
+        return Pointer(resAddr)
 
 class FunctionCall:
     def __init__(self, name, arguments=[]):
@@ -243,37 +270,70 @@ def p_expression(p):
     '''
     p[0] = p[1]
 
-def p_value_expression_constant(p):
+def p_lvalue(p):
+    'lvalue : ID'
+    p[0] = Variable(p[1])
+
+def p_lvalue_deref(p):
+    'lvalue : STAR lvalue'
+    p[0] = Dereference(p[2])
+
+def p_value_expression(p):
+    'value_expression : additive'
+    p[0] = p[1]
+
+def p_additive_single(p):
+    'additive : multiplicative'
+    p[0] = p[1]
+
+def p_additive_plus(p):
+    'additive : additive PLUS multiplicative'
+    p[0] = Add(p[1], p[3])
+
+def p_additive_equal(p):
+    'additive : additive EQUAL multiplicative'
+    p[0] = Equal(p[1], p[3])
+
+def p_multiplicative_single(p):
+    'multiplicative : unary'
+    p[0] = p[1]
+
+def p_unary_deref(p):
+    'unary : STAR unary'
+    p[0] = Dereference(p[2])
+
+def p_unary_addressOf(p):
     '''
-    value_expression : NUMBER
+    unary : AMPERSAND unary
+    '''
+    p[0] = AddressOf(p[2])
+
+def p_unary_primary(p):
+    'unary : primary'
+    p[0] = p[1]
+
+def p_primary_constant(p):
+    '''
+    primary : NUMBER
     '''
     # TODO all as char for now
     p[0] = Constant("char", int(p[1]))
 
-def p_value_expression_fun(p):
+def p_primary_variable(p):
     '''
-    value_expression : function_expression
+    primary : ID
+    '''
+    print(f"Variable {p[1]}")
+    p[0] = Variable(p[1])
+
+def p_primary_fun_call(p):
+    '''
+    primary : function_expression
     '''
     print("Calling function " + str(p[1]))
     f = p[1]
     f.storeResult = True
     p[0] = p[1]
-
-def p_value_expression_variable(p):
-    '''
-    value_expression : ID
-    '''
-    p[0] = VariableDereference(p[1])
-
-def p_value_expression_add(p):
-    '''
-    value_expression : value_expression PLUS  value_expression
-    '''
-    p[0] = Add(p[1], p[3])
-
-def p_value_expression_equal(p):
-    ' value_expression : value_expression EQUAL value_expression'
-    p[0] = Equal(p[1], p[3])
 
 def p_variable_definition_expression(p):
     'var_def_expression : type ID'
@@ -281,13 +341,30 @@ def p_variable_definition_expression(p):
     p[0] = VariableDefinition(p[1], p[2])
 
 def p_type(p):
-    '''type : CHAR
-            | INT
+    '''type : base_type pointers
+    '''
+    print(f"Type found base_type {p[1]} pointers {p[2]}")
+    p[0] = p[1]
+
+def p_base_type(p):
+    '''base_type : CHAR
+                 | INT
     '''
     p[0] = p[1]
 
+def p_pointers_empty(p):
+    '''
+    pointers :
+    '''
+    p[0] = 0 # number of *
+
+def p_pointers_more(p):
+    '''pointers : pointers STAR
+    '''
+    p[0] = p[1] + 1
+
 def p_variable_assignment_expression(p):
-    'var_assign_expression : ID ASSIGN value_expression'
+    'var_assign_expression : lvalue ASSIGN value_expression'
     print("Variable assignment ", p[1], p[3])
     p[0] = VariableAssignment(p[1], p[3])
 

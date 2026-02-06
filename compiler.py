@@ -3,29 +3,27 @@ from ir import *
 from parser import parser, addSymbolEntry, Function, Argument
 
 # Add external functions
-addSymbolEntry("printHex16", Function("void", "printHex16", [], [Argument(int, None)]))
+addSymbolEntry("printHex16", Function("void", "printHex16", [], [Argument("int", None)]))
+addSymbolEntry("printHex16", Function("void", "printHex8", [], [Argument("char", None)]))
+
+print("Parsing")
+print("=======")
 
 ast = parser.parse("""
-int add(int a, int b) {
-    return a+b;
-}
-
 int main() {
-    int a;
-    int b;
-    int c;
-    a = 65530;
-    b = 4;
-    c = add(a, b);
-    printHex16(c);
+    char a;
+    int* p;
+    p=&a;
+    *p=8;
+    printHex8(a);
 }
 
 """) 
 
 print("AST")
+print("===")
 pprint(ast)
 print()
-
 
 def astToThreeCode(ast):
     for n in ast:
@@ -49,17 +47,22 @@ def genCode():
         i.genCode()
     asmFile.write('\n\t#include "libc.asm"\n')
 
+print("AST to 3-code")
+print("=============")
 astToThreeCode(ast)
 
 print("IR")
+print("==")
 pprint(IR)
 
 print("IR_FUNCTIONS")
 pprint(IR_FUNCTIONS)
 
+print("Mapping symbols");
 mapSymbols()
 
-print("\nIR mapped symbols")
+print("IR mapped symbols")
+print("=================")
 pprint(IR)
 
 genCode()

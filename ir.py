@@ -20,6 +20,13 @@ class StackVariable:
         else:
             return f"(ix - {-self.offset-offset})"
 
+class Pointer:
+    def __init__(self, address):
+        self.address = address
+
+    def __repr__(self):
+        return f"Pointer address {self.address}"
+
 # Size of all local stack variables
 def stackFrameSize(symbolTable):
     smallestOffset = 0
@@ -191,8 +198,41 @@ class IRFunCall:
             else:
                 error()
 
+class IRAddressOf:
+    def __init__(self, symEntry, resAddr):
+        self.symEntry = symEntry
+        # TODO: should there be a standard naming scheme for the result address
+        # Maybe all should have it but it is sometimes None?
+        # Or create two types of IR instructions?
+        self.resAddr = resAddr
+
+    def __repr__(self):
+        return f"IRAddressOf {self.symEntry} -> {self.resAddr}"
+
+    def genCode(self):
+        print(f"IRAddressOf {self.symEntry}")
+        if isinstance(self.symEntry.impl, StackVariable):
+            # Compute pointer based on ix and offset
+            offset = self.symEntry.impl.offset
+            negOffset = 65536+offset
+            negHexOffset = f'{negOffset:05x}h'
+            # TODO maybe better to use IY instead of HL?
+            # TODO Optimize for small values with INC
+            asmFile.write(f'\tpush\tix\n')
+            asmFile.write(f'\tpop\thl\n')
+            asmFile.write(f'\tld\tde, {negHexOffset}\n')
+            asmFile.write(f'\tadd\thl, de\n')
+            # Store the pointer
+            lhs_low = self.resAddr.impl.codeArg()
+            lhs_high = self.resAddr.impl.codeArg(+1)
+            asmFile.write(f'\tld\t{lhs_high}, h\n')
+            asmFile.write(f'\tld\t{lhs_low}, l\n')
+        else:
+            error()
+
 class IRAssign:
     def __init__(self, symEntry, rhsAddress):
+        # TODO rename symEntry to lvalue as it might be a Pointer
         self.symEntry = symEntry
         self.rhsAddress = rhsAddress
 
@@ -200,39 +240,66 @@ class IRAssign:
         return f"IRAssign {self.symEntry} = {self.rhsAddress}"
 
     def genCode(self):
+        print(f"IRAssign::genCode symEntry {self.symEntry} rhsAddress {self.rhsAddress}")
         # TODO support widening or narrowing assignments
-        if self.symEntry.type == "char":
-            if isinstance(self.symEntry.impl, StackVariable):
-                lhs = self.symEntry.impl.codeArg()
-            else:
+        if isinstance(self.symEntry, Pointer):
+            impl = self.symEntry.address.impl
+            if not isinstance(impl, StackVariable):
                 error()
+            # Load the pointer into hl
+            asmFile.write(f'\tld\th, {impl.codeArg(+1)}\n')
+            asmFile.write(f'\tld\tl, {impl.codeArg()}\n')
+
+            # Assign using the pointer in hl
+            # TODO assume char for now
+            # TODO handle duplication with assignment below
             if isinstance(self.rhsAddress, Constant):
                 value = self.rhsAddress.value
-                asmFile.write(f'\tld\t{lhs}, {value}\n')
+                asmFile.write(f'\tld\t(hl), {value}\n')
             elif isinstance(self.rhsAddress.impl, StackVariable):
                 asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg()}\n')
-                asmFile.write(f'\tld\t{lhs}, a\n')
-            else:
-                error()
-        elif self.symEntry.type == "int":
-            if isinstance(self.symEntry.impl, StackVariable):
-                lhs_low = self.symEntry.impl.codeArg()
-                lhs_high = self.symEntry.impl.codeArg(+1)
-            else:
-                error()
-            if isinstance(self.rhsAddress, Constant):
-                value = self.rhsAddress.value
-                asmFile.write(f'\tld\t{lhs_low}, {value & 0xff}\n')
-                asmFile.write(f'\tld\t{lhs_high}, {value >> 8 & 0xff}\n')
-            elif isinstance(self.rhsAddress.impl, StackVariable):
-                asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg()}\n')
-                asmFile.write(f'\tld\t{lhs_low}, a\n')
-                asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg(+1)}\n')
-                asmFile.write(f'\tld\t{lhs_high}, a\n')
+                asmFile.write(f'\tld\t(hl), a\n')
             else:
                 error()
         else:
-            error()
+            if self.symEntry.type == "char":
+                # Prepare lvalue
+                if isinstance(self.symEntry.impl, StackVariable):
+                    lhs = self.symEntry.impl.codeArg()
+                elif isinstance(self.symEntry.impl, Pointer):
+                    asmFile.write("\tld\tde, <pointer address>\n")
+                    lhs = "(de)"
+                else:
+                    error()
+
+                # Assign
+                if isinstance(self.rhsAddress, Constant):
+                    value = self.rhsAddress.value
+                    asmFile.write(f'\tld\t{lhs}, {value}\n')
+                elif isinstance(self.rhsAddress.impl, StackVariable):
+                    asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg()}\n')
+                    asmFile.write(f'\tld\t{lhs}, a\n')
+                else:
+                    error()
+            elif self.symEntry.type == "int":
+                if isinstance(self.symEntry.impl, StackVariable):
+                    lhs_low = self.symEntry.impl.codeArg()
+                    lhs_high = self.symEntry.impl.codeArg(+1)
+                else:
+                    error()
+                if isinstance(self.rhsAddress, Constant):
+                    value = self.rhsAddress.value
+                    asmFile.write(f'\tld\t{lhs_low}, {value & 0xff}\n')
+                    asmFile.write(f'\tld\t{lhs_high}, {value >> 8 & 0xff}\n')
+                elif isinstance(self.rhsAddress.impl, StackVariable):
+                    asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg()}\n')
+                    asmFile.write(f'\tld\t{lhs_low}, a\n')
+                    asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg(+1)}\n')
+                    asmFile.write(f'\tld\t{lhs_high}, a\n')
+                else:
+                    error()
+            else:
+                error()
 
 class IRAdd:
     def __init__(self, addr, addrLhs, addrRhs):
