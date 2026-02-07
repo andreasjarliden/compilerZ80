@@ -267,7 +267,29 @@ class IRAssign:
             else:
                 error()
         elif self.lvalue.type == "int":
-            if isinstance(self.lvalue.impl, StackVariable):
+            # Prepare lvalue
+            if isinstance(self.lvalue, DereferencedPointer):
+                impl = self.lvalue.address.impl
+                if not isinstance(impl, StackVariable):
+                    error()
+                # Load the pointer into hl
+                asmFile.write(f'\tld\th, {impl.codeArg(+1)}\n')
+                asmFile.write(f'\tld\tl, {impl.codeArg()}\n')
+                if isinstance(self.rhsAddress, Constant):
+                    value = self.rhsAddress.value
+                    asmFile.write(f'\tld\t(hl), {value & 0xff}\n')
+                    asmFile.write(f'\tinc\thl\n')
+                    asmFile.write(f'\tld\t(hl), {value >> 8 & 0xff}\n')
+                elif isinstance(self.rhsAddress.impl, StackVariable):
+                    asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg()}\n')
+                    asmFile.write(f'\tld\t(hl), a\n')
+                    asmFile.write(f'\tinc\thl\n')
+                    asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg(+1)}\n')
+                    asmFile.write(f'\tld\t(hl), a\n')
+                else:
+                    error()
+                return
+            elif isinstance(self.lvalue.impl, StackVariable):
                 lhs_low = self.lvalue.impl.codeArg()
                 lhs_high = self.lvalue.impl.codeArg(+1)
             else:

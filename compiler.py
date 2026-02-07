@@ -11,13 +11,13 @@ print("=======")
 
 ast = parser.parse("""
 int main() {
-    char a;
-    char b;
-    char* p;
+    int a;
+    int b;
+    int* p;
     p=&a;
-    p=p+65535;
+    p=p+65534;
     *p=8;
-    printHex8(b);
+    printHex16(b);
 }
 
 """) 
