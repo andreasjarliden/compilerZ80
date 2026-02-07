@@ -317,7 +317,9 @@ class IRAdd:
 
     def genCode(self):
         if self.lhsAddr.type == "char":
-            if isinstance(self.lhsAddr.impl, StackVariable):
+            if isinstance(self.lhsAddr, Constant):
+                asmFile.write(f'\tld\ta, {self.lhsAddr.value}\n')
+            elif isinstance(self.lhsAddr.impl, StackVariable):
                 lhs = self.lhsAddr.impl.codeArg()
                 asmFile.write(f'\tld\ta, {lhs}\n')
             else:

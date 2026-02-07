@@ -5,6 +5,10 @@ class Constant:
         self.type = t
         self.value = value
 
+    @property
+    def completeType(self):
+        return self.type
+
     def __repr__(self):
         return f"Constant {self.type} {self.value}"
 
