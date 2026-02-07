@@ -1,6 +1,6 @@
 from pprint import pprint
 from ir import *
-from parser import parser, addSymbolEntry, Function, Argument
+from parser import *
 
 # Add external functions
 addSymbolEntry("printHex16", Function("void", "printHex16", [], [Argument("int", None)]))
@@ -10,6 +10,13 @@ print("Parsing")
 print("=======")
 
 ast = parser.parse("""
+char add(int a, int b) {
+    if (a == 1) {
+        b = 2;
+    }
+    return a+b;
+}
+
 int main() {
     printHex8(1+2);
 }
@@ -39,17 +46,17 @@ def genCode():
     asmFile.write("\t.org 08000h\n")
     asmFile.write('\t#include "constants.asm"\n')
     asmFile.write('\tjp\tmain\n')
-    for i in IR:
-        i.genCode()
+    for b in BASIC_BLOCKS.values():
+        for i in b:
+            i.genCode()
     asmFile.write('\n\t#include "libc.asm"\n')
 
 print("AST to 3-code")
 print("=============")
 astToThreeCode(ast)
 
-print("IR")
-print("==")
-pprint(IR)
+print("BASIC_BLOCKS")
+pprint(BASIC_BLOCKS)
 
 print("IR_FUNCTIONS")
 pprint(IR_FUNCTIONS)
@@ -59,6 +66,6 @@ mapSymbols()
 
 print("IR mapped symbols")
 print("=================")
-pprint(IR)
+pprint(BASIC_BLOCKS)
 
 genCode()

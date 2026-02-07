@@ -9,6 +9,34 @@ ENV = [ {} ]
 FUNCTION = None
 FUNCTION_LABELS = 0
 
+BASIC_BLOCKS = {}
+BLOCK_PREFIX = None
+BLOCK_NUMBER = 1
+
+def addIR(ir):
+    global CURRENT_BLOCK
+    CURRENT_BLOCK.append(ir)
+def enterBlock(name):
+    global BLOCK_NUMBER
+    global BLOCK_PREFIX
+    global CURRENT_BLOCK_NAME
+    CURRENT_BLOCK_NAME = name
+    BLOCK_PREFIX = name
+    BLOCK_NUMER = 0
+    enterSubBlock()
+def enterSubBlock():
+    global CURRENT_BLOCK
+    global CURRENT_BLOCK_NAME
+    global BLOCK_PREFIX
+    global BLOCK_NUMBER
+    CURRENT_BLOCK = []
+    CURRENT_BLOCK_NAME = f"{BLOCK_PREFIX}_{BLOCK_NUMBER:04}"
+    BLOCK_NUMBER+=1
+def exitBlock():
+    global CURRENT_BLOCK
+    global CURRENT_BLOCK_NAME
+    BASIC_BLOCKS[CURRENT_BLOCK_NAME] = CURRENT_BLOCK
+
 SIZE_FOR_TYPES = { "char": 1,
                    "int": 2 }
 
@@ -57,7 +85,13 @@ def createLabel():
 
 class Argument:
     def __init__(self, t, name):
-        self.type = t
+        # TODO duplicate with Variable
+        if t == "char" or t == "int":
+            self.type = t
+        elif t[0] == "*":
+            # Pointers are handled as int
+            self.type = "int"
+        self.completeType = t
         self.name = name
 
     def __repr__(self):
@@ -75,12 +109,13 @@ class Function:
         return "Function " + self.name + " with statements " + str(self.statements)
 
     def visit(self):
+        enterBlock(self.name)
         enterFunction(self.name)
         # return address is at ix+2, ix+3. Rightmost argument (16-bit) is at ix+5, ix+4
         # If pushing AF, then A is at ix+5
         offset = 4
         for a in reversed(self.arguments):
-            symEntry = SymEntry(a.type, a.name)
+            symEntry = SymEntry(a.type, a.completeType, a.name)
             if a.type == "int":
                 symEntry.impl = StackVariable(a.type, offset)
             elif a.type == "char":
@@ -90,11 +125,12 @@ class Function:
                 error()
             addSymbolEntry(a.name, symEntry)
             offset+=2
-        IR.append(IRDefFun(self, currentSymbolTable()))
+        addIR(IRDefFun(self, currentSymbolTable()))
         for s in self.statements:
             s.visit()
-        IR.append(IRFunExit(self, currentSymbolTable()))
+        addIR(IRFunExit(self, currentSymbolTable()))
         exitFunction()
+        exitBlock()
 
 class If:
     def __init__(self, expr, statements):
@@ -109,10 +145,14 @@ class If:
         exprAddr = self.expr.visit()
         print(f"exprAddr {exprAddr}")
         skipLabel = createLabel()
-        IR.append(IRIf(exprAddr, skipLabel))
+        addIR(IRIf(exprAddr, skipLabel))
+        exitBlock()
+        enterSubBlock()
         for s in self.statements:
             s.visit()
-        IR.append(IRLabel(skipLabel))
+        exitBlock()
+        enterSubBlock()
+        addIR(IRLabel(skipLabel))
 
 class VariableDefinition:
     def __init__(self, t, name):
@@ -144,7 +184,7 @@ class VariableAssignment:
         lvalue = self.lvalue.visit()
         print(f"Variable assignment lvalue {lvalue}")
         rhsAddr = self.rhs.visit()
-        IR.append(IRAssign(lvalue, rhsAddr))
+        addIR(IRAssign(lvalue, rhsAddr))
 
 class Variable:
     def __init__(self, name):
@@ -171,7 +211,7 @@ class AddressOf:
     def visit(self):
         exprAddr = self.expr.visit()
         irAddressOf = IRAddressOf(exprAddr, addTemporary("int", "*" + exprAddr.completeType))
-        IR.append(irAddressOf)
+        addIR(irAddressOf)
         return irAddressOf.resAddr
 
 class Dereference:
@@ -201,14 +241,14 @@ class FunctionCall:
     def visit(self):
         for a in reversed(self.arguments):
             exprAddress = a.visit()
-            IR.append(IRArgument(exprAddress))
+            addIR(IRArgument(exprAddress))
         if self.storeResult:
             irfuncall = IRFunCall(self.type, self.name, len(self.arguments), addr=addTemporary(self.type))
-            IR.append(irfuncall)
+            addIR(irfuncall)
             return irfuncall.addr
         else:
             irfuncall = IRFunCall(self.type, self.name, len(self.arguments))
-            IR.append(irfuncall)
+            addIR(irfuncall)
 
 class Return:
     def __init__(self, expr):
@@ -221,7 +261,7 @@ class Return:
         # Function is in the symbol table above the current one
         t = ENV[-2][FUNCTION].type
         exprAddress = self.expr.visit()
-        IR.append(IRReturn(t, exprAddress))
+        addIR(IRReturn(t, exprAddress))
 
 class Add:
     def __init__(self, lhs, rhs):
@@ -237,7 +277,7 @@ class Add:
         t = lhsAddr.type # TODO promote
         ct = lhsAddr.completeType
         irAdd = IRAdd(addTemporary(t, ct), lhsAddr, rhsAddr)
-        IR.append(irAdd)
+        addIR(irAdd)
         return irAdd.addr
 
 class Equal:
@@ -252,7 +292,7 @@ class Equal:
         lhsAddr = self.lhs.visit()
         rhsAddr = self.rhs.visit()
         irEqual = IREqual(lhsAddr, rhsAddr)
-        IR.append(irEqual)
+        addIR(irEqual)
         return irEqual.addr
 
 def p_statement_list(p):
