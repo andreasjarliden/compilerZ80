@@ -9,7 +9,7 @@ class Constant:
         return f"Constant {self.type} {self.value}"
 
     # Because it doubles an AST Node
-    def createIR(self):
+    def visit(self):
         return self
 
 

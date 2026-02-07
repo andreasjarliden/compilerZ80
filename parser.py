@@ -13,9 +13,10 @@ SIZE_FOR_TYPES = { "char": 1,
                    "int": 2 }
 
 class SymEntry:
-    def __init__(self, t, name):
+    def __init__(self, t, completeType, name):
         self.name = name
         self.type = t
+        self.completeType = completeType
         self.impl = None
 
     @property
@@ -23,12 +24,12 @@ class SymEntry:
         return SIZE_FOR_TYPES[self.type]
 
     def __repr__(self):
-        return f"<SymEntry {self.type} {self.name} {self.impl}>"
+        return f"<SymEntry type:{self.type} c.type:{self.completeType} name:{self.name} {self.impl}>"
 
 # TODO this belongs to the AST and should probably be moved to parser
 # Any use should probably also be moved
-def addSymbol(t, name):
-    entry = SymEntry(t, name)
+def addSymbol(t, completeType, name):
+    entry = SymEntry(t, completeType, name)
     ENV[-1][name] = entry
     return entry
 def addSymbolEntry(name, entry):
@@ -45,9 +46,9 @@ def exitFunction():
     FUNCTION = None
 def currentSymbolTable():
     return ENV[-1]
-def addTemporary(t):
+def addTemporary(t, completeType):
     temp = Temporary(t)
-    return addSymbol(t, temp.name)
+    return addSymbol(t, completeType, temp.name)
 def createLabel():
     global FUNCTION
     global FUNCTION_LABELS
@@ -73,7 +74,7 @@ class Function:
     def __repr__(self):
         return "Function " + self.name + " with statements " + str(self.statements)
 
-    def createIR(self):
+    def visit(self):
         enterFunction(self.name)
         # return address is at ix+2, ix+3. Rightmost argument (16-bit) is at ix+5, ix+4
         # If pushing AF, then A is at ix+5
@@ -81,17 +82,17 @@ class Function:
         for a in reversed(self.arguments):
             symEntry = SymEntry(a.type, a.name)
             if a.type == "int":
-                symEntry.impl = StackVariable(offset)
+                symEntry.impl = StackVariable(a.type, offset)
             elif a.type == "char":
                 # 8 bit values are sent in the high byte
-                symEntry.impl = StackVariable(offset+1)
+                symEntry.impl = StackVariable(a.type, offset+1)
             else:
                 error()
             addSymbolEntry(a.name, symEntry)
             offset+=2
         IR.append(IRDefFun(self, currentSymbolTable()))
         for s in self.statements:
-            s.createIR()
+            s.visit()
         IR.append(IRFunExit(self, currentSymbolTable()))
         exitFunction()
 
@@ -103,51 +104,88 @@ class If:
     def __repr__(self):
         return f"IF {self.expr} with statements {self.statements}"
 
-    def createIR(self):
-        print(f"If.createIR: expr {self.expr}")
-        exprAddr = self.expr.createIR()
+    def visit(self):
+        print(f"If.visit: expr {self.expr}")
+        exprAddr = self.expr.visit()
         print(f"exprAddr {exprAddr}")
         skipLabel = createLabel()
         IR.append(IRIf(exprAddr, skipLabel))
         for s in self.statements:
-            s.createIR()
+            s.visit()
         IR.append(IRLabel(skipLabel))
 
 class VariableDefinition:
     def __init__(self, t, name):
-        self.type = t
+        if t == "char" or t == "int":
+            self.type = t
+        elif t[0] == "*":
+            # Pointers are handled as int
+            self.type = "int"
+        self.completeType = t
         self.name = name
         self.offset = None
 
     def __repr__(self):
         return f"variable definition {self.type} {self.name} at offset {self.offset}"
 
-    def createIR(self):
-        addSymbol(self.type, self.name)
+    def visit(self):
+        addSymbol(self.type, self.completeType, self.name)
         pass
 
 class VariableAssignment:
-    def __init__(self, name, rhs):
-        self.name = name
+    def __init__(self, lvalue, rhs):
+        self.lvalue = lvalue
         self.rhs = rhs;
 
     def __repr__(self):
-        return "variable assignment " + self.name + " = " + str(self.rhs)
+        return f"variable assignment {self.lvalue} = {self.rhs}"
 
-    def createIR(self):
-        symEntry = currentSymbolTable()[self.name]
-        rhsAddr = self.rhs.createIR()
-        IR.append(IRAssign(symEntry, rhsAddr))
+    def visit(self):
+        lvalue = self.lvalue.visit()
+        print(f"Variable assignment lvalue {lvalue}")
+        rhsAddr = self.rhs.visit()
+        IR.append(IRAssign(lvalue, rhsAddr))
 
-class VariableDereference:
+class Variable:
     def __init__(self, name):
+        self.type = None
+        self.completeType = None
         self.name = name
 
     def __repr__(self):
-        return "variable dereference " + self.name
+        return f"<Variable type {self.type} complete type {self.completeType} name {self.name}>"
 
-    def createIR(self):
+    def visit(self):
+        symEntry = currentSymbolTable()[self.name]
+        self.type = symEntry.type
+        self.completeType = symEntry.completeType
         return currentSymbolTable()[self.name]
+
+class AddressOf:
+    def __init__(self, expr):
+        self.expr = expr
+
+    def __repr__(self):
+        return f"AddressOf {self.expr}"
+
+    def visit(self):
+        exprAddr = self.expr.visit()
+        irAddressOf = IRAddressOf(exprAddr, addTemporary("int", "*" + exprAddr.completeType))
+        IR.append(irAddressOf)
+        return irAddressOf.resAddr
+
+class Dereference:
+    def __init__(self, expr):
+        self.expr = expr
+
+    def __repr__(self):
+        return f"Dereference {self.expr}"
+
+    def visit(self):
+        resAddr = self.expr.visit()
+        print(f"Dereference: created code for pointer receiving {self.expr} address {resAddr}")
+        type = resAddr.completeType[1:] # remove leading *
+        return DereferencedPointer(type, resAddr)
 
 class FunctionCall:
     def __init__(self, name, arguments=[]):
@@ -160,9 +198,9 @@ class FunctionCall:
     def __repr__(self):
         return f"call {self.name} with args {self.arguments}"
 
-    def createIR(self):
+    def visit(self):
         for a in reversed(self.arguments):
-            exprAddress = a.createIR()
+            exprAddress = a.visit()
             IR.append(IRArgument(exprAddress))
         if self.storeResult:
             irfuncall = IRFunCall(self.type, self.name, len(self.arguments), addr=addTemporary(self.type))
@@ -179,10 +217,10 @@ class Return:
     def __repr__(self):
         return "Return " + str(self.expr)
 
-    def createIR(self):
+    def visit(self):
         # Function is in the symbol table above the current one
         t = ENV[-2][FUNCTION].type
-        exprAddress = self.expr.createIR()
+        exprAddress = self.expr.visit()
         IR.append(IRReturn(t, exprAddress))
 
 class Add:
@@ -193,11 +231,12 @@ class Add:
     def __repr__(self):
         return "<Add " + str(self.lhs) + " " + str(self.rhs) + ">"
 
-    def createIR(self):
-        lhsAddr = self.lhs.createIR()
-        rhsAddr = self.rhs.createIR()
+    def visit(self):
+        lhsAddr = self.lhs.visit()
+        rhsAddr = self.rhs.visit()
         t = lhsAddr.type # TODO promote
-        irAdd = IRAdd(addTemporary(t), lhsAddr, rhsAddr)
+        ct = lhsAddr.completeType
+        irAdd = IRAdd(addTemporary(t, ct), lhsAddr, rhsAddr)
         IR.append(irAdd)
         return irAdd.addr
 
@@ -209,9 +248,9 @@ class Equal:
     def __repr__(self):
         return "<Equal " + str(self.lhs) + " " + str(self.rhs) + ">"
 
-    def createIR(self):
-        lhsAddr = self.lhs.createIR()
-        rhsAddr = self.rhs.createIR()
+    def visit(self):
+        lhsAddr = self.lhs.visit()
+        rhsAddr = self.rhs.visit()
         irEqual = IREqual(lhsAddr, rhsAddr)
         IR.append(irEqual)
         return irEqual.addr
@@ -243,37 +282,70 @@ def p_expression(p):
     '''
     p[0] = p[1]
 
-def p_value_expression_constant(p):
+def p_lvalue(p):
+    'lvalue : ID'
+    p[0] = Variable(p[1])
+
+def p_lvalue_deref(p):
+    'lvalue : STAR lvalue'
+    p[0] = Dereference(p[2])
+
+def p_value_expression(p):
+    'value_expression : additive'
+    p[0] = p[1]
+
+def p_additive_single(p):
+    'additive : multiplicative'
+    p[0] = p[1]
+
+def p_additive_plus(p):
+    'additive : additive PLUS multiplicative'
+    p[0] = Add(p[1], p[3])
+
+def p_additive_equal(p):
+    'additive : additive EQUAL multiplicative'
+    p[0] = Equal(p[1], p[3])
+
+def p_multiplicative_single(p):
+    'multiplicative : unary'
+    p[0] = p[1]
+
+def p_unary_deref(p):
+    'unary : STAR unary'
+    p[0] = Dereference(p[2])
+
+def p_unary_addressOf(p):
     '''
-    value_expression : NUMBER
+    unary : AMPERSAND unary
+    '''
+    p[0] = AddressOf(p[2])
+
+def p_unary_primary(p):
+    'unary : primary'
+    p[0] = p[1]
+
+def p_primary_constant(p):
+    '''
+    primary : NUMBER
     '''
     # TODO all as char for now
     p[0] = Constant("char", int(p[1]))
 
-def p_value_expression_fun(p):
+def p_primary_variable(p):
     '''
-    value_expression : function_expression
+    primary : ID
+    '''
+    print(f"Variable {p[1]}")
+    p[0] = Variable(p[1])
+
+def p_primary_fun_call(p):
+    '''
+    primary : function_expression
     '''
     print("Calling function " + str(p[1]))
     f = p[1]
     f.storeResult = True
     p[0] = p[1]
-
-def p_value_expression_variable(p):
-    '''
-    value_expression : ID
-    '''
-    p[0] = VariableDereference(p[1])
-
-def p_value_expression_add(p):
-    '''
-    value_expression : value_expression PLUS  value_expression
-    '''
-    p[0] = Add(p[1], p[3])
-
-def p_value_expression_equal(p):
-    ' value_expression : value_expression EQUAL value_expression'
-    p[0] = Equal(p[1], p[3])
 
 def p_variable_definition_expression(p):
     'var_def_expression : type ID'
@@ -281,13 +353,30 @@ def p_variable_definition_expression(p):
     p[0] = VariableDefinition(p[1], p[2])
 
 def p_type(p):
-    '''type : CHAR
-            | INT
+    '''type : base_type pointers
+    '''
+    print(f"Type found base_type {p[1]} pointers {p[2]}")
+    p[0] = "*"*p[2] + p[1]
+
+def p_base_type(p):
+    '''base_type : CHAR
+                 | INT
     '''
     p[0] = p[1]
 
+def p_pointers_empty(p):
+    '''
+    pointers :
+    '''
+    p[0] = 0 # number of *
+
+def p_pointers_more(p):
+    '''pointers : pointers STAR
+    '''
+    p[0] = p[1] + 1
+
 def p_variable_assignment_expression(p):
-    'var_assign_expression : ID ASSIGN value_expression'
+    'var_assign_expression : lvalue ASSIGN value_expression'
     print("Variable assignment ", p[1], p[3])
     p[0] = VariableAssignment(p[1], p[3])
 

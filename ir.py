@@ -6,11 +6,12 @@ IR = []
 IR_FUNCTIONS = []
 
 class StackVariable:
-    def __init__(self, offset):
+    def __init__(self, t, offset):
+        self.type = t
         self.offset = offset
 
     def __repr__(self):
-        return f"Stack Variable offset {self.offset}"
+        return f"Stack Variable type {self.type} offset {self.offset}"
 
     def codeArg(self, offset=0):
         # Use ix - 1, as "ix-1" is interpreted as identifier "ix-1"
@@ -19,6 +20,14 @@ class StackVariable:
             return f"(ix + {self.offset+offset})"
         else:
             return f"(ix - {-self.offset-offset})"
+
+class DereferencedPointer:
+    def __init__(self, t, address):
+        self.type = t
+        self.address = address
+
+    def __repr__(self):
+        return f"DereferencedPointer type {self.type} address {self.address}"
 
 # Size of all local stack variables
 def stackFrameSize(symbolTable):
@@ -191,21 +200,64 @@ class IRFunCall:
             else:
                 error()
 
-class IRAssign:
-    def __init__(self, symEntry, rhsAddress):
+class IRAddressOf:
+    def __init__(self, symEntry, resAddr):
         self.symEntry = symEntry
+        # TODO: should there be a standard naming scheme for the result address
+        # Maybe all should have it but it is sometimes None?
+        # Or create two types of IR instructions?
+        self.resAddr = resAddr
+
+    def __repr__(self):
+        return f"IRAddressOf {self.symEntry} -> {self.resAddr}"
+
+    def genCode(self):
+        print(f"IRAddressOf {self.symEntry}")
+        if isinstance(self.symEntry.impl, StackVariable):
+            # Compute pointer based on ix and offset
+            offset = self.symEntry.impl.offset
+            negOffset = 65536+offset
+            negHexOffset = f'{negOffset:05x}h'
+            # TODO maybe better to use IY instead of HL?
+            # TODO Optimize for small values with INC
+            asmFile.write(f'\tpush\tix\n')
+            asmFile.write(f'\tpop\thl\n')
+            asmFile.write(f'\tld\tde, {negHexOffset}\n')
+            asmFile.write(f'\tadd\thl, de\n')
+            # Store the pointer
+            lhs_low = self.resAddr.impl.codeArg()
+            lhs_high = self.resAddr.impl.codeArg(+1)
+            asmFile.write(f'\tld\t{lhs_high}, h\n')
+            asmFile.write(f'\tld\t{lhs_low}, l\n')
+        else:
+            error()
+
+class IRAssign:
+    def __init__(self, lvalue, rhsAddress):
+        self.lvalue = lvalue
         self.rhsAddress = rhsAddress
 
     def __repr__(self):
-        return f"IRAssign {self.symEntry} = {self.rhsAddress}"
+        return f"IRAssign {self.lvalue} = {self.rhsAddress}"
 
     def genCode(self):
-        # TODO support widening or narrowing assignments
-        if self.symEntry.type == "char":
-            if isinstance(self.symEntry.impl, StackVariable):
-                lhs = self.symEntry.impl.codeArg()
+        print(f"IRAssign::genCode lvalue {self.lvalue} rhsAddress {self.rhsAddress}")
+        if self.lvalue.type == "char":
+            # Prepare lvalue
+            if isinstance(self.lvalue, DereferencedPointer):
+                impl = self.lvalue.address.impl
+                if not isinstance(impl, StackVariable):
+                    error()
+                # Load the pointer into hl
+                asmFile.write(f'\tld\th, {impl.codeArg(+1)}\n')
+                asmFile.write(f'\tld\tl, {impl.codeArg()}\n')
+                lhs = "(hl)"
+            elif isinstance(self.lvalue.impl, StackVariable):
+                lhs = self.lvalue.impl.codeArg()
             else:
                 error()
+
+            # Assign
             if isinstance(self.rhsAddress, Constant):
                 value = self.rhsAddress.value
                 asmFile.write(f'\tld\t{lhs}, {value}\n')
@@ -214,10 +266,32 @@ class IRAssign:
                 asmFile.write(f'\tld\t{lhs}, a\n')
             else:
                 error()
-        elif self.symEntry.type == "int":
-            if isinstance(self.symEntry.impl, StackVariable):
-                lhs_low = self.symEntry.impl.codeArg()
-                lhs_high = self.symEntry.impl.codeArg(+1)
+        elif self.lvalue.type == "int":
+            # Prepare lvalue
+            if isinstance(self.lvalue, DereferencedPointer):
+                impl = self.lvalue.address.impl
+                if not isinstance(impl, StackVariable):
+                    error()
+                # Load the pointer into hl
+                asmFile.write(f'\tld\th, {impl.codeArg(+1)}\n')
+                asmFile.write(f'\tld\tl, {impl.codeArg()}\n')
+                if isinstance(self.rhsAddress, Constant):
+                    value = self.rhsAddress.value
+                    asmFile.write(f'\tld\t(hl), {value & 0xff}\n')
+                    asmFile.write(f'\tinc\thl\n')
+                    asmFile.write(f'\tld\t(hl), {value >> 8 & 0xff}\n')
+                elif isinstance(self.rhsAddress.impl, StackVariable):
+                    asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg()}\n')
+                    asmFile.write(f'\tld\t(hl), a\n')
+                    asmFile.write(f'\tinc\thl\n')
+                    asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg(+1)}\n')
+                    asmFile.write(f'\tld\t(hl), a\n')
+                else:
+                    error()
+                return
+            elif isinstance(self.lvalue.impl, StackVariable):
+                lhs_low = self.lvalue.impl.codeArg()
+                lhs_high = self.lvalue.impl.codeArg(+1)
             else:
                 error()
             if isinstance(self.rhsAddress, Constant):
@@ -231,8 +305,6 @@ class IRAssign:
                 asmFile.write(f'\tld\t{lhs_high}, a\n')
             else:
                 error()
-        else:
-            error()
 
 class IRAdd:
     def __init__(self, addr, addrLhs, addrRhs):

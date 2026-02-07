@@ -19,6 +19,8 @@ tokens = [
         'EQUAL',
         'PLUS',
         'COMMA',
+        'STAR',
+        'AMPERSAND',
         ] + list(reserved.values())
 
 t_NUMBER = r'[0-9]+'
@@ -31,6 +33,8 @@ t_ASSIGN = r'='
 t_EQUAL = r'=='
 t_PLUS = r'\+'
 t_COMMA = r','
+t_STAR = r'\*'
+t_AMPERSAND = r'&'
 
 def t_ID(t):
     r'[a-zA-Z_][0-9a-zA-Z_]*'
