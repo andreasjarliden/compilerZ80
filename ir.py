@@ -1,8 +1,8 @@
 from address import *
+from symEntry import *
 
 asmFile = open("a.asm", "w")
 
-IR = []
 IR_FUNCTIONS = []
 
 class StackVariable:
@@ -37,8 +37,63 @@ def stackFrameSize(symbolTable):
         smallestOffset = min(s.impl.offset, smallestOffset)
     return -smallestOffset
 
-class IRDefFun:
+
+class IR:
+    def __init__(self, resultAddr=None, lhsAddr=None, rhsAddr=None):
+        self.resultAddr=resultAddr
+        self.lhsAddr=lhsAddr
+        self.rhsAddr=rhsAddr
+
+    @property
+    def exprAddr(self):
+        return self.lhsAddr
+
+    def updateLive(self, symbolTable):
+        if self.resultAddr and isinstance(self.resultAddr, SymEntry):
+            # 1
+            symEntry = symbolTable[self.resultAddr.name]
+            self.resultNextUse = symEntry.nextUse
+            self.resultLive = symEntry.live
+            # 2
+            symbolTable[self.resultAddr.name].live = False
+            symbolTable[self.resultAddr.name].nextUse = None
+        if self.lhsAddr and isinstance(self.lhsAddr, SymEntry):
+            symEntry = symbolTable[self.lhsAddr.name]
+            self.lhsNextUse = symEntry.nextUse
+            self.lhsLive = symEntry.live
+            # 3
+            symbolTable[self.lhsAddr.name].live = True
+        if self.rhsAddr and isinstance(self.rhsAddr, SymEntry):
+            symEntry = symbolTable[self.rhsAddr.name]
+            self.rhsNextUse = symEntry.nextUse
+            self.rhsLive = symEntry.live
+            # 3
+            symbolTable[self.rhsAddr.name].live = True
+            symbolTable[self.rhsAddr.name].nextUse = self
+            symbolTable[self.rhsAddr.name].nextUse = self
+
+    def liveStr(self):
+        if self.resultAddr and isinstance(self.resultAddr, SymEntry):
+            s1 = "L" if self.resultLive else "N"
+        else:
+            s1="?"
+        if self.lhsAddr and isinstance(self.lhsAddr, SymEntry):
+            s2 = "L" if self.lhsLive else "N"
+        else:
+            s2="?"
+        if self.rhsAddr and isinstance(self.rhsAddr, SymEntry):
+            s3 = "L" if self.rhsLive else "N"
+        else:
+            s3="?"
+        return s1 + s2 + s3 + " "
+
+    def __repr__(self):
+        return self.liveStr()
+
+
+class IRDefFun(IR):
     def __init__(self, function, symbolTable):
+        super().__init__()
         self.function = function
         self.symbolTable = symbolTable
         IR_FUNCTIONS.append(self)
@@ -68,8 +123,9 @@ class IRDefFun:
 
         asmFile.write('\t; Function content\n')
 
-class IRFunExit:
+class IRFunExit(IR):
     def __init__(self, function, symbolTable):
+        super().__init__()
         self.function = function
         self.symbolTable = symbolTable
 
@@ -87,9 +143,9 @@ class IRFunExit:
         asmFile.write(f'\tpop\tIX\n')
         asmFile.write(f'\tret\n\n')
 
-class IRIf:
+class IRIf(IR):
     def __init__(self, exprAddr, skipLabel):
-        self.exprAddr = exprAddr
+        super().__init__(lhsAddr=exprAddr)
         self.skipLabel = skipLabel
 
     def __repr__(self):
@@ -107,8 +163,9 @@ class IRIf:
             asmFile.write(f'\tor\ta\n')
             asmFile.write(f'\tjr\tz, {self.skipLabel}\n') 
 
-class IRLabel:
+class IRLabel(IR):
     def __init__(self, label):
+        super().__init__()
         self.label = label
 
     def __repr__(self):
@@ -117,10 +174,10 @@ class IRLabel:
     def genCode(self):
         asmFile.write(self.label + ":\n")
 
-class IRReturn:
+class IRReturn(IR):
     def __init__(self, t, exprAddr):
+        super().__init__(lhsAddr=exprAddr)
         self.type = t
-        self.exprAddr = exprAddr
 
     def __repr__(self):
         return f"IRReturn {self.type} {self.exprAddr}"
@@ -143,9 +200,9 @@ class IRReturn:
                 error()
         asmFile.write(f'\tjr\t{IR_FUNCTION}_exit\n')
 
-class IRArgument:
+class IRArgument(IR):
     def __init__(self, exprAddr):
-        self.exprAddr = exprAddr
+        super().__init__(lhsAddr=exprAddr)
 
     def __repr__(self):
         return f"IRArgument {self.exprAddr}"
@@ -172,11 +229,11 @@ class IRArgument:
             error()
 
 
-class IRFunCall:
+class IRFunCall(IR):
     # addr=None creates a procedure call which ignores the return value
     def __init__(self, t, name, numArgs, addr=None):
+        super().__init__(resultAddr=addr)
         self.type = t
-        self.addr = addr
         self.name = name
         self.numArgs = numArgs
 
@@ -191,7 +248,7 @@ class IRFunCall:
             # asmFile.write(f'\tld\thl, {2*self.numArgs}\n')
             # asmFile.write(f'\tadd\thl, sp\n')
             # asmFile.write(f'\tld\tsp, hl\n')
-        if self.addr:
+        if self.resultAddr:
             if self.type == "char":
                 asmFile.write(f'\tld\t{self.addr.impl.codeArg()}, a\n')
             elif self.type == "int":
@@ -200,8 +257,9 @@ class IRFunCall:
             else:
                 error()
 
-class IRAddressOf:
+class IRAddressOf(IR):
     def __init__(self, symEntry, resAddr):
+        super().__init__(resultAddress=resAddr, lhsAddr=symEntry)
         self.symEntry = symEntry
         # TODO: should there be a standard naming scheme for the result address
         # Maybe all should have it but it is sometimes None?
@@ -232,8 +290,9 @@ class IRAddressOf:
         else:
             error()
 
-class IRAssign:
+class IRAssign(IR):
     def __init__(self, lvalue, rhsAddress):
+        super().__init__(resultAddr=lvalue, lhsAddr=rhsAddress)
         self.lvalue = lvalue
         self.rhsAddress = rhsAddress
 
@@ -306,14 +365,15 @@ class IRAssign:
             else:
                 error()
 
-class IRAdd:
+class IRAdd(IR):
     def __init__(self, addr, addrLhs, addrRhs):
+        super().__init__(addr, addrLhs, addrRhs)
         self.addr = addr
         self.lhsAddr = addrLhs
         self.rhsAddr = addrRhs
 
     def __repr__(self):
-        return f"IRAdd {self.addr} = {self.lhsAddr} + {self.rhsAddr}"
+        return super().__repr__() + f"IRAdd {self.addr} = {self.lhsAddr} + {self.rhsAddr}"
 
     def genCode(self):
         if self.lhsAddr.type == "char":
@@ -356,8 +416,9 @@ class IRAdd:
             error()
 
 
-class IREqual:
+class IREqual(IR):
     def __init__(self, addrLhs, addrRhs):
+        super().__init__(lhsAddr=addrLhs, rhsAddr=addrRhs)
         self.addr = Flags()
         self.lhsAddr = addrLhs
         self.rhsAddr = addrRhs

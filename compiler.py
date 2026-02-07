@@ -11,10 +11,12 @@ print("=======")
 
 ast = parser.parse("""
 char add(int a, int b) {
-    if (a == 1) {
-        b = 2;
-    }
-    return a+b;
+    int t1;
+    int t2;
+    int t3;
+    t1 = a + b;
+    t2 = t1 + a;
+    t3 = t2 + t2;
 }
 
 int main() {
@@ -42,18 +44,26 @@ def mapSymbols():
                 offset -= symbol.size
                 symbol.impl = StackVariable(symbol.type, offset)
 
+def determineNextUse():
+    for b in BASIC_BLOCKS.values():
+        for s in b.symbolTable.values():
+            s.initLive()
+        for i in reversed(b.statements):
+            i.updateLive(b.symbolTable)
+
 def genCode():
     asmFile.write("\t.org 08000h\n")
     asmFile.write('\t#include "constants.asm"\n')
     asmFile.write('\tjp\tmain\n')
     for b in BASIC_BLOCKS.values():
-        for i in b:
+        for i in b.statements:
             i.genCode()
     asmFile.write('\n\t#include "libc.asm"\n')
 
 print("AST to 3-code")
 print("=============")
 astToThreeCode(ast)
+determineNextUse()
 
 print("BASIC_BLOCKS")
 pprint(BASIC_BLOCKS)

@@ -3,6 +3,8 @@ import ply.yacc as yacc
 from ir import *
 from address import Constant
 import sys
+from pprint import *
+from symEntry import *
 
 # Stack of symbol tables
 ENV = [ {} ]
@@ -13,46 +15,37 @@ BASIC_BLOCKS = {}
 BLOCK_PREFIX = None
 BLOCK_NUMBER = 1
 
+class BasicBlock:
+    def __init__(self, symbolTable):
+        self.statements = []
+        self.symbolTable = symbolTable
+
+    def __repr__(self):
+        return f"Symbol table: {self.symbolTable}\nStatements:\n{pformat(self.statements)}"
+
 def addIR(ir):
     global CURRENT_BLOCK
-    CURRENT_BLOCK.append(ir)
-def enterBlock(name):
+    CURRENT_BLOCK.statements.append(ir)
+def enterBlock(name, symbolTable):
     global BLOCK_NUMBER
     global BLOCK_PREFIX
     global CURRENT_BLOCK_NAME
     CURRENT_BLOCK_NAME = name
     BLOCK_PREFIX = name
     BLOCK_NUMER = 0
-    enterSubBlock()
-def enterSubBlock():
+    enterSubBlock(symbolTable)
+def enterSubBlock(symbolTable):
     global CURRENT_BLOCK
     global CURRENT_BLOCK_NAME
     global BLOCK_PREFIX
     global BLOCK_NUMBER
-    CURRENT_BLOCK = []
+    CURRENT_BLOCK = BasicBlock(symbolTable)
     CURRENT_BLOCK_NAME = f"{BLOCK_PREFIX}_{BLOCK_NUMBER:04}"
     BLOCK_NUMBER+=1
 def exitBlock():
     global CURRENT_BLOCK
     global CURRENT_BLOCK_NAME
     BASIC_BLOCKS[CURRENT_BLOCK_NAME] = CURRENT_BLOCK
-
-SIZE_FOR_TYPES = { "char": 1,
-                   "int": 2 }
-
-class SymEntry:
-    def __init__(self, t, completeType, name):
-        self.name = name
-        self.type = t
-        self.completeType = completeType
-        self.impl = None
-
-    @property
-    def size(self):
-        return SIZE_FOR_TYPES[self.type]
-
-    def __repr__(self):
-        return f"<SymEntry type:{self.type} c.type:{self.completeType} name:{self.name} {self.impl}>"
 
 # TODO this belongs to the AST and should probably be moved to parser
 # Any use should probably also be moved
@@ -109,8 +102,8 @@ class Function:
         return "Function " + self.name + " with statements " + str(self.statements)
 
     def visit(self):
-        enterBlock(self.name)
         enterFunction(self.name)
+        enterBlock(self.name, currentSymbolTable())
         # return address is at ix+2, ix+3. Rightmost argument (16-bit) is at ix+5, ix+4
         # If pushing AF, then A is at ix+5
         offset = 4
@@ -147,11 +140,11 @@ class If:
         skipLabel = createLabel()
         addIR(IRIf(exprAddr, skipLabel))
         exitBlock()
-        enterSubBlock()
+        enterSubBlock(currentSymbolTable())
         for s in self.statements:
             s.visit()
         exitBlock()
-        enterSubBlock()
+        enterSubBlock(currentSymbolTable())
         addIR(IRLabel(skipLabel))
 
 class VariableDefinition:
