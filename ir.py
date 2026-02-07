@@ -21,13 +21,13 @@ class StackVariable:
         else:
             return f"(ix - {-self.offset-offset})"
 
-class Pointer:
+class DereferencedPointer:
     def __init__(self, t, address):
         self.type = t
         self.address = address
 
     def __repr__(self):
-        return f"Pointer type {self.type} address {self.address}"
+        return f"DereferencedPointer type {self.type} address {self.address}"
 
 # Size of all local stack variables
 def stackFrameSize(symbolTable):
@@ -234,7 +234,6 @@ class IRAddressOf:
 
 class IRAssign:
     def __init__(self, lvalue, rhsAddress):
-        # TODO rename symEntry to lvalue as it might be a Pointer
         self.lvalue = lvalue
         self.rhsAddress = rhsAddress
 
@@ -243,63 +242,45 @@ class IRAssign:
 
     def genCode(self):
         print(f"IRAssign::genCode lvalue {self.lvalue} rhsAddress {self.rhsAddress}")
-        # TODO support widening or narrowing assignments
-        if isinstance(self.lvalue, Pointer):
-            impl = self.lvalue.address.impl
-            if not isinstance(impl, StackVariable):
-                error()
-            # Load the pointer into hl
-            asmFile.write(f'\tld\th, {impl.codeArg(+1)}\n')
-            asmFile.write(f'\tld\tl, {impl.codeArg()}\n')
-
-            # Assign using the pointer in hl
-            # TODO assume char for now
-            # TODO handle duplication with assignment below
-            if isinstance(self.rhsAddress, Constant):
-                value = self.rhsAddress.value
-                asmFile.write(f'\tld\t(hl), {value}\n')
-            elif isinstance(self.rhsAddress.impl, StackVariable):
-                asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg()}\n')
-                asmFile.write(f'\tld\t(hl), a\n')
+        if self.lvalue.type == "char":
+            # Prepare lvalue
+            if isinstance(self.lvalue, DereferencedPointer):
+                impl = self.lvalue.address.impl
+                if not isinstance(impl, StackVariable):
+                    error()
+                # Load the pointer into hl
+                asmFile.write(f'\tld\th, {impl.codeArg(+1)}\n')
+                asmFile.write(f'\tld\tl, {impl.codeArg()}\n')
+                lhs = "(hl)"
+            elif isinstance(self.lvalue.impl, StackVariable):
+                lhs = self.lvalue.impl.codeArg()
             else:
                 error()
-        else:
-            if self.lvalue.type == "char":
-                # Prepare lvalue
-                if isinstance(self.lvalue.impl, StackVariable):
-                    lhs = self.lvalue.impl.codeArg()
-                elif isinstance(self.lvalue.impl, Pointer):
-                    asmFile.write("\tld\tde, <pointer address>\n")
-                    lhs = "(de)"
-                else:
-                    error()
 
-                # Assign
-                if isinstance(self.rhsAddress, Constant):
-                    value = self.rhsAddress.value
-                    asmFile.write(f'\tld\t{lhs}, {value}\n')
-                elif isinstance(self.rhsAddress.impl, StackVariable):
-                    asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg()}\n')
-                    asmFile.write(f'\tld\t{lhs}, a\n')
-                else:
-                    error()
-            elif self.lvalue.type == "int":
-                if isinstance(self.lvalue.impl, StackVariable):
-                    lhs_low = self.lvalue.impl.codeArg()
-                    lhs_high = self.lvalue.impl.codeArg(+1)
-                else:
-                    error()
-                if isinstance(self.rhsAddress, Constant):
-                    value = self.rhsAddress.value
-                    asmFile.write(f'\tld\t{lhs_low}, {value & 0xff}\n')
-                    asmFile.write(f'\tld\t{lhs_high}, {value >> 8 & 0xff}\n')
-                elif isinstance(self.rhsAddress.impl, StackVariable):
-                    asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg()}\n')
-                    asmFile.write(f'\tld\t{lhs_low}, a\n')
-                    asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg(+1)}\n')
-                    asmFile.write(f'\tld\t{lhs_high}, a\n')
-                else:
-                    error()
+            # Assign
+            if isinstance(self.rhsAddress, Constant):
+                value = self.rhsAddress.value
+                asmFile.write(f'\tld\t{lhs}, {value}\n')
+            elif isinstance(self.rhsAddress.impl, StackVariable):
+                asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg()}\n')
+                asmFile.write(f'\tld\t{lhs}, a\n')
+            else:
+                error()
+        elif self.lvalue.type == "int":
+            if isinstance(self.lvalue.impl, StackVariable):
+                lhs_low = self.lvalue.impl.codeArg()
+                lhs_high = self.lvalue.impl.codeArg(+1)
+            else:
+                error()
+            if isinstance(self.rhsAddress, Constant):
+                value = self.rhsAddress.value
+                asmFile.write(f'\tld\t{lhs_low}, {value & 0xff}\n')
+                asmFile.write(f'\tld\t{lhs_high}, {value >> 8 & 0xff}\n')
+            elif isinstance(self.rhsAddress.impl, StackVariable):
+                asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg()}\n')
+                asmFile.write(f'\tld\t{lhs_low}, a\n')
+                asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg(+1)}\n')
+                asmFile.write(f'\tld\t{lhs_high}, a\n')
             else:
                 error()
 

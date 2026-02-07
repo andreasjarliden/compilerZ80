@@ -11,13 +11,13 @@ print("=======")
 
 ast = parser.parse("""
 int main() {
-    int a;
-    int b;
-    int* p;
+    char a;
+    char b;
+    char* p;
     p=&a;
-    p=p+65534;
+    p=p+65535;
     *p=8;
-    printHex16(b);
+    printHex8(b);
 }
 
 """) 
@@ -29,7 +29,7 @@ print()
 
 def astToThreeCode(ast):
     for n in ast:
-        n.createIR()
+        n.visit()
 
 def mapSymbols():
     for f in IR_FUNCTIONS:
