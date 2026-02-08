@@ -18,6 +18,6 @@ class SymEntry:
         return SIZE_FOR_TYPES[self.type]
 
     def __repr__(self):
-        return f"<SymEntry type:{self.type} c.type:{self.completeType} name:{self.name} live:{self.live} {self.impl}>"
+        return f"<SymEntry {self.name} type:{self.type} c.type:{self.completeType} {self.impl}>"
 
 

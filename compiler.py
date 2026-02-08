@@ -14,8 +14,13 @@ char add(int a, int b) {
     int t1;
     int t2;
     int t3;
+    int* p;
+    p = &t3;
+    *p=42;
     t1 = a + b;
+    if (t1 == 1) {
     t2 = t1 + a;
+    }
     t3 = t2 + t2;
 }
 

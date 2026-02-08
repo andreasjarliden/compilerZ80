@@ -87,8 +87,23 @@ class IR:
             s3="?"
         return s1 + s2 + s3 + " "
 
+    def extraDescription(self):
+        return ""
+
     def __repr__(self):
-        return self.liveStr()
+        live = self.liveStr()
+        name = self.__class__.__name__
+        r = ""
+        if self.resultAddr:
+            r = str(self.resultAddr) + " = "
+        o1 = ""
+        if self.lhsAddr:
+            o1 = str(self.lhsAddr) 
+        o2 = ""
+        if self.rhsAddr:
+            o2 = " OP " + str(self.rhsAddr) 
+        xtra = self.extraDescription()
+        return "".join([live, name,r,o1,o2,xtra])
 
 
 class IRDefFun(IR):
@@ -98,8 +113,8 @@ class IRDefFun(IR):
         self.symbolTable = symbolTable
         IR_FUNCTIONS.append(self)
 
-    def __repr__(self):
-        return f"IRDefFun {self.function} symbolTable {self.symbolTable}"
+    def extraDescription(self):
+        return f"{self.function} symbolTable {self.symbolTable}"
 
     def genCode(self):
         global IR_FUNCTION
@@ -129,9 +144,6 @@ class IRFunExit(IR):
         self.function = function
         self.symbolTable = symbolTable
 
-    def __repr__(self):
-        return f"IRFunExit symbolTable {self.symbolTable}"
-
     def genCode(self):
         asmFile.write(f"{self.function.name}_exit:\n")
         global IR_FUNCTION
@@ -148,8 +160,8 @@ class IRIf(IR):
         super().__init__(lhsAddr=exprAddr)
         self.skipLabel = skipLabel
 
-    def __repr__(self):
-        return f"IRIf {self.exprAddr} {self.skipLabel}"
+    def extraDescription(self):
+        return f"{self.skipLabel}"
 
     def genCode(self):
         # TODO duplication with e.g. IRReturn
@@ -168,8 +180,8 @@ class IRLabel(IR):
         super().__init__()
         self.label = label
 
-    def __repr__(self):
-        return f"IRLabel {self.label}"
+    def extraDescription(self):
+        return f"{self.label}"
 
     def genCode(self):
         asmFile.write(self.label + ":\n")
@@ -179,8 +191,8 @@ class IRReturn(IR):
         super().__init__(lhsAddr=exprAddr)
         self.type = t
 
-    def __repr__(self):
-        return f"IRReturn {self.type} {self.exprAddr}"
+    def extraDescription(self):
+        return f"type {self.type}"
 
     def genCode(self):
         if self.type == "char":
@@ -203,9 +215,6 @@ class IRReturn(IR):
 class IRArgument(IR):
     def __init__(self, exprAddr):
         super().__init__(lhsAddr=exprAddr)
-
-    def __repr__(self):
-        return f"IRArgument {self.exprAddr}"
 
     def genCode(self):
         if self.exprAddr.type == "char":
@@ -237,8 +246,8 @@ class IRFunCall(IR):
         self.name = name
         self.numArgs = numArgs
 
-    def __repr__(self):
-        return "IRFunCall " + self.name
+    def extraDescription(self):
+        return self.name
 
     def genCode(self):
         asmFile.write(f'\tcall\t{self.name}\n')
@@ -259,21 +268,12 @@ class IRFunCall(IR):
 
 class IRAddressOf(IR):
     def __init__(self, symEntry, resAddr):
-        super().__init__(resultAddress=resAddr, lhsAddr=symEntry)
-        self.symEntry = symEntry
-        # TODO: should there be a standard naming scheme for the result address
-        # Maybe all should have it but it is sometimes None?
-        # Or create two types of IR instructions?
-        self.resAddr = resAddr
-
-    def __repr__(self):
-        return f"IRAddressOf {self.symEntry} -> {self.resAddr}"
+        super().__init__(resultAddr=resAddr, lhsAddr=symEntry)
 
     def genCode(self):
-        print(f"IRAddressOf {self.symEntry}")
-        if isinstance(self.symEntry.impl, StackVariable):
+        if isinstance(self.exprAddr.impl, StackVariable):
             # Compute pointer based on ix and offset
-            offset = self.symEntry.impl.offset
+            offset = self.exprAddr.impl.offset
             negOffset = 65536+offset
             negHexOffset = f'{negOffset:05x}h'
             # TODO maybe better to use IY instead of HL?
@@ -283,8 +283,8 @@ class IRAddressOf(IR):
             asmFile.write(f'\tld\tde, {negHexOffset}\n')
             asmFile.write(f'\tadd\thl, de\n')
             # Store the pointer
-            lhs_low = self.resAddr.impl.codeArg()
-            lhs_high = self.resAddr.impl.codeArg(+1)
+            lhs_low = self.resultAddr.impl.codeArg()
+            lhs_high = self.resultAddr.impl.codeArg(+1)
             asmFile.write(f'\tld\t{lhs_high}, h\n')
             asmFile.write(f'\tld\t{lhs_low}, l\n')
         else:
@@ -293,74 +293,69 @@ class IRAddressOf(IR):
 class IRAssign(IR):
     def __init__(self, lvalue, rhsAddress):
         super().__init__(resultAddr=lvalue, lhsAddr=rhsAddress)
-        self.lvalue = lvalue
-        self.rhsAddress = rhsAddress
-
-    def __repr__(self):
-        return f"IRAssign {self.lvalue} = {self.rhsAddress}"
 
     def genCode(self):
-        print(f"IRAssign::genCode lvalue {self.lvalue} rhsAddress {self.rhsAddress}")
-        if self.lvalue.type == "char":
+        print(f"IRAssign::genCode resultAddress {self.resultAddr} exprAddr {self.exprAddr}")
+        if self.resultAddr.type == "char":
             # Prepare lvalue
-            if isinstance(self.lvalue, DereferencedPointer):
-                impl = self.lvalue.address.impl
+            if isinstance(self.resultAddr, DereferencedPointer):
+                impl = self.resultAddr.address.impl
                 if not isinstance(impl, StackVariable):
                     error()
                 # Load the pointer into hl
                 asmFile.write(f'\tld\th, {impl.codeArg(+1)}\n')
                 asmFile.write(f'\tld\tl, {impl.codeArg()}\n')
                 lhs = "(hl)"
-            elif isinstance(self.lvalue.impl, StackVariable):
-                lhs = self.lvalue.impl.codeArg()
+            elif isinstance(self.resultAddr.impl, StackVariable):
+                lhs = self.resultAddr.impl.codeArg()
             else:
                 error()
 
             # Assign
-            if isinstance(self.rhsAddress, Constant):
-                value = self.rhsAddress.value
+            if isinstance(self.exprAddr, Constant):
+                value = self.exprAddr.value
                 asmFile.write(f'\tld\t{lhs}, {value}\n')
-            elif isinstance(self.rhsAddress.impl, StackVariable):
-                asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg()}\n')
+            elif isinstance(self.exprAddr.impl, StackVariable):
+                asmFile.write(f'\tld\ta, {self.exprAddr.impl.codeArg()}\n')
                 asmFile.write(f'\tld\t{lhs}, a\n')
             else:
                 error()
-        elif self.lvalue.type == "int":
+        elif self.resultAddr.type == "int":
             # Prepare lvalue
-            if isinstance(self.lvalue, DereferencedPointer):
-                impl = self.lvalue.address.impl
+            if isinstance(self.resultAddr, DereferencedPointer):
+                impl = self.resultAddr.address.impl
                 if not isinstance(impl, StackVariable):
                     error()
                 # Load the pointer into hl
                 asmFile.write(f'\tld\th, {impl.codeArg(+1)}\n')
                 asmFile.write(f'\tld\tl, {impl.codeArg()}\n')
-                if isinstance(self.rhsAddress, Constant):
-                    value = self.rhsAddress.value
+                if isinstance(self.exprAddr, Constant):
+                    value = self.exprAddr.value
                     asmFile.write(f'\tld\t(hl), {value & 0xff}\n')
                     asmFile.write(f'\tinc\thl\n')
                     asmFile.write(f'\tld\t(hl), {value >> 8 & 0xff}\n')
-                elif isinstance(self.rhsAddress.impl, StackVariable):
-                    asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg()}\n')
+                elif isinstance(self.exprAddr.impl, StackVariable):
+                    asmFile.write(f'\tld\ta, {self.exprAddr.impl.codeArg()}\n')
                     asmFile.write(f'\tld\t(hl), a\n')
                     asmFile.write(f'\tinc\thl\n')
-                    asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg(+1)}\n')
+                    asmFile.write(f'\tld\ta, {self.exprAddr.impl.codeArg(+1)}\n')
                     asmFile.write(f'\tld\t(hl), a\n')
                 else:
                     error()
                 return
-            elif isinstance(self.lvalue.impl, StackVariable):
-                lhs_low = self.lvalue.impl.codeArg()
-                lhs_high = self.lvalue.impl.codeArg(+1)
+            elif isinstance(self.resultAddr.impl, StackVariable):
+                lhs_low = self.resultAddr.impl.codeArg()
+                lhs_high = self.resultAddr.impl.codeArg(+1)
             else:
                 error()
-            if isinstance(self.rhsAddress, Constant):
-                value = self.rhsAddress.value
+            if isinstance(self.exprAddr, Constant):
+                value = self.exprAddr.value
                 asmFile.write(f'\tld\t{lhs_low}, {value & 0xff}\n')
                 asmFile.write(f'\tld\t{lhs_high}, {value >> 8 & 0xff}\n')
-            elif isinstance(self.rhsAddress.impl, StackVariable):
-                asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg()}\n')
+            elif isinstance(self.exprAddr.impl, StackVariable):
+                asmFile.write(f'\tld\ta, {self.exprAddr.impl.codeArg()}\n')
                 asmFile.write(f'\tld\t{lhs_low}, a\n')
-                asmFile.write(f'\tld\ta, {self.rhsAddress.impl.codeArg(+1)}\n')
+                asmFile.write(f'\tld\ta, {self.exprAddr.impl.codeArg(+1)}\n')
                 asmFile.write(f'\tld\t{lhs_high}, a\n')
             else:
                 error()
@@ -368,12 +363,6 @@ class IRAssign(IR):
 class IRAdd(IR):
     def __init__(self, addr, addrLhs, addrRhs):
         super().__init__(addr, addrLhs, addrRhs)
-        self.addr = addr
-        self.lhsAddr = addrLhs
-        self.rhsAddr = addrRhs
-
-    def __repr__(self):
-        return super().__repr__() + f"IRAdd {self.addr} = {self.lhsAddr} + {self.rhsAddr}"
 
     def genCode(self):
         if self.lhsAddr.type == "char":
@@ -390,7 +379,7 @@ class IRAdd(IR):
                 asmFile.write(f'\tadd\ta, {self.rhsAddr.impl.codeArg()}\n')
             else:
                 error()
-            asmFile.write(f'\tld\t{self.addr.impl.codeArg()}, a\n')
+            asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg()}, a\n')
         elif self.lhsAddr.type == "int":
             if isinstance(self.lhsAddr.impl, StackVariable):
                 lhs_hi = self.lhsAddr.impl.codeArg(+1)
@@ -410,18 +399,16 @@ class IRAdd(IR):
                 asmFile.write(f'\tadd\thl, de\n')
             else:
                 error()
-            asmFile.write(f'\tld\t{self.addr.impl.codeArg(+1)}, h\n')
-            asmFile.write(f'\tld\t{self.addr.impl.codeArg()}, l\n')
+            asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg(+1)}, h\n')
+            asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg()}, l\n')
         else:
             error()
 
 
 class IREqual(IR):
-    def __init__(self, addrLhs, addrRhs):
-        super().__init__(lhsAddr=addrLhs, rhsAddr=addrRhs)
+    def __init__(self, lhsAddr, rhsAddr):
+        super().__init__(lhsAddr=lhsAddr, rhsAddr=rhsAddr)
         self.addr = Flags()
-        self.lhsAddr = addrLhs
-        self.rhsAddr = addrRhs
 
     def __repr__(self):
         return f"IREqual {self.addr} = {self.lhsAddr} == {self.rhsAddr}"

@@ -205,7 +205,7 @@ class AddressOf:
         exprAddr = self.expr.visit()
         irAddressOf = IRAddressOf(exprAddr, addTemporary("int", "*" + exprAddr.completeType))
         addIR(irAddressOf)
-        return irAddressOf.resAddr
+        return irAddressOf.resultAddr
 
 class Dereference:
     def __init__(self, expr):
@@ -271,7 +271,7 @@ class Add:
         ct = lhsAddr.completeType
         irAdd = IRAdd(addTemporary(t, ct), lhsAddr, rhsAddr)
         addIR(irAdd)
-        return irAdd.addr
+        return irAdd.resultAddr
 
 class Equal:
     def __init__(self, lhs, rhs):
