@@ -47,7 +47,7 @@ def mapSymbols():
         for symbol in symbolTable.values():
             if not symbol.impl:
                 offset -= symbol.size
-                symbol.impl = StackVariable(symbol.type, offset)
+                symbol.impl = StackVariable(offset)
 
 def determineNextUse():
     for b in BASIC_BLOCKS.values():

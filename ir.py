@@ -6,12 +6,11 @@ asmFile = open("a.asm", "w")
 IR_FUNCTIONS = []
 
 class StackVariable:
-    def __init__(self, t, offset):
-        self.type = t
+    def __init__(self, offset):
         self.offset = offset
 
     def __repr__(self):
-        return f"Stack Variable type {self.type} offset {self.offset}"
+        return f"StackVariable @{self.offset}"
 
     def codeArg(self, offset=0):
         # Use ix - 1, as "ix-1" is interpreted as identifier "ix-1"
@@ -27,7 +26,7 @@ class DereferencedPointer:
         self.address = address
 
     def __repr__(self):
-        return f"DereferencedPointer type {self.type} address {self.address}"
+        return f"DereferencedPointer @{self.address}"
 
 # Size of all local stack variables
 def stackFrameSize(symbolTable):
