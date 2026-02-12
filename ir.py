@@ -74,15 +74,30 @@ class IR:
 
     def liveStr(self):
         if self.resultAddr and isinstance(self.resultAddr, SymEntry):
-            s1 = "L" if self.resultLive else "N"
+            s1 = "L" if self.resultLive else "D"
         else:
             s1="?"
         if self.lhsAddr and isinstance(self.lhsAddr, SymEntry):
-            s2 = "L" if self.lhsLive else "N"
+            s2 = "L" if self.lhsLive else "D"
         else:
             s2="?"
         if self.rhsAddr and isinstance(self.rhsAddr, SymEntry):
-            s3 = "L" if self.rhsLive else "N"
+            s3 = "L" if self.rhsLive else "D"
+        else:
+            s3="?"
+        return s1 + s2 + s3 + " "
+
+    def nextUseStr(self):
+        if self.resultAddr and isinstance(self.resultAddr, SymEntry):
+            s1 = "U" if self.resultNextUse else "D"
+        else:
+            s1="?"
+        if self.lhsAddr and isinstance(self.lhsAddr, SymEntry):
+            s2 = "U" if self.lhsNextUse else "D"
+        else:
+            s2="?"
+        if self.rhsAddr and isinstance(self.rhsAddr, SymEntry):
+            s3 = "U" if self.rhsNextUse else "D"
         else:
             s3="?"
         return s1 + s2 + s3 + " "
@@ -92,6 +107,7 @@ class IR:
 
     def __repr__(self):
         live = self.liveStr()
+        nextUse = self.nextUseStr()
         name = self.__class__.__name__
         r = ""
         if self.resultAddr:
@@ -103,7 +119,7 @@ class IR:
         if self.rhsAddr:
             o2 = " OP " + str(self.rhsAddr) 
         xtra = self.extraDescription()
-        return "".join([live, name,r,o1,o2,xtra])
+        return "".join([live, nextUse, name,r,o1,o2,xtra])
 
 
 class IRDefFun(IR):
@@ -386,7 +402,7 @@ class IRAdd(IR):
         ra = registerAllocator.RA
 
         # if the rhs is already in register a, then swap them
-        if ra.isInRegister(self.rhsAddr.name) == "a":
+        if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr.name) == "a":
             self.lhsAddr, self.rhsAddr = self.rhsAddr, self.lhsAddr
 
         print("Before IRAdd")
@@ -399,13 +415,13 @@ class IRAdd(IR):
 
         if isinstance(self.rhsAddr, Constant):
             regZ = self.rhsAddr.value
-        # elif not already in register and only used once:
-        #     regZ = self.addrRhs.codeArg()
-        else:
+        elif ra.isInRegister(self.rhsAddr.name) or self.rhsNextUse:
             regZ = ra.getRegisterForArg(self.rhsAddr.name, { "b", "c", "d", "e", "h", "l" })
             if self.rhsAddr.name not in ra.registers[regZ]:
                 asmFile.write(f'\tld\t{regZ}, {self.rhsAddr.impl.codeArg()}\n')
                 ra.loadNameInRegister(self.rhsAddr.name, regZ)
+        else:
+            regZ = self.rhsAddr.impl.codeArg()
 
         asmFile.write(f"\tadd\ta, {regZ}\n")
         ra.operationToNameWithRegister(self.resultAddr.name, "a")

@@ -12,12 +12,7 @@ print("=======")
 
 ast = parser.parse("""
 char add(char A, char B) {
-    char M;
-    char N;
-    M=A+B;
-    M=M+B;
-    N=B+M;
-    return N;
+    return A + B;
 }
 """) 
 
