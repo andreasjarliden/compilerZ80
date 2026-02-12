@@ -45,9 +45,9 @@ class RegisterAllocator:
         return r
 
     # TODO test
-    def isInRegister(self, name):
+    def isInRegister(self, name, possibleRegisters = ALL_REGISTERS):
         # Already loaded?
-        regs = self.addresses[name] & ALL_REGISTERS
+        regs = self.addresses[name] & possibleRegisters
         if regs:
             return regs.pop()
         else:

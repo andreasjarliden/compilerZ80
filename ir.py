@@ -241,11 +241,28 @@ class IRArgument(IR):
         if self.exprAddr.type == "char":
             if isinstance(self.exprAddr, Constant):
                 asmFile.write(f'\tld\ta, {self.exprAddr.value}\n')
-            elif isinstance(self.exprAddr.impl, StackVariable):
-                asmFile.write(f'\tld\ta, {self.exprAddr.impl.codeArg()}\n')
+                asmFile.write(f'\tpush\taf\n')
             else:
-                error()
-            asmFile.write(f'\tpush\taf\n')
+                ra = registerAllocator.RA
+                # If in the high byte of a register pair, push it directly
+                regX = ra.isInRegister(self.lhsAddr.name, {'a', 'b', 'd', 'h'})
+                if regX:
+                    if regX == "a":
+                        asmFile.write("\tpush\taf\n")
+                    elif regX == "b":
+                        asmFile.write("\tpush\tbc\n")
+                    elif regX == "d":
+                        asmFile.write("\tpush\tde\n")
+                    elif regX == "h":
+                        asmFile.write("\tpush\thl\n")
+                    return
+                # If in the low byte of a register pair, transfer it to a
+                regX = ra.isInRegister(self.lhsAddr.name, {'c', 'e', 'l' })
+                if regX:
+                    asmFile.write(f'\tld\ta, {regX}\n')
+                else:
+                    asmFile.write(f'\tld\ta, {self.exprAddr.impl.codeArg()}\n')
+                asmFile.write(f'\tpush\taf\n')
         elif self.exprAddr.type == "int":
             if isinstance(self.exprAddr, Constant):
                 asmFile.write(f'\tld\thl, {self.exprAddr.value}\n')
@@ -280,10 +297,11 @@ class IRFunCall(IR):
             # asmFile.write(f'\tld\tsp, hl\n')
         if self.resultAddr:
             if self.type == "char":
-                asmFile.write(f'\tld\t{self.addr.impl.codeArg()}, a\n')
+                ra = registerAllocator.RA
+                ra.copyFromRegisterToName("a", self.resultAddr.name)
             elif self.type == "int":
-                asmFile.write(f'\tld\t{self.addr.impl.codeArg(+1)}, h\n')
-                asmFile.write(f'\tld\t{self.addr.impl.codeArg()}, l\n')
+                asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg(+1)}, h\n')
+                asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg()}, l\n')
             else:
                 error()
 

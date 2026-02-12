@@ -14,6 +14,9 @@ ast = parser.parse("""
 char add(char A, char B) {
     return A + B;
 }
+char foo(char A, char B) {
+    return add(A+B, A+1);
+}
 """) 
 
 print("AST")
@@ -52,6 +55,7 @@ def genCode():
         for s in b.symbolTable.values():
             if not s.name.startswith("temp"):
                 addresses.append(s.name)
+        print()
         registerAllocator.RA = registerAllocator.RegisterAllocator(addresses)
         for i in b.statements:
             i.genCode()

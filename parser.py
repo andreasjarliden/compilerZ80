@@ -236,9 +236,9 @@ class FunctionCall:
             exprAddress = a.visit()
             addIR(IRArgument(exprAddress))
         if self.storeResult:
-            irfuncall = IRFunCall(self.type, self.name, len(self.arguments), addr=addTemporary(self.type))
+            irfuncall = IRFunCall(self.type, self.name, len(self.arguments), addr=addTemporary(self.type, self.type))
             addIR(irfuncall)
-            return irfuncall.addr
+            return irfuncall.resultAddr
         else:
             irfuncall = IRFunCall(self.type, self.name, len(self.arguments))
             addIR(irfuncall)
