@@ -1,6 +1,7 @@
 from pprint import pprint
 from ir import *
 from parser import *
+import registerAllocator
 
 # Add external functions
 addSymbolEntry("printHex16", Function("void", "printHex16", [], [Argument("int", None)]))
@@ -10,24 +11,14 @@ print("Parsing")
 print("=======")
 
 ast = parser.parse("""
-char add(int a, int b) {
-    int t1;
-    int t2;
-    int t3;
-    int* p;
-    p = &t3;
-    *p=42;
-    t1 = a + b;
-    if (t1 == 1) {
-    t2 = t1 + a;
-    }
-    t3 = t2 + t2;
+char add(char A, char B) {
+    char M;
+    char N;
+    M=A+B;
+    M=M+B;
+    N=B+M;
+    return N;
 }
-
-int main() {
-    printHex8(1+2);
-}
-
 """) 
 
 print("AST")
@@ -56,11 +47,17 @@ def determineNextUse():
         for i in reversed(b.statements):
             i.updateLive(b.symbolTable)
 
+RA = None
 def genCode():
     asmFile.write("\t.org 08000h\n")
     asmFile.write('\t#include "constants.asm"\n')
     asmFile.write('\tjp\tmain\n')
     for b in BASIC_BLOCKS.values():
+        addresses = []
+        for s in b.symbolTable.values():
+            if not s.name.startswith("temp"):
+                addresses.append(s.name)
+        registerAllocator.RA = registerAllocator.RegisterAllocator(addresses)
         for i in b.statements:
             i.genCode()
     asmFile.write('\n\t#include "libc.asm"\n')
