@@ -21,3 +21,17 @@ class SymEntry:
         return f"<SymEntry {self.name} {self.type} {self.completeType} {self.impl}>"
 
 
+class StackVariable:
+    def __init__(self, offset):
+        self.offset = offset
+
+    def __repr__(self):
+        return f"StackVariable @{self.offset}"
+
+    def codeArg(self, offset=0):
+        # Use ix - 1, as "ix-1" is interpreted as identifier "ix-1"
+        # TODO this should be resolved by removing - from IDs in the lexer
+        if self.offset >= 0:
+            return f"(ix + {self.offset+offset})"
+        else:
+            return f"(ix - {-self.offset-offset})"

@@ -1,4 +1,6 @@
 import unittest
+from io import StringIO
+from symEntry import *
 
 RA = None
 ALL_REGISTERS = {'a', 'b', 'c', 'd', 'e', 'h', 'l'}
@@ -12,10 +14,14 @@ class RegisterAllocator:
     def __repr__(self):
         return f"registers: {self.registers}\nfree registers: {self.freeRegisters}\naddresses: {self.addresses}"
 
+    def doSpill(self, reg, name):
+        pass
+
     def spillRegister(self, r):
         # Remove register from all addresses
         for n in self.registers[r]:
             self.addresses[n].remove(r)
+            self.doSpill(r, n)
         # Register no longer contains anything
         self.registers[r] = set()
         # Add register to free registers
@@ -161,4 +167,65 @@ class TestRA(unittest.TestCase):
         # Check register a is now free
         self.assertTrue("a" in self.ra.freeRegisters)
 
+class Z80RegisterAllocator(RegisterAllocator):
+    def __init__(self, asmFile, symbolTable):
+        super().__init__(symbolTable.keys())
+        self.symbolTable = symbolTable
+        self.asmFile = asmFile
 
+    def doSpill(self, r, name):
+        offset = self.symbolTable[name].impl.offset
+        self.asmFile.write(f"\tld\t(ix + {offset}), {r}\n")
+
+    def loadInA(self, address):
+        # Get register a, spilling if needed
+        regY = self.getRegisterForArg(address.name, { "a" })
+        # Already loaded?
+        if address.name not in self.registers[regY]:
+            # No, already in a register?
+            inReg = self.isInRegister(address.name, { "b", "c", "d", "e", "h", "l" })
+            if inReg:
+                # Yes, just move register
+                self.asmFile.write(f'\tld\ta, {inReg}\n')
+                self.loadNameInRegister(address.name, "a")
+            else:
+                # No, load from memory
+                self.asmFile.write(f'\tld\t{regY}, {address.impl.codeArg()}\n')
+                self.loadNameInRegister(address.name, regY)
+        return regY
+
+class TestZ80RA(unittest.TestCase):
+    def setUp(self):
+        self.foo = SymEntry("char", "char", "foo")
+        self.foo.impl = StackVariable(0)
+        self.bar = SymEntry("char", "char", "bar")
+        self.bar.impl = StackVariable(-11)
+        self.symbolTable = { "foo": self.foo, "bar": self.bar }
+        self.ra = Z80RegisterAllocator(StringIO(), self.symbolTable)
+
+    def test_loadInA_alreadyLoaded(self):
+        self.ra.loadNameInRegister("foo", "a")
+        r = self.ra.loadInA(SymEntry("char", "char", "foo")) 
+        self.assertEqual(r, "a")
+        self.ra.asmFile.seek(0)
+        self.assertEqual(self.ra.asmFile.read(), "")
+
+    def test_loadInA_freeButNotLoaded(self):
+        r = self.ra.loadInA(self.foo)
+        self.assertEqual(r, "a")
+        self.ra.asmFile.seek(0)
+        self.assertEqual(self.ra.asmFile.read(), "\tld\ta, (ix + 0)\n")
+
+    def test_loadInA_loadedInOtherRegister(self):
+        self.ra.loadNameInRegister("foo", "b")
+        r = self.ra.loadInA(SymEntry("char", "char", "foo"))
+        self.assertEqual(r, "a")
+        self.ra.asmFile.seek(0)
+        self.assertEqual(self.ra.asmFile.read(), "\tld\ta, b\n")
+
+    def test_spill(self):
+        self.ra.loadNameInRegister("foo", "a")
+        r = self.ra.getRegisterForArg("bar", { "a" })
+        self.assertEqual(r, "a")
+        self.ra.asmFile.seek(0)
+        self.assertEqual(self.ra.asmFile.read(), "\tld\t(ix + 0), a\n")

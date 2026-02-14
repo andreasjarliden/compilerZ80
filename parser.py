@@ -49,6 +49,7 @@ def exitBlock():
 
 # TODO this belongs to the AST and should probably be moved to parser
 # Any use should probably also be moved
+# TODO create real SymbolTable class
 def addSymbol(t, completeType, name):
     entry = SymEntry(t, completeType, name)
     ENV[-1][name] = entry

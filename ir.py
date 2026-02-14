@@ -6,21 +6,6 @@ asmFile = open("a.asm", "w")
 
 IR_FUNCTIONS = []
 
-class StackVariable:
-    def __init__(self, offset):
-        self.offset = offset
-
-    def __repr__(self):
-        return f"StackVariable @{self.offset}"
-
-    def codeArg(self, offset=0):
-        # Use ix - 1, as "ix-1" is interpreted as identifier "ix-1"
-        # TODO this should be resolved by removing - from IDs in the lexer
-        if self.offset >= 0:
-            return f"(ix + {self.offset+offset})"
-        else:
-            return f"(ix - {-self.offset-offset})"
-
 class DereferencedPointer:
     def __init__(self, t, address):
         self.type = t
@@ -180,14 +165,14 @@ class IRIf(IR):
         return f"{self.skipLabel}"
 
     def genCode(self):
-        # TODO duplication with e.g. IRReturn
         if isinstance(self.exprAddr, Flags):
             asmFile.write(f'\tjr\tnz, {self.skipLabel}\n') 
         else:
             if isinstance(self.exprAddr, Constant):
                 asmFile.write(f'\tld\ta, {self.exprAddr.value}\n')
-            elif isinstance(self.exprAddr.impl, StackVariable):
-                asmFile.write(f'\tld\ta, {self.exprAddr.impl.codeArg()}\n')
+            else:
+                ra = registerAllocator.RA
+                ra.loadInA(self.lhsAddr)
             asmFile.write(f'\tor\ta\n')
             asmFile.write(f'\tjr\tz, {self.skipLabel}\n') 
 
@@ -423,13 +408,7 @@ class IRAdd(IR):
         if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr.name) == "a":
             self.lhsAddr, self.rhsAddr = self.rhsAddr, self.lhsAddr
 
-        print("Before IRAdd")
-        print(str(ra))
-        regY = ra.getRegisterForArg(self.lhsAddr.name, { "a" })
-        if self.lhsAddr.name not in ra.registers[regY]:
-            # We know it must be loaded from memory. Otherwise we would have gotten a register directly.
-            asmFile.write(f'\tld\t{regY}, {self.lhsAddr.impl.codeArg()}\n')
-            ra.loadNameInRegister(self.lhsAddr.name, regY)
+        ra.loadInA(self.lhsAddr)
 
         if isinstance(self.rhsAddr, Constant):
             regZ = self.rhsAddr.value
@@ -443,9 +422,6 @@ class IRAdd(IR):
 
         asmFile.write(f"\tadd\ta, {regZ}\n")
         ra.operationToNameWithRegister(self.resultAddr.name, "a")
-
-        print("After IRAdd")
-        print(str(ra))
 
         # if self.lhsAddr.type == "char":
         #     if isinstance(self.lhsAddr, Constant):

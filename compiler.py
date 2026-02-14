@@ -12,7 +12,10 @@ print("=======")
 
 ast = parser.parse("""
 char add(char A, char B) {
-    return A + B;
+    if (A) {
+        return 255;
+    }
+    return 0;
 }
 char foo(char A, char B) {
     return add(A+B, A+1);
@@ -56,7 +59,7 @@ def genCode():
             if not s.name.startswith("temp"):
                 addresses.append(s.name)
         print()
-        registerAllocator.RA = registerAllocator.RegisterAllocator(addresses)
+        registerAllocator.RA = registerAllocator.Z80RegisterAllocator(asmFile, addresses)
         for i in b.statements:
             i.genCode()
     asmFile.write('\n\t#include "libc.asm"\n')
