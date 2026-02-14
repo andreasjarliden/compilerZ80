@@ -242,6 +242,7 @@ class IRArgument(IR):
                         asmFile.write("\tpush\thl\n")
                     return
                 # If in the low byte of a register pair, transfer it to a
+                ra.getRegisterForArg(self.lhsAddr.name, {'a'})
                 regX = ra.isInRegister(self.lhsAddr.name, {'c', 'e', 'l' })
                 if regX:
                     asmFile.write(f'\tld\ta, {regX}\n')

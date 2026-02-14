@@ -54,12 +54,7 @@ def genCode():
     asmFile.write('\t#include "constants.asm"\n')
     asmFile.write('\tjp\tmain\n')
     for b in BASIC_BLOCKS.values():
-        addresses = []
-        for s in b.symbolTable.values():
-            if not s.name.startswith("temp"):
-                addresses.append(s.name)
-        print()
-        registerAllocator.RA = registerAllocator.Z80RegisterAllocator(asmFile, addresses)
+        registerAllocator.RA = registerAllocator.Z80RegisterAllocator(asmFile, b.symbolTable)
         for i in b.statements:
             i.genCode()
     asmFile.write('\n\t#include "libc.asm"\n')
