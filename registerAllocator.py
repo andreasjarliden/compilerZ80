@@ -1,9 +1,10 @@
 import unittest
 from io import StringIO
 from symEntry import *
+from address import *
 
 RA = None
-ALL_REGISTERS = {'a', 'b', 'c', 'd', 'e', 'h', 'l'}
+ALL_REGISTERS = {'a', 'b', 'c', 'd', 'e', 'h', 'l', 'bc', 'de', 'hl'}
 
 class RegisterAllocator:
     def __init__(self, addresses):
@@ -178,6 +179,11 @@ class Z80RegisterAllocator(RegisterAllocator):
         self.asmFile.write(f"\tld\t(ix + {offset}), {r}\n")
 
     def loadInA(self, address):
+        # Is constant?
+        if isinstance(address, Constant):
+            # TODO what address should we write for the value?
+            self.asmFile.write(f'\tld\ta, {address.value}\n')
+            return
         # Get register a, spilling if needed
         regY = self.getRegisterForArg(address.name, { "a" })
         # Already loaded?
@@ -193,6 +199,30 @@ class Z80RegisterAllocator(RegisterAllocator):
                 self.asmFile.write(f'\tld\t{regY}, {address.impl.codeArg()}\n')
                 self.loadNameInRegister(address.name, regY)
         return regY
+
+    def loadInHL(self, address):
+        # Is constant?
+        if isinstance(address, Constant):
+            # TODO what address to write for the value?
+            self.asmFile.write(f'\tld\thl, {address.value}\n')
+            return
+        # Get register hl, spilling if needed
+        regY = self.getRegisterForArg(address.name, { "hl" })
+        # Already loaded?
+        if address.name not in self.registers[regY]:
+            # No, already in a register?
+            # TODO add IY?
+            inReg = self.isInRegister(address.name, { "bc", "de", "hl" })
+            if inReg:
+                # Yes, just move register
+                self.asmFile.write(f'\tld\th, {inReg[0]}\n')
+                self.asmFile.write(f'\tld\tl, {inReg[1]}\n')
+                self.loadNameInRegister(address.name, "a")
+            else:
+                # No, load from memory
+                self.asmFile.write(f'\tld\th, {address.impl.codeArg(+1)}\n')
+                self.asmFile.write(f'\tld\tl, {address.impl.codeArg()}\n')
+                self.loadNameInRegister(address.name, "hl")
 
 class TestZ80RA(unittest.TestCase):
     def setUp(self):
