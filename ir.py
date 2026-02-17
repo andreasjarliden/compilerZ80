@@ -106,6 +106,28 @@ class IR:
         xtra = self.extraDescription()
         return "".join([live, nextUse, name,r,o1,o2,xtra])
 
+    def load8bitLhsAndRhs(self, transitive=False):
+        ra = registerAllocator.RA
+
+        if transitive:
+            # if the rhs is already in register a, then swap them
+            if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr.name) == "a":
+                self.lhsAddr, self.rhsAddr = self.rhsAddr, self.lhsAddr
+                self.lhsNextUse, self.rhsNextUse = self.rhsNextUse, self.lhsNextUse
+
+        ra.loadInA(self.lhsAddr)
+
+        if isinstance(self.rhsAddr, Constant):
+            return self.rhsAddr.value
+        elif ra.isInRegister(self.rhsAddr.name) or self.rhsNextUse:
+            regZ = ra.getRegisterForArg(self.rhsAddr.name, { "b", "c", "d", "e", "h", "l" })
+            if self.rhsAddr.name not in ra.registers[regZ]:
+                asmFile.write(f'\tld\t{regZ}, {self.rhsAddr.impl.codeArg()}\n')
+                ra.loadNameInRegister(self.rhsAddr.name, regZ)
+            return regZ
+        else:
+            return self.rhsAddr.impl.codeArg()
+
 
 class IRDefFun(IR):
     def __init__(self, function, symbolTable):
@@ -404,23 +426,7 @@ class IRAdd(IR):
 
     def genCode(self):
         ra = registerAllocator.RA
-
-        # if the rhs is already in register a, then swap them
-        if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr.name) == "a":
-            self.lhsAddr, self.rhsAddr = self.rhsAddr, self.lhsAddr
-
-        ra.loadInA(self.lhsAddr)
-
-        if isinstance(self.rhsAddr, Constant):
-            regZ = self.rhsAddr.value
-        elif ra.isInRegister(self.rhsAddr.name) or self.rhsNextUse:
-            regZ = ra.getRegisterForArg(self.rhsAddr.name, { "b", "c", "d", "e", "h", "l" })
-            if self.rhsAddr.name not in ra.registers[regZ]:
-                asmFile.write(f'\tld\t{regZ}, {self.rhsAddr.impl.codeArg()}\n')
-                ra.loadNameInRegister(self.rhsAddr.name, regZ)
-        else:
-            regZ = self.rhsAddr.impl.codeArg()
-
+        regZ = self.load8bitLhsAndRhs(transitive=True)
         asmFile.write(f"\tadd\ta, {regZ}\n")
         ra.operationToNameWithRegister(self.resultAddr.name, "a")
 
@@ -471,24 +477,7 @@ class IREqual(IR):
 
     def genCode(self):
         if self.lhsAddr.type == "char":
-            # TODO much duplication with IRAdd
-            ra = registerAllocator.RA
-
-            # if the rhs is already in register a, then swap them
-            if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr.name) == "a":
-                self.lhsAddr, self.rhsAddr = self.rhsAddr, self.lhsAddr
-
-            ra.loadInA(self.lhsAddr)
-
-            if isinstance(self.rhsAddr, Constant):
-                regZ = self.rhsAddr.value
-            elif ra.isInRegister(self.rhsAddr.name) or self.rhsNextUse:
-                regZ = ra.getRegisterForArg(self.rhsAddr.name, { "b", "c", "d", "e", "h", "l" })
-                if self.rhsAddr.name not in ra.registers[regZ]:
-                    asmFile.write(f'\tld\t{regZ}, {self.rhsAddr.impl.codeArg()}\n')
-                    ra.loadNameInRegister(self.rhsAddr.name, regZ)
-            else:
-                regZ = self.rhsAddr.impl.codeArg()
+            regZ = self.load8bitLhsAndRhs()
             asmFile.write(f"\tcp\t{regZ}\n")
         elif self.lhsAddr.type == "int":
             if isinstance(self.lhsAddr.impl, StackVariable):
