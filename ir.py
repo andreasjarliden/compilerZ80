@@ -469,22 +469,27 @@ class IREqual(IR):
         super().__init__(lhsAddr=lhsAddr, rhsAddr=rhsAddr)
         self.addr = Flags()
 
-    def __repr__(self):
-        return f"IREqual {self.addr} = {self.lhsAddr} == {self.rhsAddr}"
-
     def genCode(self):
         if self.lhsAddr.type == "char":
-            if isinstance(self.lhsAddr.impl, StackVariable):
-                lhs = self.lhsAddr.impl.codeArg()
-                asmFile.write(f'\tld\ta, {lhs}\n')
-            else:
-                error()
+            # TODO much duplication with IRAdd
+            ra = registerAllocator.RA
+
+            # if the rhs is already in register a, then swap them
+            if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr.name) == "a":
+                self.lhsAddr, self.rhsAddr = self.rhsAddr, self.lhsAddr
+
+            ra.loadInA(self.lhsAddr)
+
             if isinstance(self.rhsAddr, Constant):
-                asmFile.write(f'\tcp\t{self.rhsAddr.value}\n')
-            elif isinstance(self.rhsAddr.impl, StackVariable):
-                asmFile.write(f'\tcp\t{self.rhsAddr.impl.codeArg()}\n')
+                regZ = self.rhsAddr.value
+            elif ra.isInRegister(self.rhsAddr.name) or self.rhsNextUse:
+                regZ = ra.getRegisterForArg(self.rhsAddr.name, { "b", "c", "d", "e", "h", "l" })
+                if self.rhsAddr.name not in ra.registers[regZ]:
+                    asmFile.write(f'\tld\t{regZ}, {self.rhsAddr.impl.codeArg()}\n')
+                    ra.loadNameInRegister(self.rhsAddr.name, regZ)
             else:
-                error()
+                regZ = self.rhsAddr.impl.codeArg()
+            asmFile.write(f"\tcp\t{regZ}\n")
         elif self.lhsAddr.type == "int":
             if isinstance(self.lhsAddr.impl, StackVariable):
                 lhs_hi = self.lhsAddr.impl.codeArg(+1)
