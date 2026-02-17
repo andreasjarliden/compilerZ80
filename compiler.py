@@ -12,7 +12,7 @@ print("=======")
 
 ast = parser.parse("""
 char add(char A, char B) {
-    if (A) {
+    if (B == A+1) {
         return 255;
     }
     return 0;

@@ -325,8 +325,16 @@ def p_lvalue_deref(p):
     p[0] = Dereference(p[2])
 
 def p_value_expression(p):
-    'value_expression : additive'
+    'value_expression : equality'
     p[0] = p[1]
+
+def p_equality_single(p):
+    'equality : additive'
+    p[0] = p[1]
+
+def p_equality_equal(p):
+    'equality : equality EQUAL additive'
+    p[0] = Equal(p[1], p[3])
 
 def p_additive_single(p):
     'additive : multiplicative'
@@ -335,10 +343,6 @@ def p_additive_single(p):
 def p_additive_plus(p):
     'additive : additive PLUS multiplicative'
     p[0] = Add(p[1], p[3])
-
-def p_additive_equal(p):
-    'additive : additive EQUAL multiplicative'
-    p[0] = Equal(p[1], p[3])
 
 def p_multiplicative_single(p):
     'multiplicative : unary'
