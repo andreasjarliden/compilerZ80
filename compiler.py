@@ -12,7 +12,9 @@ print("=======")
 
 ast = parser.parse("""
 int add(int A, int B) {
-    return A + B;
+    int C;
+    C = A + B;
+    return C + 1;
 }
 int foo(int N) {
     return add(N + 1, 2);

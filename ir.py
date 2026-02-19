@@ -350,16 +350,22 @@ class IRAssign(IR):
 
     def genCode(self):
         ra = registerAllocator.RA
-        print("Before IRAssign")
-        print(str(ra))
-        regY = ra.getRegisterForArg(self.lhsAddr.name, { "a", "b", "c", "d", "e", "h", "l" })
-        if self.lhsAddr.name not in ra.registers[regY]:
-            # We know it must be loaded from memory. Otherwise we would have gotten a register directly.
-            asmFile.write(f'\tld\t{regY}, {self.lhsAddr.impl.codeArg()}\n')
-            ra.loadNameInRegister(self.lhsAddr.name, regY)
-        ra.copyFromRegisterToName(regY, self.resultAddr.name)
-        print("After IRAssign")
-        print(str(ra))
+        if self.resultAddr.type == "char":
+            regY = ra.getRegisterForArg(self.lhsAddr.name, { "a", "b", "c", "d", "e", "h", "l" })
+            if self.lhsAddr.name not in ra.registers[regY]:
+                # We know it must be loaded from memory. Otherwise we would have gotten a register directly.
+                asmFile.write(f'\tld\t{regY}, {self.lhsAddr.impl.codeArg()}\n')
+                ra.loadNameInRegister(self.lhsAddr.name, regY)
+            ra.copyFromRegisterToName(regY, self.resultAddr.name)
+        elif self.resultAddr.type == "int":
+            # TODO add IY?
+            regY = ra.getRegisterForArg(self.lhsAddr.name, { "bc", "de", "hl" })
+            if self.lhsAddr.name not in ra.registers[regY]:
+                # We know it must be loaded from memory. Otherwise we would have gotten a register directly.
+                asmFile.write(f'\tld\t{regY[0]}, {self.lhsAddr.impl.codeArg(+1)}\n')
+                asmFile.write(f'\tld\t{regY[1]}, {self.lhsAddr.impl.codeArg()}\n')
+                ra.loadNameInRegister(self.lhsAddr.name, regY)
+            ra.copyFromRegisterToName(regY, self.resultAddr.name)
 
         # print(f"IRAssign::genCode resultAddress {self.resultAddr} exprAddr {self.exprAddr}")
         # if self.resultAddr.type == "char":

@@ -4,6 +4,7 @@ from symEntry import *
 from address import *
 
 RA = None
+# TODO handle register pairs
 ALL_REGISTERS = {'a', 'b', 'c', 'd', 'e', 'h', 'l', 'bc', 'de', 'hl'}
 
 class RegisterAllocator:
