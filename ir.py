@@ -350,22 +350,44 @@ class IRAssign(IR):
 
     def genCode(self):
         ra = registerAllocator.RA
-        if self.resultAddr.type == "char":
-            regY = ra.getRegisterForArg(self.lhsAddr.name, { "a", "b", "c", "d", "e", "h", "l" })
-            if self.lhsAddr.name not in ra.registers[regY]:
-                # We know it must be loaded from memory. Otherwise we would have gotten a register directly.
-                asmFile.write(f'\tld\t{regY}, {self.lhsAddr.impl.codeArg()}\n')
-                ra.loadNameInRegister(self.lhsAddr.name, regY)
-            ra.copyFromRegisterToName(regY, self.resultAddr.name)
-        elif self.resultAddr.type == "int":
-            # TODO add IY?
-            regY = ra.getRegisterForArg(self.lhsAddr.name, { "bc", "de", "hl" })
-            if self.lhsAddr.name not in ra.registers[regY]:
-                # We know it must be loaded from memory. Otherwise we would have gotten a register directly.
-                asmFile.write(f'\tld\t{regY[0]}, {self.lhsAddr.impl.codeArg(+1)}\n')
-                asmFile.write(f'\tld\t{regY[1]}, {self.lhsAddr.impl.codeArg()}\n')
-                ra.loadNameInRegister(self.lhsAddr.name, regY)
-            ra.copyFromRegisterToName(regY, self.resultAddr.name)
+        if self.resultLive:
+            if self.resultAddr.type == "char":
+                regY = ra.getRegisterForArg(self.lhsAddr.name, { "a", "b", "c", "d", "e", "h", "l" })
+                if self.lhsAddr.name not in ra.registers[regY]:
+                    # We know it must be loaded from memory. Otherwise we would have gotten a register directly.
+                    asmFile.write(f'\tld\t{regY}, {self.lhsAddr.impl.codeArg()}\n')
+                    ra.loadNameInRegister(self.lhsAddr.name, regY)
+                ra.copyFromRegisterToName(regY, self.resultAddr.name)
+            elif self.resultAddr.type == "int":
+                # TODO add IY?
+                regY = ra.getRegisterForArg(self.lhsAddr.name, { "bc", "de", "hl" })
+                if self.lhsAddr.name not in ra.registers[regY]:
+                    # We know it must be loaded from memory. Otherwise we would have gotten a register directly.
+                    asmFile.write(f'\tld\t{regY[0]}, {self.lhsAddr.impl.codeArg(+1)}\n')
+                    asmFile.write(f'\tld\t{regY[1]}, {self.lhsAddr.impl.codeArg()}\n')
+                    ra.loadNameInRegister(self.lhsAddr.name, regY)
+                ra.copyFromRegisterToName(regY, self.resultAddr.name)
+        else:
+            if self.resultAddr.type == "char":
+                regY = ra.isInRegister(self.lhsAddr.name, { "a", "b", "c", "d", "e", "h", "l" })
+                if regY:
+                    asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg()}, {regY}\n')
+                else:
+                    ra.getRegisterForArg(self.lhsAddr.name , { "a" }) # TODO Only to spill it if needed. Better shorthand?
+                    asmFile.write(f'\tld\ta, {self.lhsAddr.impl.codeArg()}\n')
+                    asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg()}, a\n')
+            elif self.resultAddr.type == "int":
+                regY = ra.isInRegister(self.lhsAddr.name, { "bc", "de", "hl" })
+                if regY:
+                    asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg(+1)}, {regY[0]}\n')
+                    asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg()}, {regY[1]}\n')
+                else:
+                    ra.getRegisterForArg(self.lhsAddr.name , { "a" }) # TODO Only to spill it if needed. Better shorthand?
+                    asmFile.write(f'\tld\ta, {self.lhsAddr.impl.codeArg()}\n')
+                    asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg()}, a\n')
+                    asmFile.write(f'\tld\ta, {self.lhsAddr.impl.codeArg(+1)}\n')
+                    asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg(+1)}, a\n')
+
 
         # print(f"IRAssign::genCode resultAddress {self.resultAddr} exprAddr {self.exprAddr}")
         # if self.resultAddr.type == "char":

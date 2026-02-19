@@ -16,12 +16,13 @@ BLOCK_PREFIX = None
 BLOCK_NUMBER = 1
 
 class BasicBlock:
-    def __init__(self, symbolTable):
+    def __init__(self, symbolTable, name):
         self.statements = []
         self.symbolTable = symbolTable
+        self.name = name
 
     def __repr__(self):
-        return f"Symbol table: {self.symbolTable}\nStatements:\n{pformat(self.statements)}"
+        return f"Symbol table: {self.symbolTable}\nStatements:\n{pformat(self.statements)}\n\n"
 
 def addIR(ir):
     global CURRENT_BLOCK
@@ -39,8 +40,8 @@ def enterSubBlock(symbolTable):
     global CURRENT_BLOCK_NAME
     global BLOCK_PREFIX
     global BLOCK_NUMBER
-    CURRENT_BLOCK = BasicBlock(symbolTable)
     CURRENT_BLOCK_NAME = f"{BLOCK_PREFIX}_{BLOCK_NUMBER:04}"
+    CURRENT_BLOCK = BasicBlock(symbolTable, CURRENT_BLOCK_NAME)
     BLOCK_NUMBER+=1
 def exitBlock():
     global CURRENT_BLOCK

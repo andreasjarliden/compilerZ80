@@ -59,6 +59,12 @@ class RegisterAllocator:
                 continue
             # Is n what we are assigning to? In that case free to spill
 
+    def isInRegiser(self, name, possibleRegisters):
+        # Already loaded?
+        regs = self.addresses[name] & possibleRegisters
+        if regs:
+            return regs.pop()
+
     def getRegisterForArg(self, name, possibleRegisters):
         # Already loaded?
         regs = self.addresses[name] & possibleRegisters
@@ -201,7 +207,12 @@ class Z80RegisterAllocator(RegisterAllocator):
 
     def doSpill(self, r, name):
         offset = self.symbolTable[name].impl.offset
-        self.asmFile.write(f"\tld\t(ix + {offset}), {r}\n")
+        self.asmFile.write(f"; spill to {name}\n")
+        if self.symbolTable[name].type == 'char':
+            self.asmFile.write(f"\tld\t(ix + {offset}), {r}\n")
+        if self.symbolTable[name].type == 'int':
+            self.asmFile.write(f"\tld\t(ix + {offset+1}), {r[0]}\n")
+            self.asmFile.write(f"\tld\t(ix + {offset}), {r[1]}\n")
 
     def loadInA(self, address):
         # Is constant?

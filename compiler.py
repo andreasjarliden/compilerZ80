@@ -13,7 +13,13 @@ print("=======")
 ast = parser.parse("""
 int add(int A, int B) {
     int C;
+    int D;
     C = A + B;
+    D = A + 1;
+    if (A == B) {
+        C = C + 1;
+        C = C + 1;
+    }
     return C + 1;
 }
 int foo(int N) {
@@ -53,6 +59,7 @@ def genCode():
     asmFile.write('\t#include "constants.asm"\n')
     asmFile.write('\tjp\tmain\n')
     for b in BASIC_BLOCKS.values():
+        asmFile.write(f'; Basic Block {b.name}\n')
         registerAllocator.RA = registerAllocator.Z80RegisterAllocator(asmFile, b.symbolTable)
         for i in b.statements:
             i.genCode()
@@ -66,8 +73,8 @@ determineNextUse()
 print("BASIC_BLOCKS")
 pprint(BASIC_BLOCKS)
 
-print("IR_FUNCTIONS")
-pprint(IR_FUNCTIONS)
+# print("IR_FUNCTIONS")
+# pprint(IR_FUNCTIONS)
 
 print("Mapping symbols");
 mapSymbols()
