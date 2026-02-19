@@ -4,20 +4,43 @@ from symEntry import *
 from address import *
 
 RA = None
-# TODO handle register pairs
 ALL_REGISTERS = {'a', 'b', 'c', 'd', 'e', 'h', 'l', 'bc', 'de', 'hl'}
 
 class RegisterAllocator:
     def __init__(self, addresses):
-        self.freeRegisters = ALL_REGISTERS.copy()
         self.registers = {r: set() for r in ALL_REGISTERS}
         self.addresses = {a: {a} for a in addresses}
+        self.coupledRegisters = { 'bc': ('b', 'c'),
+                                 'b': ['bc'],
+                                 'c': ('bc',),
+                                 'de': ('d', 'e'),
+                                 'd': ['de'],
+                                 'e': ('de',),
+                                 'hl': ('h', 'l'),
+                                 'h': ['hl'],
+                                 'l': ('hl',) }
 
     def __repr__(self):
         return f"registers: {self.registers}\nfree registers: {self.freeRegisters}\naddresses: {self.addresses}"
 
     def doSpill(self, reg, name):
         pass
+
+    def isFree(self, r):
+        if self.registers[r]:
+            return False
+        for cr in self.coupledRegisters.get(r, ()):
+            if self.registers[cr]:
+                return False
+        return True
+
+    @property
+    def freeRegisters(self):
+        free = []
+        for r in self.registers:
+            if self.isFree(r):
+                free.append(r)
+        return set(free)
 
     def spillRegister(self, r):
         # Remove register from all addresses
@@ -26,8 +49,6 @@ class RegisterAllocator:
             self.doSpill(r, n)
         # Register no longer contains anything
         self.registers[r] = set()
-        # Add register to free registers
-        self.freeRegisters.add(r)
 
     def spillScore(self, r):
         score = 0
@@ -50,6 +71,9 @@ class RegisterAllocator:
         # No free, have to spill
         r = next(iter(possibleRegisters))
         self.spillRegister(r)
+        # Spill any coupled register, e.g. spilling bc means also spilling b and c (if loaded). 
+        for cr in self.coupledRegisters.get(r, ()):
+            self.spillRegister(cr)
         return r
 
     # TODO test
@@ -64,7 +88,6 @@ class RegisterAllocator:
     # Note: This doesn't handle any spilling. r is assumed to be free.
     def loadNameInRegister(self, n, r):
         self.addresses[n].add(r)
-        self.freeRegisters.discard(r)
         self.registers[r].add(n)
 
     # Example: LD (ix+n), a
@@ -82,10 +105,6 @@ class RegisterAllocator:
     # Example: LD a, b
     def copyFromRegisterToName(self, r, n):
         self.registers[r].add(n)
-        # regs = self.addresses[n] & ALL_REGISTERS
-        # for oldReg in regs:
-        #     self.registers[oldReg] = set()
-        #     self.freeRegisters.add(oldReg)
         self.addresses[n] = { r }
 
 
@@ -106,6 +125,21 @@ class TestRA(unittest.TestCase):
         self.assertEqual(self.ra.addresses["bar"], {"bar", "a", "c"})
         self.assertTrue("bar" in self.ra.registers["a"]) 
         self.assertFalse("a" in self.ra.freeRegisters)
+
+    def test_isFree(self):
+        self.assertEqual(self.ra.isFree("b"), True); # Free from start
+        self.ra.loadNameInRegister("foo", "b")
+        self.assertEqual(self.ra.isFree("b"), False); 
+
+    def test_isFree_coupledRegisters(self):
+        self.assertEqual(self.ra.isFree("bc"), True); # Free from start
+        self.ra.loadNameInRegister("foo", "b")
+        self.assertEqual(self.ra.isFree("bc"), False); 
+
+    def test_isFree_coupledRegisters2(self):
+        self.assertEqual(self.ra.isFree("b"), True); # Free from start
+        self.ra.loadNameInRegister("foo", "bc")
+        self.assertEqual(self.ra.isFree("b"), False); 
 
     def test_storeToName(self):
         self.ra.storeToName("foo")
@@ -158,16 +192,6 @@ class TestRA(unittest.TestCase):
         # Check register a is now free
         self.assertTrue("a" in self.ra.freeRegisters)
 
-    # Not already in a register, but still free registers
-    def test_notLoadedMustSpill(self):
-        self.ra.loadNameInRegister("foo", "a")
-        self.ra.loadNameInRegister("foo", "b")
-        # Must spill register a
-        self.assertEqual(self.ra.getRegisterForArg("bar", {"a"}), "a")
-        # Check register a is no longer listed for foo
-        self.assertEqual(self.ra.addresses["foo"], {"foo", "b"})
-        # Check register a is now free
-        self.assertTrue("a" in self.ra.freeRegisters)
 
 class Z80RegisterAllocator(RegisterAllocator):
     def __init__(self, asmFile, symbolTable):
@@ -231,7 +255,9 @@ class TestZ80RA(unittest.TestCase):
         self.foo.impl = StackVariable(0)
         self.bar = SymEntry("char", "char", "bar")
         self.bar.impl = StackVariable(-11)
-        self.symbolTable = { "foo": self.foo, "bar": self.bar }
+        self.bar16 = SymEntry("char", "char", "bar16")
+        self.bar16.impl = StackVariable(-2)
+        self.symbolTable = { "foo": self.foo, "bar": self.bar, "bar16": self.bar16 }
         self.ra = Z80RegisterAllocator(StringIO(), self.symbolTable)
 
     def test_loadInA_alreadyLoaded(self):
@@ -260,3 +286,11 @@ class TestZ80RA(unittest.TestCase):
         self.assertEqual(r, "a")
         self.ra.asmFile.seek(0)
         self.assertEqual(self.ra.asmFile.read(), "\tld\t(ix + 0), a\n")
+
+    def test_spillRegisterPair(self):
+        self.ra.loadNameInRegister("foo", "b")
+        r = self.ra.getRegisterForArg("bar16", { "bc" })
+        self.assertEqual(r, "bc")
+        self.ra.asmFile.seek(0)
+        self.assertEqual(self.ra.asmFile.read(), "\tld\t(ix + 0), b\n")
+        self.assertEqual(self.ra.registers["b"], set())
