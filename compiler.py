@@ -11,9 +11,9 @@ print("Parsing")
 print("=======")
 
 ast = parser.parse("""
-int add(int A, int B) {
-    int C;
-    int D;
+char add(char A, char B) {
+    char C;
+    char D;
     C = A + B;
     D = A + 1;
     if (A == B) {
@@ -22,7 +22,7 @@ int add(int A, int B) {
     }
     return C + 1;
 }
-int foo(int N) {
+char foo(char N) {
     return add(N + 1, 2);
 }
 """) 
@@ -53,8 +53,8 @@ def determineNextUse():
         for s in b.symbolTable.values():
             s.initLive()
         for i in reversed(b.statements):
-            i.updateLive(b.symbolTable, live)
             i.live = live.copy()
+            i.updateLive(b.symbolTable, live)
 
 RA = None
 def genCode():
@@ -62,6 +62,7 @@ def genCode():
     asmFile.write('\t#include "constants.asm"\n')
     asmFile.write('\tjp\tmain\n')
     for b in BASIC_BLOCKS.values():
+        print(f"\nBasic Block {b.name}\n")
         asmFile.write(f'; Basic Block {b.name}\n')
         registerAllocator.RA = registerAllocator.Z80RegisterAllocator(asmFile, b.symbolTable)
         for i in b.statements:
@@ -89,5 +90,6 @@ mapSymbols()
 print("IR mapped symbols")
 print("=================")
 pprint(BASIC_BLOCKS)
+print()
 
 genCode()

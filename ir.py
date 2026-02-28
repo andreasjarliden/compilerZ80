@@ -486,22 +486,5 @@ class IREqual(IR):
             regZ = self.load8bitLhsAndRhs()
             asmFile.write(f"\tcp\t{regZ}\n")
         elif self.lhsAddr.type == "int":
-            if isinstance(self.lhsAddr.impl, StackVariable):
-                lhs_hi = self.lhsAddr.impl.codeArg(+1)
-                lhs_low = self.lhsAddr.impl.codeArg()
-                asmFile.write(f'\tld\th, {lhs_hi}\n')
-                asmFile.write(f'\tld\tl, {lhs_low}\n')
-            else:
-                error()
-            if isinstance(self.rhsAddr, Constant):
-                asmFile.write(f'\tld\tde, {self.rhsAddr.value}\n')
-                asmFile.write(f'\tsbc\thl, de\n')
-            elif isinstance(self.rhsAddr.impl, StackVariable):
-                rhs_hi = self.rhsAddr.impl.codeArg(+1)
-                rhs_low = self.rhsAddr.impl.codeArg()
-                asmFile.write(f'\tld\th, {rhs_hi}\n')
-                asmFile.write(f'\tld\tl, {rhs_low}\n')
-                asmFile.write(f'\tsbc\thl, de\n')
-            else:
-                error()
-
+            regZ = self.load16bitLhsAndRhs()
+            asmFile.write(f"\tsbc\thl, {regZ}\n")

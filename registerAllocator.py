@@ -231,7 +231,7 @@ class Z80RegisterAllocator(RegisterAllocator):
 
     def doSpill(self, r, name):
         offset = self.symbolTable[name].impl.offset
-        self.asmFile.write(f"; spill {r} to {name}\n")
+        self.asmFile.write(f"; spill register {r} to var {name}\n")
         if self.symbolTable[name].type == 'char':
             self.asmFile.write(f"\tld\t(ix + {offset}), {r}\n")
         if self.symbolTable[name].type == 'int':

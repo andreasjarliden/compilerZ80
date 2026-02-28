@@ -1,2 +1,2 @@
-D=a+1 is overwritten in HL and no longer exits when it is spilled at the end of the block
 The basic block should end before the conditional jump (at least the spilling)
+With the Z80 we constantly have to spill A and HL although there are free register.  Consider spilling to other registers for live variables
