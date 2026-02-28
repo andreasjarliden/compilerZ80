@@ -67,6 +67,9 @@ def genCode():
         for i in b.statements:
             registerAllocator.RA.currentInstruction = i
             i.genCode()
+        # Spill everything live that is only in a register at the end of the block
+        print(f"Spilling at end of block, register allocator {registerAllocator.RA}")
+        registerAllocator.RA.spillAll()
     asmFile.write('\n\t#include "libc.asm"\n')
 
 print("AST to 3-code")

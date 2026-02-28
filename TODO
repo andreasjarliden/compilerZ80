@@ -1,0 +1,2 @@
+D=a+1 is overwritten in HL and no longer exits when it is spilled at the end of the block
+The basic block should end before the conditional jump (at least the spilling)

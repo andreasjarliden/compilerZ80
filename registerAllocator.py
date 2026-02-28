@@ -49,6 +49,7 @@ class RegisterAllocator:
         for n in self.registers[r]:
             if self.currentInstruction.live[n]:
                 self.addresses[n].remove(r)
+                self.addresses[n].add(n)
                 self.doSpill(r, n)
         # Register no longer contains anything
         self.registers[r] = set()
@@ -71,6 +72,13 @@ class RegisterAllocator:
                 continue
             # Have to spill to n
             score += 1
+
+    def spillAll(self):
+        for n in self.addresses:
+            if self.currentInstruction.live[n] and n not in self.addresses[n]:
+                # pick one of register contining n
+                r = next(iter(self.addresses[n] - set(n)))
+                self.spillRegister(r)
             
     def bestRegisterToSpill(self, possibleRegisters):
         return min(possibleRegisters, key=self.spillScore)
