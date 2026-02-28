@@ -10,7 +10,7 @@ class SymEntry:
         self.live = None
 
     def initLive(self):
-        self.live = self.name.startswith("temp")
+        self.live = not self.name.startswith("temp")
         self.nextUse = None
 
     @property

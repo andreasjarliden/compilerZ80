@@ -19,6 +19,7 @@ class RegisterAllocator:
                                  'hl': ('h', 'l'),
                                  'h': ['hl'],
                                  'l': ('hl',) }
+        self.currentInstruction = None
 
     def __repr__(self):
         return f"registers: {self.registers}\nfree registers: {self.freeRegisters}\naddresses: {self.addresses}"
@@ -44,20 +45,35 @@ class RegisterAllocator:
 
     def spillRegister(self, r):
         # Remove register from all addresses
+        # TODO: This can probably spill to needless dead addresses
         for n in self.registers[r]:
-            self.addresses[n].remove(r)
-            self.doSpill(r, n)
+            if self.currentInstruction.live[n]:
+                self.addresses[n].remove(r)
+                self.doSpill(r, n)
         # Register no longer contains anything
         self.registers[r] = set()
 
     def spillScore(self, r):
         score = 0
+        print(f"Determining spill Score for {r} with live {self.currentInstruction.live}")
+        # TODO also handle coupled registers
         for n in self.registers[r]:
             # If n is in some other register. Consider it free to spill.
             # (disregard if we have different groups of registers)
             if len(self.addresses[n]) > 1:
                 continue
-            # Is n what we are assigning to? In that case free to spill
+            # # Is n what we are assigning to? In that case free to spill TODO
+            # # maybe not needed as we always have to load the lhs in A or HL
+            # if n == ir.resultAddr.name:
+            #     continue
+            # Is dead?
+            if not self.currentInstruction.live[n]:
+                continue
+            # Have to spill to n
+            score += 1
+            
+    def bestRegisterToSpill(self, possibleRegisters):
+        return min(possibleRegisters, key=self.spillScore)
 
     def isInRegiser(self, name, possibleRegisters):
         # Already loaded?
@@ -75,7 +91,7 @@ class RegisterAllocator:
         if regs:
             return regs.pop()
         # No free, have to spill
-        r = next(iter(possibleRegisters))
+        r = self.bestRegisterToSpill(possibleRegisters)
         self.spillRegister(r)
         # Spill any coupled register, e.g. spilling bc means also spilling b and c (if loaded). 
         for cr in self.coupledRegisters.get(r, ()):
@@ -207,7 +223,7 @@ class Z80RegisterAllocator(RegisterAllocator):
 
     def doSpill(self, r, name):
         offset = self.symbolTable[name].impl.offset
-        self.asmFile.write(f"; spill to {name}\n")
+        self.asmFile.write(f"; spill {r} to {name}\n")
         if self.symbolTable[name].type == 'char':
             self.asmFile.write(f"\tld\t(ix + {offset}), {r}\n")
         if self.symbolTable[name].type == 'int':

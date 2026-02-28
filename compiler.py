@@ -48,10 +48,13 @@ def mapSymbols():
 
 def determineNextUse():
     for b in BASIC_BLOCKS.values():
+        vars = [ s.name for s in b.symbolTable.values() ]
+        live = { v: not v.startswith("temp") for v in vars }
         for s in b.symbolTable.values():
             s.initLive()
         for i in reversed(b.statements):
-            i.updateLive(b.symbolTable)
+            i.updateLive(b.symbolTable, live)
+            i.live = live.copy()
 
 RA = None
 def genCode():
@@ -62,6 +65,7 @@ def genCode():
         asmFile.write(f'; Basic Block {b.name}\n')
         registerAllocator.RA = registerAllocator.Z80RegisterAllocator(asmFile, b.symbolTable)
         for i in b.statements:
+            registerAllocator.RA.currentInstruction = i
             i.genCode()
     asmFile.write('\n\t#include "libc.asm"\n')
 

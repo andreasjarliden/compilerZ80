@@ -33,13 +33,14 @@ class IR:
     def exprAddr(self):
         return self.lhsAddr
 
-    def updateLive(self, symbolTable):
+    def updateLive(self, symbolTable, live):
         if self.resultAddr and isinstance(self.resultAddr, SymEntry):
             # 1
             symEntry = symbolTable[self.resultAddr.name]
             self.resultNextUse = symEntry.nextUse
             self.resultLive = symEntry.live
             # 2
+            live[self.resultAddr.name] = False
             symbolTable[self.resultAddr.name].live = False
             symbolTable[self.resultAddr.name].nextUse = None
         if self.lhsAddr and isinstance(self.lhsAddr, SymEntry):
@@ -47,14 +48,15 @@ class IR:
             self.lhsNextUse = symEntry.nextUse
             self.lhsLive = symEntry.live
             # 3
+            live[self.lhsAddr.name] = True
             symbolTable[self.lhsAddr.name].live = True
         if self.rhsAddr and isinstance(self.rhsAddr, SymEntry):
             symEntry = symbolTable[self.rhsAddr.name]
             self.rhsNextUse = symEntry.nextUse
             self.rhsLive = symEntry.live
             # 3
+            live[self.rhsAddr.name] = True
             symbolTable[self.rhsAddr.name].live = True
-            symbolTable[self.rhsAddr.name].nextUse = self
             symbolTable[self.rhsAddr.name].nextUse = self
 
     def liveStr(self):
@@ -104,7 +106,7 @@ class IR:
         if self.rhsAddr:
             o2 = " OP " + str(self.rhsAddr) 
         xtra = self.extraDescription()
-        return "".join([live, nextUse, name,r,o1,o2,xtra])
+        return "".join([live, nextUse, name,r,o1,o2,xtra, str(self.live)])
 
     def load8bitLhsAndRhs(self, transitive=False):
         ra = registerAllocator.RA
@@ -114,6 +116,7 @@ class IR:
             if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr.name) == "a":
                 self.lhsAddr, self.rhsAddr = self.rhsAddr, self.lhsAddr
                 self.lhsNextUse, self.rhsNextUse = self.rhsNextUse, self.lhsNextUse
+                self.lhsLive, self.rhsLive = self.rhsLive, self.lhsLive
 
         ra.loadInA(self.lhsAddr)
 
