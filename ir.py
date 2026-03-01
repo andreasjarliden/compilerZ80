@@ -335,10 +335,10 @@ class IRAddressOf(IR):
             # Might as well require HL
             regX = ra.getRegisterForArg(self.resultAddr.name, { "hl" })
             regT = ra.getTemporaryRegister({ "bc", "de" })
-            # TODO maybe better to use IY instead of HL?
-            # TODO Optimize for small values with INC
-            asmFile.write(f'\tpush\tix\n')
-            asmFile.write(f'\tpop\t{regX}\n')
+            # TODO maybe better to use IY instead of HL if small offset?
+            asmFile.write(f'\tld\t{regX[0]}, ixh\n')
+            asmFile.write(f'\tld\t{regX[1]}, ixl\n')
+            # TODO Optimize for small values with INC / DEC
             asmFile.write(f'\tld\t{regT}, {negHexOffset}\n')
             asmFile.write(f'\tadd\t{regX}, {regT}\n')
             ra.loadNameInRegister(self.resultAddr.name, regX)
