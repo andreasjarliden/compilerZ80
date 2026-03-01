@@ -35,3 +35,11 @@ class StackVariable:
             return f"(ix + {self.offset+offset})"
         else:
             return f"(ix - {-self.offset-offset})"
+
+
+class DereferencedPointer:
+    def __init__(self):
+        pass
+
+    def __repr__(self):
+        return f"DereferencedPointer"

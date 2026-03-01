@@ -45,7 +45,6 @@ class RegisterAllocator:
 
     def spillRegister(self, r):
         # Remove register from all addresses
-        # TODO: This can probably spill to needless dead addresses
         for n in self.registers[r]:
             if self.currentInstruction.live[n]:
                 self.addresses[n].remove(r)
@@ -72,15 +71,20 @@ class RegisterAllocator:
                 continue
             # Have to spill to n
             score += 1
+        return score
+
+    def spillName(self, n):
+        if self.currentInstruction.live[n] and n not in self.addresses[n]:
+            # pick one of register contining n
+            r = next(iter(self.addresses[n] - set(n)))
+            self.spillRegister(r)
 
     def spillAll(self):
         for n in self.addresses:
-            if self.currentInstruction.live[n] and n not in self.addresses[n]:
-                # pick one of register contining n
-                r = next(iter(self.addresses[n] - set(n)))
-                self.spillRegister(r)
+            self.spillName(n)
             
     def bestRegisterToSpill(self, possibleRegisters):
+        print(f"bestRegisterToSpill possible {possibleRegisters}")
         return min(possibleRegisters, key=self.spillScore)
 
     def isInRegiser(self, name, possibleRegisters):
@@ -89,12 +93,28 @@ class RegisterAllocator:
         if regs:
             return regs.pop()
 
+    # TODO this does not register the name as loaded in the register, maybe it
+    # should. Maybe this should be private and there should be public version
+    # that does all.
     def getRegisterForArg(self, name, possibleRegisters):
         # Already loaded?
         regs = self.addresses[name] & possibleRegisters
         if regs:
             return regs.pop()
         # No, pick one of the free registers
+        regs = self.freeRegisters & possibleRegisters
+        if regs:
+            return regs.pop()
+        # No free, have to spill
+        r = self.bestRegisterToSpill(possibleRegisters)
+        self.spillRegister(r)
+        # Spill any coupled register, e.g. spilling bc means also spilling b and c (if loaded). 
+        for cr in self.coupledRegisters.get(r, ()):
+            self.spillRegister(cr)
+        return r
+
+    def getTemporaryRegister(self, possibleRegisters):
+        # pick one of the free registers
         regs = self.freeRegisters & possibleRegisters
         if regs:
             return regs.pop()
@@ -241,6 +261,7 @@ class Z80RegisterAllocator(RegisterAllocator):
     def loadInA(self, address):
         # Is constant?
         if isinstance(address, Constant):
+            spillRegister("a")
             # TODO what address should we write for the value?
             self.asmFile.write(f'\tld\ta, {address.value}\n')
             return
@@ -260,9 +281,20 @@ class Z80RegisterAllocator(RegisterAllocator):
                 self.loadNameInRegister(address.name, regY)
         return regY
 
+    def doLoadInRegister16(self, address, possibleRegisters):
+        regX = self.getRegisterForArg(address.name, possibleRegisters)
+        # Already loaded?
+        if address.name not in self.registers[regX]:
+            # No, load from memory
+            self.asmFile.write(f'\tld\t{regX[0]}, {address.impl.codeArg(+1)}\n')
+            self.asmFile.write(f'\tld\t{regX[1]}, {address.impl.codeArg()}\n')
+            self.loadNameInRegister(address.name, regX)
+        return regX
+
     def loadInHL(self, address):
         # Is constant?
         if isinstance(address, Constant):
+            spillRegister("hl")
             # TODO what address to write for the value?
             self.asmFile.write(f'\tld\thl, {address.value}\n')
             return

@@ -181,6 +181,19 @@ class VariableAssignment:
         rhsAddr = self.rhs.visit()
         addIR(IRAssign(lvalue, rhsAddr))
 
+class DerefPointerAssignment:
+    def __init__(self, lvalue, rhs):
+        self.lvalue = lvalue
+        self.rhs = rhs;
+
+    def __repr__(self):
+        return f"Deref pointer assignment *{self.lvalue} = {self.rhs}"
+
+    def visit(self):
+        lvalue = self.lvalue.visit()
+        rhsAddr = self.rhs.visit()
+        addIR(IRAssignToPointer(lvalue, rhsAddr, currentSymbolTable()))
+
 class Variable:
     def __init__(self, name):
         self.type = None
@@ -220,7 +233,10 @@ class Dereference:
         resAddr = self.expr.visit()
         print(f"Dereference: created code for pointer receiving {self.expr} address {resAddr}")
         t = resAddr.completeType[1:] # remove leading *
-        return DereferencedPointer(t, resAddr)
+        # return DereferencedPointer(t, resAddr)
+        symEntry = addTemporary(t, t)
+        symEntry.impl = DereferencedPointer()
+        return symEntry
 
 class FunctionCall:
     def __init__(self, name, arguments=[]):
@@ -314,6 +330,7 @@ def p_expression(p):
                | function_expression
                | var_def_expression
                | var_assign_expression
+               | ptr_assign_expression
     '''
     p[0] = p[1]
 
@@ -321,9 +338,13 @@ def p_lvalue(p):
     'lvalue : ID'
     p[0] = Variable(p[1])
 
-def p_lvalue_deref(p):
-    'lvalue : STAR lvalue'
-    p[0] = Dereference(p[2])
+# def p_lvalue_deref(p):
+#     'lvalue : STAR lvalue'
+#     p[0] = Dereference(p[2])
+
+def p_ptrlvalue(p):
+    'ptrlvalue : STAR ID'
+    p[0] = Variable(p[2])
 
 def p_value_expression(p):
     'value_expression : equality'
@@ -418,6 +439,11 @@ def p_variable_assignment_expression(p):
     'var_assign_expression : lvalue ASSIGN value_expression'
     print("Variable assignment ", p[1], p[3])
     p[0] = VariableAssignment(p[1], p[3])
+
+def p_ptr_assignment_expression(p):
+    'ptr_assign_expression : ptrlvalue ASSIGN value_expression'
+    print("Dereferenced Pointer Assignment ", p[1], p[3])
+    p[0] = DerefPointerAssignment(p[1], p[3])
 
 def p_return_expression(p):
     'return_expression : RETURN value_expression'
