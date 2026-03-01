@@ -11,19 +11,12 @@ print("Parsing")
 print("=======")
 
 ast = parser.parse("""
-int add(int A, int B) {
-    int C;
-    int D;
-    C = A + B;
-    D = A + 1;
-    if (A == B) {
-        C = C + 1;
-        C = C + 1;
-    }
-    return C + 1;
-}
-int foo(int N) {
-    return add(N + 1, 2);
+int foo() {
+    int A;
+    int B;
+    A=42;
+    B=A+2;
+    return B;
 }
 """) 
 

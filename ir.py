@@ -358,21 +358,31 @@ class IRAssign(IR):
         ra = registerAllocator.RA
         if self.resultLive:
             if self.resultAddr.type == "char":
-                regY = ra.getRegisterForArg(self.lhsAddr.name, { "a", "b", "c", "d", "e", "h", "l" })
-                if self.lhsAddr.name not in ra.registers[regY]:
-                    # We know it must be loaded from memory. Otherwise we would have gotten a register directly.
-                    asmFile.write(f'\tld\t{regY}, {self.lhsAddr.impl.codeArg()}\n')
-                    ra.loadNameInRegister(self.lhsAddr.name, regY)
-                ra.copyFromRegisterToName(regY, self.resultAddr.name)
+                if isinstance(self.lhsAddr, Constant):
+                    regX = ra.getRegisterForArg(self.resultAddr.name, { "a", "b", "c", "d", "e", "h", "l" })
+                    asmFile.write(f'\tld\t{regX}, {self.lhsAddr.value}\n')
+                    ra.loadNameInRegister(self.resultAddr.name, regX)
+                else:
+                    regY = ra.getRegisterForArg(self.lhsAddr.name, { "a", "b", "c", "d", "e", "h", "l" })
+                    if self.lhsAddr.name not in ra.registers[regY]:
+                        # We know it must be loaded from memory. Otherwise we would have gotten a register directly.
+                        asmFile.write(f'\tld\t{regY}, {self.lhsAddr.impl.codeArg()}\n')
+                        ra.loadNameInRegister(self.lhsAddr.name, regY)
+                    ra.copyFromRegisterToName(regY, self.resultAddr.name)
             elif self.resultAddr.type == "int":
-                # TODO add IY?
-                regY = ra.getRegisterForArg(self.lhsAddr.name, { "bc", "de", "hl" })
-                if self.lhsAddr.name not in ra.registers[regY]:
-                    # We know it must be loaded from memory. Otherwise we would have gotten a register directly.
-                    asmFile.write(f'\tld\t{regY[0]}, {self.lhsAddr.impl.codeArg(+1)}\n')
-                    asmFile.write(f'\tld\t{regY[1]}, {self.lhsAddr.impl.codeArg()}\n')
-                    ra.loadNameInRegister(self.lhsAddr.name, regY)
-                ra.copyFromRegisterToName(regY, self.resultAddr.name)
+                if isinstance(self.lhsAddr, Constant):
+                    regX = ra.getRegisterForArg(self.resultAddr.name, { "bc", "de", "hl" })
+                    asmFile.write(f'\tld\t{regX}, {self.lhsAddr.value}\n')
+                    ra.loadNameInRegister(self.resultAddr.name, regX)
+                else:
+                    # TODO add IY?
+                    regY = ra.getRegisterForArg(self.lhsAddr.name, { "bc", "de", "hl" })
+                    if self.lhsAddr.name not in ra.registers[regY]:
+                        # We know it must be loaded from memory. Otherwise we would have gotten a register directly.
+                        asmFile.write(f'\tld\t{regY[0]}, {self.lhsAddr.impl.codeArg(+1)}\n')
+                        asmFile.write(f'\tld\t{regY[1]}, {self.lhsAddr.impl.codeArg()}\n')
+                        ra.loadNameInRegister(self.lhsAddr.name, regY)
+                    ra.copyFromRegisterToName(regY, self.resultAddr.name)
         else:
             if self.resultAddr.type == "char":
                 regY = ra.isInRegister(self.lhsAddr.name, { "a", "b", "c", "d", "e", "h", "l" })
