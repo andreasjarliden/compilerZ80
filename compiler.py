@@ -11,9 +11,9 @@ print("Parsing")
 print("=======")
 
 ast = parser.parse("""
-char add(char A, char B) {
-    char C;
-    char D;
+int add(int A, int B) {
+    int C;
+    int D;
     C = A + B;
     D = A + 1;
     if (A == B) {
@@ -22,7 +22,7 @@ char add(char A, char B) {
     }
     return C + 1;
 }
-char foo(char N) {
+int foo(int N) {
     return add(N + 1, 2);
 }
 """) 

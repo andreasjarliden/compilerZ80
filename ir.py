@@ -213,10 +213,13 @@ class IRIf(IR):
         return f"{self.skipLabel}"
 
     def genCode(self):
+        ra = registerAllocator.RA
+        # Spill before the jump as this will end the basic block. A later call
+        # to spillAll will be a no-op.
+        ra.spillAll()
         if isinstance(self.exprAddr, Flags):
             asmFile.write(f'\tjr\tnz, {self.skipLabel}\n') 
         else:
-            ra = registerAllocator.RA
             ra.loadInA(self.lhsAddr)
             asmFile.write(f'\tor\ta\n')
             asmFile.write(f'\tjr\tz, {self.skipLabel}\n') 
