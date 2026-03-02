@@ -365,7 +365,7 @@ class IRDereference(IR):
 
     def genCode(self):
         ra = registerAllocator.RA
-        t = self.lhsAddr.completeType[1:] # remove leading *
+        t = self.lhsAddr.completeType
         print(f'IRDereference spilling all matching type {t}')
         ra.spillAllMatchingType(t, self.symbolTable)
 
@@ -383,15 +383,15 @@ class IRAssign(IR):
                 if isinstance(self.lhsAddr, Constant):
                     regX = ra.getRegisterForArg(self.resultAddr.name, { "a", "b", "c", "d", "e", "h", "l" })
                     asmFile.write(f'\tld\t{regX}, {self.lhsAddr.value}\n')
-                    ra.loadNameInRegister(self.resultAddr.name, regX)
+                    ra.copyFromRegisterToName(regX, self.resultAddr.name)
                 else:
-                    regY = ra.doLoadInRegister8(self.lhsAddr, { "bc", "de", "hl" })
+                    regY = ra.doLoadInRegister8(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" })
                     ra.copyFromRegisterToName(regY, self.resultAddr.name)
             elif self.resultAddr.type == "int":
                 if isinstance(self.lhsAddr, Constant):
                     regX = ra.getRegisterForArg(self.resultAddr.name, { "bc", "de", "hl" })
                     asmFile.write(f'\tld\t{regX}, {self.lhsAddr.value}\n')
-                    ra.loadNameInRegister(self.resultAddr.name, regX)
+                    ra.copyFromRegisterToName(regX, self.resultAddr.name)
                 else:
                     # TODO add IY?
                     regY = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" })
@@ -569,12 +569,16 @@ class IRAdd(IR):
         ra = registerAllocator.RA
         if self.lhsAddr.type == "char":
             regZ = self.load8bitLhsAndRhs(transitive=True)
+            ra.spillRegister("a")
             asmFile.write(f"\tadd\ta, {regZ}\n")
-            ra.operationToNameWithRegister(self.resultAddr.name, "a")
+            ra.loadNameInRegister(self.resultAddr.name, "a")
+            # ra.operationToNameWithRegister(self.resultAddr.name, "a")
         elif self.lhsAddr.type == "int":
             regZ = self.load16bitLhsAndRhs(transitive=True)
+            ra.spillRegister("hl")
             asmFile.write(f"\tadd\thl, {regZ}\n")
-            ra.operationToNameWithRegister(self.resultAddr.name, "hl")
+            ra.loadNameInRegister(self.resultAddr.name, "hl")
+            # ra.operationToNameWithRegister(self.resultAddr.name, "hl")
         else:
             error()
 

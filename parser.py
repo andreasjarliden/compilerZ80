@@ -233,6 +233,11 @@ class Dereference:
     def visit(self):
         resAddr = copy(self.expr.visit())
         print(f"Dereference: created code for pointer receiving {self.expr} address {resAddr}")
+        resAddr.completeType = resAddr.completeType[1:] # remove leading *
+        if resAddr.completeType.startswith("*"):
+            resAddr.type = "int"
+        else:
+            resAddr.type = resAddr.completeType
         resAddr.impl = DereferencedPointer()
         addIR(IRDereference(resAddr, currentSymbolTable()))
         return resAddr

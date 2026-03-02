@@ -13,10 +13,12 @@ print("=======")
 ast = parser.parse("""
 char foo() {
     char A;
+    char B;
     char* p;
     A=2;
     p=&A;
-    A=*p;
+    B=*p+1;
+    *p=B+1;
     return A;
 }
 """) 

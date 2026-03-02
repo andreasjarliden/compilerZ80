@@ -273,32 +273,62 @@ class Z80RegisterAllocator(RegisterAllocator):
             # TODO what address should we write for the value?
             self.asmFile.write(f'\tld\ta, {address.value}\n')
             return
-        # Get register a, spilling if needed
-        regY = self.getRegisterForArg(address.name, { "a" })
-        # Already loaded?
-        if address.name not in self.registers[regY]:
-            # No, already in a register?
-            inReg = self.isInRegister(address.name, { "b", "c", "d", "e", "h", "l" })
-            if inReg:
-                # Yes, just move register
-                self.asmFile.write(f'\tld\ta, {inReg}\n')
-                self.loadNameInRegister(address.name, "a")
-            else:
-                # No, load from memory
-                self.asmFile.write(f'\tld\t{regY}, {address.impl.codeArg()}\n')
-                self.loadNameInRegister(address.name, regY)
-        return regY
+        elif isinstance(address.impl, DereferencedPointer):
+            regY = self.isInRegister(address.name, { "bc", "de", "hl" })
+            print(f"loadInA looking for {address.name} ra {self}")
+            assert regY
+            regX = self.getRegisterForArg(address.name, { "a" } )
+            self.asmFile.write(f'\tld\t{regX}, ({regY})\n')
+        else:
+            # Get register a, spilling if needed
+            regY = self.getRegisterForArg(address.name, { "a" })
+            # Already loaded?
+            if address.name not in self.registers[regY]:
+                # No, already in a register?
+                inReg = self.isInRegister(address.name, { "b", "c", "d", "e", "h", "l" })
+                if inReg:
+                    # Yes, just move register
+                    self.asmFile.write(f'\tld\ta, {inReg}\n')
+                    self.loadNameInRegister(address.name, "a")
+                else:
+                    # No, load from memory
+                    self.asmFile.write(f'\tld\t{regY}, {address.impl.codeArg()}\n')
+                    self.loadNameInRegister(address.name, regY)
+            return regY
 
     def doLoadInRegister8(self, address, possibleRegisters):
-        regX = self.getRegisterForArg(address.name, possibleRegisters)
-        # Already loaded?
-        if address.name not in self.registers[regX]:
-            # No, load from memory
-            self.asmFile.write(f'\tld\t{regX}, {address.impl.codeArg()}\n')
-            self.loadNameInRegister(address.name, regX)
-        return regX
+        # TODO copy from loadInA
+        # regX = self.getRegisterForArg(address.name, possibleRegisters)
+        # # Already loaded?
+        # if address.name not in self.registers[regX]:
+        #     # No, load from memory
+        #     self.asmFile.write(f'\tld\t{regX}, {address.impl.codeArg()}\n')
+        #     self.loadNameInRegister(address.name, regX)
+        # return regX
+        if isinstance(address, Constant):
+            # TODO what address should we write for the value?
+            regX = self.getRegisterForArg(address.name, possibleRegisters)
+            self.asmFile.write(f'\tld\t{regX}, {address.value}\n')
+            return regX
+        elif isinstance(address.impl, DereferencedPointer):
+            regX = self.getRegisterForArg(address.name, possibleRegisters)
+            regY = self.isInRegister(address.name, { "bc", "de", "hl" })
+            print(f"loadInRegister8 looking for {address.name} ra {self}")
+            assert regY
+            self.asmFile.write(f'\tld\t{regX}, ({regY})\n')
+            return regX
+        else:
+            # Get register a, spilling if needed
+            regY = self.isInRegister(address.name, possibleRegisters)
+            if not regY:
+                regX = self.getRegisterForArg(address.name, possibleRegisters)
+                self.asmFile.write(f'\tld\t{regX}, {address.impl.codeArg()}\n')
+                self.loadNameInRegister(address.name, regX)
+                return regX
+            return regY
 
     def doLoadInRegister16(self, address, possibleRegisters):
+        # TODO copy from loadInHL
         regX = self.getRegisterForArg(address.name, possibleRegisters)
         # Already loaded?
         if address.name not in self.registers[regX]:
@@ -318,7 +348,8 @@ class Z80RegisterAllocator(RegisterAllocator):
             regY = self.isInRegister(address.name, { "bc", "de", "hl" })
             print(f"loadInHL looking for {address.name} ra {self}")
             assert regY
-            # If the pointer is in HL (likely), transfer it to bc or de since we need HL for the lhs
+            # If the pointer is in HL (likely), transfer it to bc or de since
+            # we are loading the dereferenced value into hl
             if regY == "hl":
                 regY = self.getRegisterForArg(address.name, { "bc", "de" } )
                 self.asmFile.write(f'\tld\t{regY[0]}, h\n')
