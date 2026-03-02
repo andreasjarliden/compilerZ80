@@ -11,15 +11,12 @@ print("Parsing")
 print("=======")
 
 ast = parser.parse("""
-int foo() {
-    int A;
-    char B;
-    int C;
-    C=42;
-    int* p;
+char foo() {
+    char A;
+    char* p;
     A=2;
     p=&A;
-    *p=C;
+    A=*p;
     return A;
 }
 """) 

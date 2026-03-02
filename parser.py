@@ -5,6 +5,7 @@ from address import Constant
 import sys
 from pprint import *
 from symEntry import *
+from copy import copy
 
 # Stack of symbol tables
 ENV = [ {} ]
@@ -230,13 +231,15 @@ class Dereference:
         return f"Dereference {self.expr}"
 
     def visit(self):
-        resAddr = self.expr.visit()
+        resAddr = copy(self.expr.visit())
         print(f"Dereference: created code for pointer receiving {self.expr} address {resAddr}")
-        t = resAddr.completeType[1:] # remove leading *
+        resAddr.impl = DereferencedPointer()
+        addIR(IRDereference(resAddr, currentSymbolTable()))
+        return resAddr
         # return DereferencedPointer(t, resAddr)
-        symEntry = addTemporary(t, t)
-        symEntry.impl = DereferencedPointer()
-        return symEntry
+        # symEntry = addTemporary(t, t)
+        # symEntry.impl = DereferencedPointer()
+        # return symEntry
 
 class FunctionCall:
     def __init__(self, name, arguments=[]):

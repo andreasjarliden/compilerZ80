@@ -37,6 +37,7 @@ class StackVariable:
             return f"(ix - {-self.offset-offset})"
 
 
+# TODO rename to e.g. PointerVariable? Or StackAddress, PointerAddress and AbsolutePointerAddress?
 class DereferencedPointer:
     def __init__(self):
         pass

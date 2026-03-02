@@ -74,6 +74,7 @@ class RegisterAllocator:
         return score
 
     def spillName(self, n):
+        print(f"spillName {n} isLive {self.currentInstruction.live[n]} and addresses {self.addresses[n]}")
         if self.currentInstruction.live[n] and n not in self.addresses[n]:
             # pick one of register contining n
             r = next(iter(self.addresses[n] - set(n)))
@@ -82,6 +83,12 @@ class RegisterAllocator:
     def spillAll(self):
         for n in self.addresses:
             self.spillName(n)
+
+    def spillAllMatchingType(self, t, symbolTable):
+        for n, s in symbolTable.items():
+            if s.completeType == t:
+                print(f"symbol {n} has matching type {s.completeType} and must be spilled")
+                self.spillName(n)
             
     def bestRegisterToSpill(self, possibleRegisters):
         print(f"bestRegisterToSpill possible {possibleRegisters}")
@@ -152,7 +159,8 @@ class RegisterAllocator:
         self.registers[r] = { n }
         self.addresses[n] = { r }
 
-    # Example: LD a, b
+    # Example: LD a, <name>
+    # TODO: better name.  This is storing to a register, but not yet to memory
     def copyFromRegisterToName(self, r, n):
         self.registers[r].add(n)
         self.addresses[n] = { r }
@@ -250,8 +258,8 @@ class Z80RegisterAllocator(RegisterAllocator):
         self.asmFile = asmFile
 
     def doSpill(self, r, name):
-        offset = self.symbolTable[name].impl.offset
         self.asmFile.write(f"; spill register {r} to var {name}\n")
+        offset = self.symbolTable[name].impl.offset
         if self.symbolTable[name].type == 'char':
             self.asmFile.write(f"\tld\t(ix + {offset}), {r}\n")
         if self.symbolTable[name].type == 'int':
@@ -261,7 +269,7 @@ class Z80RegisterAllocator(RegisterAllocator):
     def loadInA(self, address):
         # Is constant?
         if isinstance(address, Constant):
-            spillRegister("a")
+            self.spillRegister("a")
             # TODO what address should we write for the value?
             self.asmFile.write(f'\tld\ta, {address.value}\n')
             return
@@ -281,6 +289,15 @@ class Z80RegisterAllocator(RegisterAllocator):
                 self.loadNameInRegister(address.name, regY)
         return regY
 
+    def doLoadInRegister8(self, address, possibleRegisters):
+        regX = self.getRegisterForArg(address.name, possibleRegisters)
+        # Already loaded?
+        if address.name not in self.registers[regX]:
+            # No, load from memory
+            self.asmFile.write(f'\tld\t{regX}, {address.impl.codeArg()}\n')
+            self.loadNameInRegister(address.name, regX)
+        return regX
+
     def doLoadInRegister16(self, address, possibleRegisters):
         regX = self.getRegisterForArg(address.name, possibleRegisters)
         # Already loaded?
@@ -294,27 +311,43 @@ class Z80RegisterAllocator(RegisterAllocator):
     def loadInHL(self, address):
         # Is constant?
         if isinstance(address, Constant):
-            spillRegister("hl")
+            self.spillRegister("hl")
             # TODO what address to write for the value?
             self.asmFile.write(f'\tld\thl, {address.value}\n')
-            return
-        # Get register hl, spilling if needed
-        regY = self.getRegisterForArg(address.name, { "hl" })
-        # Already loaded?
-        if address.name not in self.registers[regY]:
-            # No, already in a register?
-            # TODO add IY?
-            inReg = self.isInRegister(address.name, { "bc", "de", "hl" })
-            if inReg:
-                # Yes, just move register
-                self.asmFile.write(f'\tld\th, {inReg[0]}\n')
-                self.asmFile.write(f'\tld\tl, {inReg[1]}\n')
-                self.loadNameInRegister(address.name, "a")
-            else:
-                # No, load from memory
-                self.asmFile.write(f'\tld\th, {address.impl.codeArg(+1)}\n')
-                self.asmFile.write(f'\tld\tl, {address.impl.codeArg()}\n')
-                self.loadNameInRegister(address.name, "hl")
+        elif isinstance(address.impl, DereferencedPointer):
+            regY = self.isInRegister(address.name, { "bc", "de", "hl" })
+            print(f"loadInHL looking for {address.name} ra {self}")
+            assert regY
+            # If the pointer is in HL (likely), transfer it to bc or de since we need HL for the lhs
+            if regY == "hl":
+                regY = self.getRegisterForArg(address.name, { "bc", "de" } )
+                self.asmFile.write(f'\tld\t{regY[0]}, h\n')
+                self.asmFile.write(f'\tld\t{regY[1]}, l\n')
+                self.loadNameInRegister(address.name, regY)
+            regX = self.getRegisterForArg(address.name, { "hl" } )
+            self.asmFile.write(f'\tld\t{regX[1]}, ({regY})\n')
+            self.asmFile.write(f'\tinc\t{regY}\n')
+            self.asmFile.write(f'\tld\t{regX[0]}, ({regY})\n')
+            if self.currentInstruction.live[address.name]:
+                self.asmFile.write(f'\tdec\t{regY}\n')
+        else:
+            # Get register hl, spilling if needed
+            regY = self.getRegisterForArg(address.name, { "hl" })
+            # Already loaded?
+            if address.name not in self.registers[regY]:
+                # No, already in a register?
+                # TODO add IY?
+                inReg = self.isInRegister(address.name, { "bc", "de", "hl" })
+                if inReg:
+                    # Yes, just move register
+                    self.asmFile.write(f'\tld\th, {inReg[0]}\n')
+                    self.asmFile.write(f'\tld\tl, {inReg[1]}\n')
+                    self.loadNameInRegister(address.name, "hl")
+                else:
+                    # No, load from memory
+                    self.asmFile.write(f'\tld\th, {address.impl.codeArg(+1)}\n')
+                    self.asmFile.write(f'\tld\tl, {address.impl.codeArg()}\n')
+                    self.loadNameInRegister(address.name, "hl")
 
 class TestZ80RA(unittest.TestCase):
     def setUp(self):
