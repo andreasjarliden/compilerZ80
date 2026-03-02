@@ -442,11 +442,11 @@ class Z80RegisterAllocator(RegisterAllocator):
 class TestZ80RA(unittest.TestCase):
     def setUp(self):
         self.foo = SymEntry("char", "char", "foo")
-        self.foo.impl = StackVariable(0)
+        self.foo.impl = StackAddress(0)
         self.bar = SymEntry("char", "char", "bar")
-        self.bar.impl = StackVariable(-11)
+        self.bar.impl = StackAddress(-11)
         self.bar16 = SymEntry("char", "char", "bar16")
-        self.bar16.impl = StackVariable(-2)
+        self.bar16.impl = StackAddress(-2)
         self.symbolTable = { "foo": self.foo, "bar": self.bar, "bar16": self.bar16 }
         self.ra = Z80RegisterAllocator(StringIO(), self.symbolTable)
         self.ra.currentInstruction = IR()

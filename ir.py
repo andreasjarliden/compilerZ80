@@ -14,7 +14,7 @@ def stackFrameSize(symbolTable):
     smallestOffset = 0
     print(symbolTable)
     for s in symbolTable.values():
-        if isinstance(s.impl, StackVariable):
+        if isinstance(s.impl, StackAddress):
             smallestOffset = min(s.impl.offset, smallestOffset)
     return -smallestOffset
 
@@ -395,7 +395,7 @@ class IRAssign(IR):
             # Stores directly to memory
             if self.resultAddr.type == "char":
                 if isinstance(self.lhsAddr, Constant):
-                    if isinstance(self.resultAddr.impl, StackVariable):
+                    if isinstance(self.resultAddr.impl, StackAddress):
                         asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg()}, {self.lhsAddr.value}\n')
                     elif isinstance(self.resultAddr.impl, DereferencedPointer):
                         print(f"Assign to Deref Pointer {self.resultAddr}")

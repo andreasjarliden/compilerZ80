@@ -21,12 +21,12 @@ class SymEntry:
         return f"<SymEntry {self.name} {self.type} {self.completeType} {self.impl}>"
 
 
-class StackVariable:
+class StackAddress:
     def __init__(self, offset):
         self.offset = offset
 
     def __repr__(self):
-        return f"StackVariable @{self.offset}"
+        return f"StackAddress @{self.offset}"
 
     def codeArg(self, offset=0):
         # Use ix - 1, as "ix-1" is interpreted as identifier "ix-1"

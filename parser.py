@@ -113,10 +113,10 @@ class Function:
         for a in reversed(self.arguments):
             symEntry = SymEntry(a.type, a.completeType, a.name)
             if a.type == "int":
-                symEntry.impl = StackVariable(offset)
+                symEntry.impl = StackAddress(offset)
             elif a.type == "char":
                 # 8 bit values are sent in the high byte
-                symEntry.impl = StackVariable(offset+1)
+                symEntry.impl = StackAddress(offset+1)
             else:
                 error()
             addSymbolEntry(a.name, symEntry)
