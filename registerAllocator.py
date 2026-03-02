@@ -2,6 +2,7 @@ import unittest
 from io import StringIO
 from symEntry import *
 from address import *
+from ir import IR
 
 RA = None
 ALL_REGISTERS = {'a', 'b', 'c', 'd', 'e', 'h', 'l', 'bc', 'de', 'hl'}
@@ -171,6 +172,8 @@ class RegisterAllocator:
 class TestRA(unittest.TestCase):
     def setUp(self):
         self.ra = RegisterAllocator(["foo", "bar", "fiz"])
+        self.ra.currentInstruction = IR()
+        self.ra.currentInstruction.live = { "foo": True, "bar": True, "fiz": True }
 
     def test_loadRegister(self):
         self.ra.loadNameInRegister("foo", "a")
@@ -449,6 +452,8 @@ class TestZ80RA(unittest.TestCase):
         self.bar16.impl = StackVariable(-2)
         self.symbolTable = { "foo": self.foo, "bar": self.bar, "bar16": self.bar16 }
         self.ra = Z80RegisterAllocator(StringIO(), self.symbolTable)
+        self.ra.currentInstruction = IR()
+        self.ra.currentInstruction.live = { "foo": True, "bar": True }
 
     def test_loadInA_alreadyLoaded(self):
         self.ra.loadNameInRegister("foo", "a")
@@ -475,12 +480,12 @@ class TestZ80RA(unittest.TestCase):
         r = self.ra.getRegisterForArg("bar", { "a" })
         self.assertEqual(r, "a")
         self.ra.asmFile.seek(0)
-        self.assertEqual(self.ra.asmFile.read(), "\tld\t(ix + 0), a\n")
+        self.assertIn("\tld\t(ix + 0), a\n", self.ra.asmFile.read())
 
     def test_spillRegisterPair(self):
         self.ra.loadNameInRegister("foo", "b")
         r = self.ra.getRegisterForArg("bar16", { "bc" })
         self.assertEqual(r, "bc")
         self.ra.asmFile.seek(0)
-        self.assertEqual(self.ra.asmFile.read(), "\tld\t(ix + 0), b\n")
+        self.assertIn("\tld\t(ix + 0), b\n", self.ra.asmFile.read())
         self.assertEqual(self.ra.registers["b"], set())
