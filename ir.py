@@ -117,11 +117,30 @@ class IR:
         if isinstance(self.rhsAddr, Constant):
             return self.rhsAddr.value
         elif isinstance(self.rhsAddr.impl, DereferencedPointer):
-            # TODO this might spill regX again
-            regX = ra.getRegisterForArg(self.rhsAddr.name, { "b", "c", "d", "e", "h", "l" })
-            regY = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } )
-            print(f"load8bitLhsAndRhs regY {regY}")
-            asmFile.write(f'\tld\t{regX}, ({regY})\n')
+            # Must have the pointer in hl (or ix/iy)
+            regZ = ra.getRegisterForArg(self.rhsAddr.name, { "hl" })
+            if not regZ:
+                otherReg = ra.isInRegister(self.rhsAddr.name, { "bc", "de" })
+                if otherReg:
+                    # Copy from other register
+                    asmFile.write(f"\tld\th, {otherReg[0]}\n")
+                    asmFile.write(f"\tld\tl, {otherReg[1]}\n")
+                    # TODO this name should really be p, not *p. How to keep
+                    # track of this if we use proper names for dereferences?
+                    ra.loadNameInRegister(self.rhsAddr.name, "hl")
+                else:
+                    # Load pointer from memory
+                    asmFile.write(f"\tld\th, {self.rhsAddr.impl.codeArg(+1)}\n")
+                    asmFile.write(f"\tld\tl, {self.rhsAddr.impl.codeArg()}\n")
+            return "(hl)"
+            # regY = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } )
+            # print(f"load8bitLhsAndRhs regY {regY}")
+            # asmFile.write(f'\tld\t{regX}, ({regY})\n')
+            # # TODO this might spill regX again
+            # regX = ra.getRegisterForArg(self.rhsAddr.name, { "b", "c", "d", "e", "h", "l" })
+            # regY = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } )
+            # print(f"load8bitLhsAndRhs regY {regY}")
+            # asmFile.write(f'\tld\t{regX}, ({regY})\n')
         elif ra.isInRegister(self.rhsAddr.name) or self.rhsNextUse:
             regZ = ra.getRegisterForArg(self.rhsAddr.name, { "b", "c", "d", "e", "h", "l" })
             if self.rhsAddr.name not in ra.registers[regZ]:
@@ -147,6 +166,7 @@ class IR:
         if isinstance(self.rhsAddr, Constant):
             return self.rhsAddr.value
         elif isinstance(self.rhsAddr.impl, DereferencedPointer):
+            # TODO replace below with doLoadRegiser16
             regX = ra.getRegisterForArg(self.rhsAddr.name, { "bc", "de" })
             regY = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } )
             asmFile.write(f'\tld\t{regX[1]}, ({regY})\n')
