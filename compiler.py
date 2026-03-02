@@ -17,7 +17,7 @@ char foo() {
     char* p;
     A=2;
     p=&A;
-    B=*p+1;
+    B=*p+*p;
     *p=B+1;
     return A;
 }

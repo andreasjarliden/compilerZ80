@@ -43,6 +43,9 @@ class RegisterAllocator:
                 free.append(r)
         return set(free)
 
+    # TODO this spills even if the name is available in a different register.
+    # Sometimes we want that (e.g. when spilling at end of block) but not
+    # otherwise.
     def spillRegister(self, r):
         # Remove register from all addresses
         for n in self.registers[r]:
@@ -87,7 +90,6 @@ class RegisterAllocator:
     def spillAllMatchingType(self, t, symbolTable):
         for n, s in symbolTable.items():
             if s.completeType == t:
-                print(f"symbol {n} has matching type {s.completeType} and must be spilled")
                 self.spillName(n)
             
     def bestRegisterToSpill(self, possibleRegisters):
@@ -278,6 +280,12 @@ class Z80RegisterAllocator(RegisterAllocator):
             print(f"loadInA looking for {address.name} ra {self}")
             assert regY
             regX = self.getRegisterForArg(address.name, { "a" } )
+            # TODO address.name is e.g. p, but we are really storing *p to regX
+            # which we don't have a proper name for yet. Properly why this code
+            # should move into IRDereference.  Therefore, we have to explicitly
+            # spill the register so we don't use it under the wrong name. This
+            # is similar to constants.
+            self.spillRegister(regX)
             self.asmFile.write(f'\tld\t{regX}, ({regY})\n')
         else:
             # Get register a, spilling if needed
@@ -297,14 +305,6 @@ class Z80RegisterAllocator(RegisterAllocator):
             return regY
 
     def doLoadInRegister8(self, address, possibleRegisters):
-        # TODO copy from loadInA
-        # regX = self.getRegisterForArg(address.name, possibleRegisters)
-        # # Already loaded?
-        # if address.name not in self.registers[regX]:
-        #     # No, load from memory
-        #     self.asmFile.write(f'\tld\t{regX}, {address.impl.codeArg()}\n')
-        #     self.loadNameInRegister(address.name, regX)
-        # return regX
         if isinstance(address, Constant):
             # TODO what address should we write for the value?
             regX = self.getRegisterForArg(address.name, possibleRegisters)
@@ -313,12 +313,17 @@ class Z80RegisterAllocator(RegisterAllocator):
         elif isinstance(address.impl, DereferencedPointer):
             regX = self.getRegisterForArg(address.name, possibleRegisters)
             regY = self.isInRegister(address.name, { "bc", "de", "hl" })
-            print(f"loadInRegister8 looking for {address.name} ra {self}")
+            # TODO address.name is e.g. p, but we are really storing *p to regX
+            # which we don't have a proper name for yet. Properly why this code
+            # should move into IRDereference.  Therefore, we have to explicitly
+            # spill the register so we don't use it under the wrong name. This
+            # is similar to constants.
+            self.spillRegister(regX)
+            print(f"loadInRegister8 looking for {address.name} got regY {regY} ra {self}")
             assert regY
             self.asmFile.write(f'\tld\t{regX}, ({regY})\n')
             return regX
         else:
-            # Get register a, spilling if needed
             regY = self.isInRegister(address.name, possibleRegisters)
             if not regY:
                 regX = self.getRegisterForArg(address.name, possibleRegisters)
@@ -328,15 +333,45 @@ class Z80RegisterAllocator(RegisterAllocator):
             return regY
 
     def doLoadInRegister16(self, address, possibleRegisters):
-        # TODO copy from loadInHL
-        regX = self.getRegisterForArg(address.name, possibleRegisters)
-        # Already loaded?
-        if address.name not in self.registers[regX]:
-            # No, load from memory
-            self.asmFile.write(f'\tld\t{regX[0]}, {address.impl.codeArg(+1)}\n')
-            self.asmFile.write(f'\tld\t{regX[1]}, {address.impl.codeArg()}\n')
-            self.loadNameInRegister(address.name, regX)
-        return regX
+        # # TODO copy from loadInHL
+        # regX = self.getRegisterForArg(address.name, possibleRegisters)
+        # # Already loaded?
+        # if address.name not in self.registers[regX]:
+        #     # No, load from memory
+        #     self.asmFile.write(f'\tld\t{regX[0]}, {address.impl.codeArg(+1)}\n')
+        #     self.asmFile.write(f'\tld\t{regX[1]}, {address.impl.codeArg()}\n')
+        #     self.loadNameInRegister(address.name, regX)
+        # return regX
+        # Is constant?
+        if isinstance(address, Constant):
+            # TODO what address to write for the value?
+            regX = self.getRegisterForArg(address.name, possibleRegisters)
+            self.asmFile.write(f'\tld\t{regX}, {address.value}\n')
+        elif isinstance(address.impl, DereferencedPointer):
+            regY = self.isInRegister(address.name, possibleRegisters)
+            assert regY
+            # Carefull not to spill the register we are loading from
+            regX = self.getRegisterForArg(address.name, possibleRegisters - { regY } )
+            # TODO address.name is e.g. p, but we are really storing *p to regX
+            # which we don't have a proper name for yet. Properly why this code
+            # should move into IRDereference.  Therefore, we have to explicitly
+            # spill the register so we don't use it under the wrong name. This
+            # is similar to constants.
+            self.spillRegister(regX)
+            self.asmFile.write(f'\tld\t{regX[1]}, ({regY})\n')
+            self.asmFile.write(f'\tinc\t{regY}\n')
+            self.asmFile.write(f'\tld\t{regX[0]}, ({regY})\n')
+            if self.currentInstruction.live[address.name]:
+                self.asmFile.write(f'\tdec\t{regY}\n')
+        else:
+            regY = self.isInRegister(address.name, possibleRegisters)
+            if not regY:
+                regX = self.getRegisterForArg(address.name, possibleRegisters)
+                self.asmFile.write(f'\tld\t{regX[0]}, {address.impl.codeArg(+1)}\n')
+                self.asmFile.write(f'\tld\t{regX[1]}, {address.impl.codeArg()}\n')
+                self.loadNameInRegister(address.name, regX)
+                return regX
+            return regY
 
     def loadInHL(self, address):
         # Is constant?
@@ -355,7 +390,14 @@ class Z80RegisterAllocator(RegisterAllocator):
                 self.asmFile.write(f'\tld\t{regY[0]}, h\n')
                 self.asmFile.write(f'\tld\t{regY[1]}, l\n')
                 self.loadNameInRegister(address.name, regY)
-            regX = self.getRegisterForArg(address.name, { "hl" } )
+            # TODO address.name is e.g. p, but we are really storing *p to hl
+            # which we don't have a proper name for yet. Properly why this code
+            # should move into IRDereference.  Therefore, we have to explicitly
+            # spill the register so we don't use it under the wrong name. This
+            # is similar to constants.
+            # regX = self.getRegisterForArg(address.name, { "hl" } )
+            regX = "hl"
+            self.spillRegister("hl")
             self.asmFile.write(f'\tld\t{regX[1]}, ({regY})\n')
             self.asmFile.write(f'\tinc\t{regY}\n')
             self.asmFile.write(f'\tld\t{regX[0]}, ({regY})\n')

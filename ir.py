@@ -120,6 +120,7 @@ class IR:
             # TODO this might spill regX again
             regX = ra.getRegisterForArg(self.rhsAddr.name, { "b", "c", "d", "e", "h", "l" })
             regY = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } )
+            print(f"load8bitLhsAndRhs regY {regY}")
             asmFile.write(f'\tld\t{regX}, ({regY})\n')
         elif ra.isInRegister(self.rhsAddr.name) or self.rhsNextUse:
             regZ = ra.getRegisterForArg(self.rhsAddr.name, { "b", "c", "d", "e", "h", "l" })
@@ -575,6 +576,7 @@ class IRAdd(IR):
             # ra.operationToNameWithRegister(self.resultAddr.name, "a")
         elif self.lhsAddr.type == "int":
             regZ = self.load16bitLhsAndRhs(transitive=True)
+            print(f"IRAdd before explicit spill hl: ra {ra}")
             ra.spillRegister("hl")
             asmFile.write(f"\tadd\thl, {regZ}\n")
             ra.loadNameInRegister(self.resultAddr.name, "hl")
