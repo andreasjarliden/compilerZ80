@@ -319,7 +319,6 @@ class Z80RegisterAllocator(RegisterAllocator):
             # spill the register so we don't use it under the wrong name. This
             # is similar to constants.
             self.spillRegister(regX)
-            print(f"loadInRegister8 looking for {address.name} got regY {regY} ra {self}")
             assert regY
             self.asmFile.write(f'\tld\t{regX}, ({regY})\n')
             return regX
@@ -333,20 +332,13 @@ class Z80RegisterAllocator(RegisterAllocator):
             return regY
 
     def doLoadInRegister16(self, address, possibleRegisters):
-        # # TODO copy from loadInHL
-        # regX = self.getRegisterForArg(address.name, possibleRegisters)
-        # # Already loaded?
-        # if address.name not in self.registers[regX]:
-        #     # No, load from memory
-        #     self.asmFile.write(f'\tld\t{regX[0]}, {address.impl.codeArg(+1)}\n')
-        #     self.asmFile.write(f'\tld\t{regX[1]}, {address.impl.codeArg()}\n')
-        #     self.loadNameInRegister(address.name, regX)
-        # return regX
         # Is constant?
         if isinstance(address, Constant):
-            # TODO what address to write for the value?
-            regX = self.getRegisterForArg(address.name, possibleRegisters)
+            # TODO what address to write for the value? Just spill a random register for now
+            regX = next(iter(possibleRegisters))
+            self.spillRegister(regX)
             self.asmFile.write(f'\tld\t{regX}, {address.value}\n')
+            return regX
         elif isinstance(address.impl, DereferencedPointer):
             regY = self.isInRegister(address.name, possibleRegisters)
             assert regY
@@ -363,6 +355,7 @@ class Z80RegisterAllocator(RegisterAllocator):
             self.asmFile.write(f'\tld\t{regX[0]}, ({regY})\n')
             if self.currentInstruction.live[address.name]:
                 self.asmFile.write(f'\tdec\t{regY}\n')
+            return regX
         else:
             regY = self.isInRegister(address.name, possibleRegisters)
             if not regY:

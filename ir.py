@@ -133,14 +133,6 @@ class IR:
                     asmFile.write(f"\tld\th, {self.rhsAddr.impl.codeArg(+1)}\n")
                     asmFile.write(f"\tld\tl, {self.rhsAddr.impl.codeArg()}\n")
             return "(hl)"
-            # regY = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } )
-            # print(f"load8bitLhsAndRhs regY {regY}")
-            # asmFile.write(f'\tld\t{regX}, ({regY})\n')
-            # # TODO this might spill regX again
-            # regX = ra.getRegisterForArg(self.rhsAddr.name, { "b", "c", "d", "e", "h", "l" })
-            # regY = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } )
-            # print(f"load8bitLhsAndRhs regY {regY}")
-            # asmFile.write(f'\tld\t{regX}, ({regY})\n')
         elif ra.isInRegister(self.rhsAddr.name) or self.rhsNextUse:
             regZ = ra.getRegisterForArg(self.rhsAddr.name, { "b", "c", "d", "e", "h", "l" })
             if self.rhsAddr.name not in ra.registers[regZ]:
@@ -160,29 +152,29 @@ class IR:
                 self.lhsNextUse, self.rhsNextUse = self.rhsNextUse, self.lhsNextUse
                 self.lhsLive, self.rhsLive = self.rhsLive, self.lhsLive
 
-        # TODO also use IY?
         ra.loadInHL(self.lhsAddr)
+        return ra.doLoadInRegister16(self.rhsAddr, { "bc", "de" } )
 
-        if isinstance(self.rhsAddr, Constant):
-            return self.rhsAddr.value
-        elif isinstance(self.rhsAddr.impl, DereferencedPointer):
-            # TODO replace below with doLoadRegiser16
-            regX = ra.getRegisterForArg(self.rhsAddr.name, { "bc", "de" })
-            regY = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } )
-            asmFile.write(f'\tld\t{regX[1]}, ({regY})\n')
-            asmFile.write(f'\tinc\t{regX}\n')
-            asmFile.write(f'\tld\t{regX[0]}, ({regY})\n')
-            if self.live[self.lhsAddr.name]:
-                asmFile.write(f'\tdec\t{regY}\n')
-        else:
-            reg16 = ra.getRegisterForArg(self.rhsAddr.name, { "bc", "de" })
-            regLow = reg16[1]
-            regHi = reg16[0]
-            if self.rhsAddr.name not in ra.registers[reg16]:
-                asmFile.write(f'\tld\t{regHi}, {self.rhsAddr.impl.codeArg(+1)}\n')
-                asmFile.write(f'\tld\t{regLow}, {self.rhsAddr.impl.codeArg()}\n')
-                ra.loadNameInRegister(self.rhsAddr.name, reg16)
-            return reg16
+        # if isinstance(self.rhsAddr, Constant):
+        #     return self.rhsAddr.value
+        # elif isinstance(self.rhsAddr.impl, DereferencedPointer):
+        #     # TODO replace below with doLoadRegiser16
+        #     regX = ra.getRegisterForArg(self.rhsAddr.name, { "bc", "de" })
+        #     regY = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } )
+        #     asmFile.write(f'\tld\t{regX[1]}, ({regY})\n')
+        #     asmFile.write(f'\tinc\t{regX}\n')
+        #     asmFile.write(f'\tld\t{regX[0]}, ({regY})\n')
+        #     if self.live[self.lhsAddr.name]:
+        #         asmFile.write(f'\tdec\t{regY}\n')
+        # else:
+        #     reg16 = ra.getRegisterForArg(self.rhsAddr.name, { "bc", "de" })
+        #     regLow = reg16[1]
+        #     regHi = reg16[0]
+        #     if self.rhsAddr.name not in ra.registers[reg16]:
+        #         asmFile.write(f'\tld\t{regHi}, {self.rhsAddr.impl.codeArg(+1)}\n')
+        #         asmFile.write(f'\tld\t{regLow}, {self.rhsAddr.impl.codeArg()}\n')
+        #         ra.loadNameInRegister(self.rhsAddr.name, reg16)
+        #     return reg16
 
 class IRDefFun(IR):
     def __init__(self, function, symbolTable):
