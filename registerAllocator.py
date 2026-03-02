@@ -287,8 +287,7 @@ class Z80RegisterAllocator(RegisterAllocator):
                 print(f"Must be loaded from address.impl.pointer {address.impl.pointer}")
                 name = address.impl.pointer.name 
                 regY = self.getRegisterForArg(name, { "bc", "de", "hl" } )
-                self.asmFile.write(f'\tld\t{regY[0]}, {address.impl.pointer.impl.codeArg(+1)}\n')
-                self.asmFile.write(f'\tld\t{regY[1]}, {address.impl.pointer.impl.codeArg()}\n')
+                self.asmWriter.loadRegisterWithAddress(regY, address.impl.pointer.impl)
                 self.loadNameInRegister(name, regY)
             regX = self.getRegisterForArg(address.name, { "a" } )
             # TODO address.name is e.g. p, but we are really storing *p to regX
@@ -356,6 +355,7 @@ class Z80RegisterAllocator(RegisterAllocator):
             self.asmFile.write(f'\tld\t{regX}, {address.value}\n')
             return regX
         elif isinstance(address.impl, PointerAddress):
+            # TODO possibleRegisters only applies for regX, we should look in all registers for the pointer
             regY = self.isInRegister(address.name, possibleRegisters)
             if not regY:
                 print(f"Must be loaded from address.impl.pointer {address.impl.pointer}")
