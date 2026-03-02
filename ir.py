@@ -118,7 +118,7 @@ class IR:
 
         if isinstance(self.rhsAddr, Constant):
             return self.rhsAddr.value
-        elif isinstance(self.rhsAddr.impl, DereferencedPointer):
+        elif isinstance(self.rhsAddr.impl, PointerAddress):
             # Must have the pointer in hl (or ix/iy)
             regZ = ra.getRegisterForArg(self.rhsAddr.name, { "hl" })
             if not regZ:
@@ -397,7 +397,7 @@ class IRAssign(IR):
                 if isinstance(self.lhsAddr, Constant):
                     if isinstance(self.resultAddr.impl, StackAddress):
                         asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg()}, {self.lhsAddr.value}\n')
-                    elif isinstance(self.resultAddr.impl, DereferencedPointer):
+                    elif isinstance(self.resultAddr.impl, PointerAddress):
                         print(f"Assign to Deref Pointer {self.resultAddr}")
                         print(f"RA {ra}")
                         regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } ) 

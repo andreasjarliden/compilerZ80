@@ -240,7 +240,7 @@ class Dereference:
             resAddr.type = "int"
         else:
             resAddr.type = resAddr.completeType
-        resAddr.impl = DereferencedPointer(pointer)
+        resAddr.impl = PointerAddress(pointer)
         addIR(IRDereference(resAddr, currentSymbolTable()))
         return resAddr
 

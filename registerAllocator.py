@@ -280,7 +280,7 @@ class Z80RegisterAllocator(RegisterAllocator):
             # TODO what address should we write for the value?
             self.asmFile.write(f'\tld\ta, {address.value}\n')
             return
-        elif isinstance(address.impl, DereferencedPointer):
+        elif isinstance(address.impl, PointerAddress):
             regY = self.isInRegister(address.name, { "bc", "de", "hl" })
             print(f"loadInA looking for {address.name} ra {self}")
             if not regY:
@@ -321,7 +321,7 @@ class Z80RegisterAllocator(RegisterAllocator):
             regX = self.getRegisterForArg(address.name, possibleRegisters)
             self.asmFile.write(f'\tld\t{regX}, {address.value}\n')
             return regX
-        elif isinstance(address.impl, DereferencedPointer):
+        elif isinstance(address.impl, PointerAddress):
             regY = self.isInRegister(address.name, { "bc", "de", "hl" })
             if not regY:
                 print(f"Must be loaded from address.impl.pointer {address.impl.pointer}")
@@ -355,7 +355,7 @@ class Z80RegisterAllocator(RegisterAllocator):
             self.spillRegister(regX)
             self.asmFile.write(f'\tld\t{regX}, {address.value}\n')
             return regX
-        elif isinstance(address.impl, DereferencedPointer):
+        elif isinstance(address.impl, PointerAddress):
             regY = self.isInRegister(address.name, possibleRegisters)
             if not regY:
                 print(f"Must be loaded from address.impl.pointer {address.impl.pointer}")
@@ -392,7 +392,7 @@ class Z80RegisterAllocator(RegisterAllocator):
             self.spillRegister("hl")
             # TODO what address to write for the value?
             self.asmFile.write(f'\tld\thl, {address.value}\n')
-        elif isinstance(address.impl, DereferencedPointer):
+        elif isinstance(address.impl, PointerAddress):
             regY = self.isInRegister(address.name, { "bc", "de", "hl" })
             print(f"loadInHL looking for {address} ra {self}")
             if not regY:
