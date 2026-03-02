@@ -1,2 +1,9 @@
-Use of pointers with register allocator
-With the Z80 we constantly have to spill A and HL although there are free register.  Consider spilling to other registers for live variables
+- Add abstractions for assembler patterns, e.g. copying between registers,
+  loading to register from memory etc. Should make it easier to write generic
+  code between 8/16 bits.
+- Use proper names for dereferenced pointers and values.
+- Cleanup register allocator.
+- More unit tests.
+- Move more code generation to DereferencedPointer?
+- With the Z80 we constantly have to spill A and HL although there are free
+  register.  Consider spilling to other registers for live variables

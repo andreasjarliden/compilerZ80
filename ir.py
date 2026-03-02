@@ -1,8 +1,10 @@
 from address import *
 from symEntry import *
 import registerAllocator
+from asmWriter import *
 
 asmFile = open("a.asm", "w")
+asmWriter = AsmWriter(asmFile)
 
 IR_FUNCTIONS = []
 
@@ -130,13 +132,12 @@ class IR:
                     ra.loadNameInRegister(self.rhsAddr.name, "hl")
                 else:
                     # Load pointer from memory
-                    asmFile.write(f"\tld\th, {self.rhsAddr.impl.codeArg(+1)}\n")
-                    asmFile.write(f"\tld\tl, {self.rhsAddr.impl.codeArg()}\n")
+                    asmWriter.loadRegisterWithAddress("hl", self.rhsAddr.impl)
             return "(hl)"
         elif ra.isInRegister(self.rhsAddr.name) or self.rhsNextUse:
             regZ = ra.getRegisterForArg(self.rhsAddr.name, { "b", "c", "d", "e", "h", "l" })
             if self.rhsAddr.name not in ra.registers[regZ]:
-                asmFile.write(f'\tld\t{regZ}, {self.rhsAddr.impl.codeArg()}\n')
+                asmWriter.loadRegisterWithAddress(regZ, self.rhsAddr.impl)
                 ra.loadNameInRegister(self.rhsAddr.name, regZ)
             return regZ
         else:
@@ -428,6 +429,7 @@ class IRAssign(IR):
                     if regY:
                         asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg()}, {regY}\n')
                     else:
+                        # TODO use a free register instead of always reg a
                         ra.getRegisterForArg(self.lhsAddr.name , { "a" }) # TODO Only to spill it if needed. Better shorthand?
                         asmFile.write(f'\tld\ta, {self.lhsAddr.impl.codeArg()}\n')
                         asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg()}, a\n')

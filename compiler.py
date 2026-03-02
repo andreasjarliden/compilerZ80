@@ -11,13 +11,13 @@ print("Parsing")
 print("=======")
 
 ast = parser.parse("""
-int bar(int *N, int *M) {
+char bar(char *N, char *M) {
     return *N + *M;
 }
-int foo() {
-    int A;
-    int B;
-    int* p;
+char foo() {
+    char A;
+    char B;
+    char* p;
     A=2;
     p=&A;
     B=*p+*p;

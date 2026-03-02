@@ -2,7 +2,8 @@ import unittest
 from io import StringIO
 from symEntry import *
 from address import *
-from ir import IR
+from asmWriter import AsmWriter
+from ir import *
 
 RA = None
 ALL_REGISTERS = {'a', 'b', 'c', 'd', 'e', 'h', 'l', 'bc', 'de', 'hl'}
@@ -261,6 +262,7 @@ class Z80RegisterAllocator(RegisterAllocator):
         super().__init__(symbolTable.keys())
         self.symbolTable = symbolTable
         self.asmFile = asmFile
+        self.asmWriter = AsmWriter(asmFile)
 
     def doSpill(self, r, name):
         self.asmFile.write(f"; spill register {r} to var {name}\n")
@@ -309,7 +311,7 @@ class Z80RegisterAllocator(RegisterAllocator):
                     self.loadNameInRegister(address.name, "a")
                 else:
                     # No, load from memory
-                    self.asmFile.write(f'\tld\t{regY}, {address.impl.codeArg()}\n')
+                    self.asmWriter.loadRegisterWithAddress(regY, address.impl)
                     self.loadNameInRegister(address.name, regY)
             return regY
 
@@ -325,8 +327,7 @@ class Z80RegisterAllocator(RegisterAllocator):
                 print(f"Must be loaded from address.impl.pointer {address.impl.pointer}")
                 name = address.impl.pointer.name 
                 regY = self.getRegisterForArg(name, { "bc", "de", "hl" } )
-                self.asmFile.write(f'\tld\t{regY[0]}, {address.impl.pointer.impl.codeArg(+1)}\n')
-                self.asmFile.write(f'\tld\t{regY[1]}, {address.impl.pointer.impl.codeArg()}\n')
+                self.asmWriter.loadRegisterWithAddress(regY, address.impl.pointer.impl)
                 self.loadNameInRegister(name, regY)
             # TODO address.name is e.g. p, but we are really storing *p to regX
             # which we don't have a proper name for yet. Properly why this code
@@ -360,8 +361,7 @@ class Z80RegisterAllocator(RegisterAllocator):
                 print(f"Must be loaded from address.impl.pointer {address.impl.pointer}")
                 name = address.impl.pointer.name 
                 regY = self.getRegisterForArg(name, { "bc", "de", "hl" } )
-                self.asmFile.write(f'\tld\t{regY[0]}, {address.impl.pointer.impl.codeArg(+1)}\n')
-                self.asmFile.write(f'\tld\t{regY[1]}, {address.impl.pointer.impl.codeArg()}\n')
+                self.asmWriter.loadRegisterWithAddress(regY, address.impl.pointer.impl)
                 self.loadNameInRegister(name, regY)
             # Carefull not to spill the register we are loading from
             regX = self.getRegisterForArg(address.name, possibleRegisters - { regY } )
@@ -381,8 +381,7 @@ class Z80RegisterAllocator(RegisterAllocator):
             regY = self.isInRegister(address.name, possibleRegisters)
             if not regY:
                 regX = self.getRegisterForArg(address.name, possibleRegisters)
-                self.asmFile.write(f'\tld\t{regX[0]}, {address.impl.codeArg(+1)}\n')
-                self.asmFile.write(f'\tld\t{regX[1]}, {address.impl.codeArg()}\n')
+                self.asmWriter.loadRegisterWithAddress(regX, address.impl)
                 self.loadNameInRegister(address.name, regX)
                 return regX
             return regY
@@ -400,8 +399,7 @@ class Z80RegisterAllocator(RegisterAllocator):
                 print(f"Must be loaded from address.impl.pointer {address.impl.pointer}")
                 name = address.impl.pointer.name 
                 regY = self.getRegisterForArg(name, { "bc", "de" } )
-                self.asmFile.write(f'\tld\t{regY[0]}, {address.impl.pointer.impl.codeArg(+1)}\n')
-                self.asmFile.write(f'\tld\t{regY[1]}, {address.impl.pointer.impl.codeArg()}\n')
+                self.asmWriter.loadRegisterWithAddress(regY, address.impl.pointer.impl)
                 self.loadNameInRegister(name, regY)
             # If the pointer is in HL (likely), transfer it to bc or de since
             # we are loading the dereferenced value into hl
@@ -438,8 +436,7 @@ class Z80RegisterAllocator(RegisterAllocator):
                     self.loadNameInRegister(address.name, "hl")
                 else:
                     # No, load from memory
-                    self.asmFile.write(f'\tld\th, {address.impl.codeArg(+1)}\n')
-                    self.asmFile.write(f'\tld\tl, {address.impl.codeArg()}\n')
+                    self.asmWriter.loadRegisterWithAddress("hl", address.impl)
                     self.loadNameInRegister(address.name, "hl")
 
 class TestZ80RA(unittest.TestCase):
