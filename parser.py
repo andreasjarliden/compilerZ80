@@ -231,20 +231,18 @@ class Dereference:
         return f"Dereference {self.expr}"
 
     def visit(self):
-        resAddr = copy(self.expr.visit())
+        pointer = self.expr.visit()
+        # TODO is it necessary to copy it?
+        resAddr = copy(pointer)
         print(f"Dereference: created code for pointer receiving {self.expr} address {resAddr}")
         resAddr.completeType = resAddr.completeType[1:] # remove leading *
         if resAddr.completeType.startswith("*"):
             resAddr.type = "int"
         else:
             resAddr.type = resAddr.completeType
-        resAddr.impl = DereferencedPointer()
+        resAddr.impl = DereferencedPointer(pointer)
         addIR(IRDereference(resAddr, currentSymbolTable()))
         return resAddr
-        # return DereferencedPointer(t, resAddr)
-        # symEntry = addTemporary(t, t)
-        # symEntry.impl = DereferencedPointer()
-        # return symEntry
 
 class FunctionCall:
     def __init__(self, name, arguments=[]):

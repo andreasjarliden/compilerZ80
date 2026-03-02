@@ -39,8 +39,9 @@ class StackVariable:
 
 # TODO rename to e.g. PointerVariable? Or StackAddress, PointerAddress and AbsolutePointerAddress?
 class DereferencedPointer:
-    def __init__(self):
+    def __init__(self, p):
+        self.pointer = p
         pass
 
     def __repr__(self):
-        return f"DereferencedPointer"
+        return f"DereferencedPointer {self.pointer}"

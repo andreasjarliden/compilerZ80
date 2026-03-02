@@ -278,7 +278,13 @@ class Z80RegisterAllocator(RegisterAllocator):
         elif isinstance(address.impl, DereferencedPointer):
             regY = self.isInRegister(address.name, { "bc", "de", "hl" })
             print(f"loadInA looking for {address.name} ra {self}")
-            assert regY
+            if not regY:
+                print(f"Must be loaded from address.impl.pointer {address.impl.pointer}")
+                name = address.impl.pointer.name 
+                regY = self.getRegisterForArg(name, { "bc", "de", "hl" } )
+                self.asmFile.write(f'\tld\t{regY[0]}, {address.impl.pointer.impl.codeArg(+1)}\n')
+                self.asmFile.write(f'\tld\t{regY[1]}, {address.impl.pointer.impl.codeArg()}\n')
+                self.loadNameInRegister(name, regY)
             regX = self.getRegisterForArg(address.name, { "a" } )
             # TODO address.name is e.g. p, but we are really storing *p to regX
             # which we don't have a proper name for yet. Properly why this code
@@ -311,15 +317,21 @@ class Z80RegisterAllocator(RegisterAllocator):
             self.asmFile.write(f'\tld\t{regX}, {address.value}\n')
             return regX
         elif isinstance(address.impl, DereferencedPointer):
-            regX = self.getRegisterForArg(address.name, possibleRegisters)
             regY = self.isInRegister(address.name, { "bc", "de", "hl" })
+            if not regY:
+                print(f"Must be loaded from address.impl.pointer {address.impl.pointer}")
+                name = address.impl.pointer.name 
+                regY = self.getRegisterForArg(name, { "bc", "de", "hl" } )
+                self.asmFile.write(f'\tld\t{regY[0]}, {address.impl.pointer.impl.codeArg(+1)}\n')
+                self.asmFile.write(f'\tld\t{regY[1]}, {address.impl.pointer.impl.codeArg()}\n')
+                self.loadNameInRegister(name, regY)
             # TODO address.name is e.g. p, but we are really storing *p to regX
             # which we don't have a proper name for yet. Properly why this code
             # should move into IRDereference.  Therefore, we have to explicitly
             # spill the register so we don't use it under the wrong name. This
             # is similar to constants.
+            regX = self.getRegisterForArg(address.name, possibleRegisters)
             self.spillRegister(regX)
-            assert regY
             self.asmFile.write(f'\tld\t{regX}, ({regY})\n')
             return regX
         else:
@@ -341,7 +353,13 @@ class Z80RegisterAllocator(RegisterAllocator):
             return regX
         elif isinstance(address.impl, DereferencedPointer):
             regY = self.isInRegister(address.name, possibleRegisters)
-            assert regY
+            if not regY:
+                print(f"Must be loaded from address.impl.pointer {address.impl.pointer}")
+                name = address.impl.pointer.name 
+                regY = self.getRegisterForArg(name, { "bc", "de", "hl" } )
+                self.asmFile.write(f'\tld\t{regY[0]}, {address.impl.pointer.impl.codeArg(+1)}\n')
+                self.asmFile.write(f'\tld\t{regY[1]}, {address.impl.pointer.impl.codeArg()}\n')
+                self.loadNameInRegister(name, regY)
             # Carefull not to spill the register we are loading from
             regX = self.getRegisterForArg(address.name, possibleRegisters - { regY } )
             # TODO address.name is e.g. p, but we are really storing *p to regX
@@ -374,8 +392,14 @@ class Z80RegisterAllocator(RegisterAllocator):
             self.asmFile.write(f'\tld\thl, {address.value}\n')
         elif isinstance(address.impl, DereferencedPointer):
             regY = self.isInRegister(address.name, { "bc", "de", "hl" })
-            print(f"loadInHL looking for {address.name} ra {self}")
-            assert regY
+            print(f"loadInHL looking for {address} ra {self}")
+            if not regY:
+                print(f"Must be loaded from address.impl.pointer {address.impl.pointer}")
+                name = address.impl.pointer.name 
+                regY = self.getRegisterForArg(name, { "bc", "de" } )
+                self.asmFile.write(f'\tld\t{regY[0]}, {address.impl.pointer.impl.codeArg(+1)}\n')
+                self.asmFile.write(f'\tld\t{regY[1]}, {address.impl.pointer.impl.codeArg()}\n')
+                self.loadNameInRegister(name, regY)
             # If the pointer is in HL (likely), transfer it to bc or de since
             # we are loading the dereferenced value into hl
             if regY == "hl":

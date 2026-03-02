@@ -11,8 +11,8 @@ print("Parsing")
 print("=======")
 
 ast = parser.parse("""
-int bar(int *N) {
-    return *N+1;
+int bar(int *N, int *M) {
+    return *N + *M;
 }
 int foo() {
     int A;
@@ -22,8 +22,9 @@ int foo() {
     p=&A;
     B=*p+*p;
     *p=B+1;
+    bar(p, &B);
     return A;
-}
+    }
 """) 
 
 print("AST")
