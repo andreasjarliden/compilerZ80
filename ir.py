@@ -89,8 +89,7 @@ class IR:
                 otherReg = ra.isInRegister(self.rhsAddr.name, { "bc", "de" })
                 if otherReg:
                     # Copy from other register
-                    asmFile.write(f"\tld\th, {otherReg[0]}\n")
-                    asmFile.write(f"\tld\tl, {otherReg[1]}\n")
+                    asmWriter.loadRegisterWithRegister("hl", otherReg)
                     # TODO this name should really be p, not *p. How to keep
                     # track of this if we use proper names for dereferences?
                     ra.loadNameInRegister(self.rhsAddr.name, "hl")

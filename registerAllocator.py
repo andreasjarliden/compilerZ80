@@ -405,8 +405,7 @@ class Z80RegisterAllocator(RegisterAllocator):
             # we are loading the dereferenced value into hl
             if regY == "hl":
                 regY = self.getRegisterForArg(address.name, { "bc", "de" } )
-                self.asmFile.write(f'\tld\t{regY[0]}, h\n')
-                self.asmFile.write(f'\tld\t{regY[1]}, l\n')
+                self.asmWriter.loadRegisterWithRegister(regY, "hl")
                 self.loadNameInRegister(address.name, regY)
             # TODO address.name is e.g. p, but we are really storing *p to hl
             # which we don't have a proper name for yet. Properly why this code
@@ -431,8 +430,7 @@ class Z80RegisterAllocator(RegisterAllocator):
                 inReg = self.isInRegister(address.name, { "bc", "de", "hl" })
                 if inReg:
                     # Yes, just move register
-                    self.asmFile.write(f'\tld\th, {inReg[0]}\n')
-                    self.asmFile.write(f'\tld\tl, {inReg[1]}\n')
+                    self.asmWriter.loadRegisterWithRegister("hl", inReg)
                     self.loadNameInRegister(address.name, "hl")
                 else:
                     # No, load from memory
