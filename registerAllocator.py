@@ -124,6 +124,7 @@ class RegisterAllocator:
             self.spillRegister(cr)
         return r
 
+    # Get a register, spilling if necessary
     def getTemporaryRegister(self, possibleRegisters):
         # pick one of the free registers
         regs = self.freeRegisters & possibleRegisters
@@ -155,17 +156,9 @@ class RegisterAllocator:
     def storeToName(self, n):
         self.addresses[n].add(n)
 
-    # Example ADD r, ... where a represents name
-    def operationToNameWithRegister(self, n, r):
-        oldNames = self.registers[r]
-        for oldName in oldNames:
-            self.addresses[oldName].remove(r)
-        self.registers[r] = { n }
-        self.addresses[n] = { r }
-
-    # Example: LD a, <name>
-    # TODO: better name.  This is storing to a register, but not yet to memory
-    def copyFromRegisterToName(self, r, n):
+    # Assigning to a name means that it is only the register that holds the
+    # name, it has not been spilled to memory yet.
+    def assignToNameWithRegister(self, n, r):
         self.registers[r].add(n)
         self.addresses[n] = { r }
 
@@ -209,25 +202,13 @@ class TestRA(unittest.TestCase):
         self.ra.storeToName("foo")
         self.assertTrue("foo" in self.ra.addresses["foo"])
 
-    def test_operation(self):
-        self.ra.loadNameInRegister("fiz", "a") # will be replaced
-
-        # foo = bar + baz
-        # a = b + c
-        self.ra.operationToNameWithRegister("foo", "a")
-
-        self.assertEqual(self.ra.registers["a"], {"foo"}) # Now hold foo but no longer fiz
-        self.assertEqual(self.ra.addresses["foo"], {"a"}) # Only in register, not stored to foo
-        self.assertFalse("a" in self.ra.addresses["fiz"]) # fiz no longer held by a
-
     # bar = foo
     def test_assignment(self):
         self.ra.loadNameInRegister("bar", "b") # bar was previously in reg b
         self.ra.loadNameInRegister("foo", "a") # foo is loaded in a
-        self.ra.copyFromRegisterToName("a", "bar") # store foo (loaded in a) to bar
+        self.ra.assignToNameWithRegister("bar", "a") # store foo (loaded in a) to bar
         self.assertEqual(self.ra.addresses["bar"], {"a"}) # Note: b no longer holds updated bar and it is not stored yet to bar
         self.assertEqual(self.ra.registers["a"], {"foo", "bar"}) # Now a holds both foo and bar
-        # self.assertEqual(self.ra.registers["b"], set()) # b is now free
 
     def test_spillRegister(self):
         self.ra.loadNameInRegister("foo", "a")

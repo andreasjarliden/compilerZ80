@@ -283,12 +283,15 @@ class IRFunCall(IR):
             # asmFile.write(f'\tld\tsp, hl\n')
         if self.resultAddr:
             ra = registerAllocator.RA
+            returnRegisterForType = { "char": "a",
+                                      "int": "hl" }
             if self.type == "char":
-                ra.copyFromRegisterToName("a", self.resultAddr.name)
+                reg = "a"
             elif self.type == "int":
-                ra.copyFromRegisterToName("hl", self.resultAddr.name)
+                reg = "hl"
             else:
                 error()
+            ra.assignToNameWithRegister(self.resultAddr.name, returnRegisterForType[self.type])
 
 class IRAddressOf(IR):
     def __init__(self, symEntry, resAddr):
@@ -336,22 +339,18 @@ class IRAssign(IR):
             # Stores to register
             if self.resultAddr.type == "char":
                 if isinstance(self.lhsAddr, Constant):
-                    regX = ra.getRegisterForArg(self.resultAddr.name, { "a", "b", "c", "d", "e", "h", "l" })
-                    asmFile.write(f'\tld\t{regX}, {self.lhsAddr.value}\n')
-                    ra.copyFromRegisterToName(regX, self.resultAddr.name)
+                    reg = ra.getRegisterForArg(self.resultAddr.name, { "a", "b", "c", "d", "e", "h", "l" })
+                    asmFile.write(f'\tld\t{reg}, {self.lhsAddr.value}\n')
                 else:
-                    regY = ra.doLoadInRegister8(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" })
-                    ra.copyFromRegisterToName(regY, self.resultAddr.name)
+                    reg = ra.doLoadInRegister8(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" })
             elif self.resultAddr.type == "int":
                 if isinstance(self.lhsAddr, Constant):
-                    regX = ra.getRegisterForArg(self.resultAddr.name, { "bc", "de", "hl" })
-                    asmFile.write(f'\tld\t{regX}, {self.lhsAddr.value}\n')
-                    ra.copyFromRegisterToName(regX, self.resultAddr.name)
+                    reg = ra.getRegisterForArg(self.resultAddr.name, { "bc", "de", "hl" })
+                    asmFile.write(f'\tld\t{reg}, {self.lhsAddr.value}\n')
                 else:
                     # TODO add IY?
-                    regY = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" })
-                    print(f"IRAssign 16 bit regY {regY} lhsAddr {self.lhsAddr} ra {ra}")
-                    ra.copyFromRegisterToName(regY, self.resultAddr.name)
+                    reg = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" })
+            ra.assignToNameWithRegister(self.resultAddr.name, reg)
         else:
             # Stores directly to memory
             if self.resultAddr.type == "char":
@@ -457,14 +456,12 @@ class IRAdd(IR):
             ra.spillRegister("a")
             asmFile.write(f"\tadd\ta, {regZ}\n")
             ra.loadNameInRegister(self.resultAddr.name, "a")
-            # ra.operationToNameWithRegister(self.resultAddr.name, "a")
         elif self.lhsAddr.type == "int":
             regZ = self.load16bitLhsAndRhs(transitive=True)
             print(f"IRAdd before explicit spill hl: ra {ra}")
             ra.spillRegister("hl")
             asmFile.write(f"\tadd\thl, {regZ}\n")
             ra.loadNameInRegister(self.resultAddr.name, "hl")
-            # ra.operationToNameWithRegister(self.resultAddr.name, "hl")
         else:
             error()
 
