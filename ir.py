@@ -29,58 +29,25 @@ class IR:
     def exprAddr(self):
         return self.lhsAddr
 
-    def updateLive(self, symbolTable, live):
+    def updateLive(self, live):
         if self.resultAddr and isinstance(self.resultAddr, SymEntry):
-            # 1
-            symEntry = symbolTable[self.resultAddr.name]
-            self.resultNextUse = symEntry.nextUse
-            self.resultLive = symEntry.live
-            # 2
             live[self.resultAddr.name] = False
-            symbolTable[self.resultAddr.name].live = False
-            symbolTable[self.resultAddr.name].nextUse = None
         if self.lhsAddr and isinstance(self.lhsAddr, SymEntry):
-            symEntry = symbolTable[self.lhsAddr.name]
-            self.lhsNextUse = symEntry.nextUse
-            self.lhsLive = symEntry.live
-            # 3
             live[self.lhsAddr.name] = True
-            symbolTable[self.lhsAddr.name].live = True
         if self.rhsAddr and isinstance(self.rhsAddr, SymEntry):
-            symEntry = symbolTable[self.rhsAddr.name]
-            self.rhsNextUse = symEntry.nextUse
-            self.rhsLive = symEntry.live
-            # 3
             live[self.rhsAddr.name] = True
-            symbolTable[self.rhsAddr.name].live = True
-            symbolTable[self.rhsAddr.name].nextUse = self
 
     def liveStr(self):
         if self.resultAddr and isinstance(self.resultAddr, SymEntry):
-            s1 = "L" if self.resultLive else "D"
+            s1 = "L" if self.live[self.resultAddr.name] else "D"
         else:
             s1="?"
         if self.lhsAddr and isinstance(self.lhsAddr, SymEntry):
-            s2 = "L" if self.lhsLive else "D"
+            s2 = "L" if self.live[self.lhsAddr.name] else "D"
         else:
             s2="?"
         if self.rhsAddr and isinstance(self.rhsAddr, SymEntry):
-            s3 = "L" if self.rhsLive else "D"
-        else:
-            s3="?"
-        return s1 + s2 + s3 + " "
-
-    def nextUseStr(self):
-        if self.resultAddr and isinstance(self.resultAddr, SymEntry):
-            s1 = "U" if self.resultNextUse else "D"
-        else:
-            s1="?"
-        if self.lhsAddr and isinstance(self.lhsAddr, SymEntry):
-            s2 = "U" if self.lhsNextUse else "D"
-        else:
-            s2="?"
-        if self.rhsAddr and isinstance(self.rhsAddr, SymEntry):
-            s3 = "U" if self.rhsNextUse else "D"
+            s3 = "L" if self.live[self.rhsAddr.name] else "D"
         else:
             s3="?"
         return s1 + s2 + s3 + " "
@@ -90,7 +57,6 @@ class IR:
 
     def __repr__(self):
         live = self.liveStr()
-        nextUse = self.nextUseStr()
         name = self.__class__.__name__
         r = ""
         if self.resultAddr:
@@ -102,7 +68,7 @@ class IR:
         if self.rhsAddr:
             o2 = " OP " + str(self.rhsAddr) 
         xtra = self.extraDescription()
-        return "".join([live, nextUse, name,r,o1,o2,xtra, str(self.live)])
+        return "".join([live, name,r,o1,o2,xtra, str(self.live)])
 
     def load8bitLhsAndRhs(self, transitive=False):
         ra = registerAllocator.RA
@@ -111,8 +77,6 @@ class IR:
             # if the rhs is already in register a, then swap them
             if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr.name) == "a":
                 self.lhsAddr, self.rhsAddr = self.rhsAddr, self.lhsAddr
-                self.lhsNextUse, self.rhsNextUse = self.rhsNextUse, self.lhsNextUse
-                self.lhsLive, self.rhsLive = self.rhsLive, self.lhsLive
 
         ra.loadInA(self.lhsAddr)
 
@@ -150,8 +114,6 @@ class IR:
             # if the rhs is already in register a, then swap them
             if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr.name) == "a":
                 self.lhsAddr, self.rhsAddr = self.rhsAddr, self.lhsAddr
-                self.lhsNextUse, self.rhsNextUse = self.rhsNextUse, self.lhsNextUse
-                self.lhsLive, self.rhsLive = self.rhsLive, self.lhsLive
 
         ra.loadInHL(self.lhsAddr)
         return ra.doLoadInRegister16(self.rhsAddr, { "bc", "de" } )
@@ -371,7 +333,7 @@ class IRAssign(IR):
 
     def genCode(self):
         ra = registerAllocator.RA
-        if self.resultLive:
+        if self.live[self.resultAddr.name]:
             # Stores to register
             if self.resultAddr.type == "char":
                 if isinstance(self.lhsAddr, Constant):
@@ -434,19 +396,13 @@ class IRAssignToPointer(IR):
         super().__init__(resultAddr=lvalue, lhsAddr=rhsAddress)
         self.symbolTable = symbolTable
 
-    def updateLive(self, symbolTable, live):
-        if self.resultAddr and isinstance(self.resultAddr, SymEntry):
-            # 1
-            symEntry = symbolTable[self.resultAddr.name]
-            self.resultNextUse = symEntry.nextUse
-            self.resultLive = symEntry.live
-        if self.lhsAddr and isinstance(self.lhsAddr, SymEntry):
-            symEntry = symbolTable[self.lhsAddr.name]
-            self.lhsNextUse = symEntry.nextUse
-            self.lhsLive = symEntry.live
+    def updateLive(self, live):
+        # don't set p=DEAD for *p=... as we currently don't have a proper temporary name for *p
+        # TODO update when we do
+        if isinstance(self.lhsAddr, SymEntry):
+            self.lhsLive = live[self.lhsAddr.name]
             # 3
             live[self.lhsAddr.name] = True
-            symbolTable[self.lhsAddr.name].live = True
 
     def genCode(self):
         ra = registerAllocator.RA

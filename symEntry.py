@@ -9,10 +9,6 @@ class SymEntry:
         self.impl = None
         self.live = None
 
-    def initLive(self):
-        self.live = not self.name.startswith("temp")
-        self.nextUse = None
-
     @property
     def size(self):
         return SIZE_FOR_TYPES[self.type]

@@ -11,19 +11,18 @@ print("Parsing")
 print("=======")
 
 ast = parser.parse("""
-char bar(char *N, char *M) {
-    return *N + *M;
-}
 char foo() {
     char A;
     char B;
+    char C;
     char* p;
     A=2;
-    p=&A;
-    B=*p+*p;
-    *p=B+1;
-    bar(p, &B);
-    return A;
+    B=A;
+    C=2+A;
+    A=3;
+    *p=2;
+    *p=2;
+    B=2;
     }
 """) 
 
@@ -46,15 +45,13 @@ def mapSymbols():
                 offset -= symbol.size
                 symbol.impl = StackAddress(offset)
 
-def determineNextUse():
+def updateLive():
     for b in BASIC_BLOCKS.values():
         vars = [ s.name for s in b.symbolTable.values() ]
         live = { v: not v.startswith("temp") for v in vars }
-        for s in b.symbolTable.values():
-            s.initLive()
         for i in reversed(b.statements):
             i.live = live.copy()
-            i.updateLive(b.symbolTable, live)
+            i.updateLive(live)
 
 RA = None
 def genCode():
@@ -76,7 +73,7 @@ def genCode():
 print("AST to 3-code")
 print("=============")
 astToThreeCode(ast)
-determineNextUse()
+updateLive()
 
 print("BASIC_BLOCKS")
 pprint(BASIC_BLOCKS)
