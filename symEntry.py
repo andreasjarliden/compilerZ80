@@ -7,7 +7,6 @@ class SymEntry:
         self.type = t
         self.completeType = completeType
         self.impl = None
-        self.live = None
 
     @property
     def size(self):
