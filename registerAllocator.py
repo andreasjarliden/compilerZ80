@@ -422,11 +422,15 @@ class TestZ80RA(unittest.TestCase):
     def setUp(self):
         self.foo = SymEntry("char", "char", "foo")
         self.foo.impl = StackAddress(0)
+        self.ptr = SymEntry("char", "char", "ptr")
+        self.ptr.impl = StackAddress(2)
+        self.derefPtr = SymEntry("char", "char", "ptr")
+        self.derefPtr.impl = PointerAddress(self.ptr)
         self.bar = SymEntry("char", "char", "bar")
         self.bar.impl = StackAddress(-11)
         self.bar16 = SymEntry("char", "char", "bar16")
         self.bar16.impl = StackAddress(-2)
-        self.symbolTable = { "foo": self.foo, "bar": self.bar, "bar16": self.bar16 }
+        self.symbolTable = { "foo": self.foo, "bar": self.bar, "ptr": self.ptr, "bar16": self.bar16 }
         self.ra = Z80RegisterAllocator(StringIO(), self.symbolTable)
         self.ra.currentInstruction = IR()
         self.ra.currentInstruction.live = { "foo": True, "bar": True }
@@ -465,3 +469,56 @@ class TestZ80RA(unittest.TestCase):
         self.ra.asmFile.seek(0)
         self.assertIn("\tld\t(ix + 0), b\n", self.ra.asmFile.read())
         self.assertEqual(self.ra.registers["b"], set())
+
+    # loadInA
+
+    def test_loadInA_fromConstant(self):
+        self.ra.loadInA(Constant("char", 42));
+
+        self.ra.asmFile.seek(0)
+        self.assertIn("\tld\ta, 42\n", self.ra.asmFile.read())
+
+    def test_loadInA_fromMemory(self):
+        self.ra.loadInA(self.foo);
+
+        self.ra.asmFile.seek(0)
+        self.assertIn("\tld\ta, (ix + 0)\n", self.ra.asmFile.read())
+
+    # already in register b
+    def test_loadInA_alreadyInRegister(self):
+        self.ra.loadNameInRegister("foo", "b")
+
+        self.ra.loadInA(self.foo);
+
+        self.ra.asmFile.seek(0)
+        self.assertIn("\tld\ta, b\n", self.ra.asmFile.read())
+
+    # already in register a
+    def test_loadInA_alreadyInRegisterA(self):
+        self.ra.loadNameInRegister("foo", "a")
+
+        self.ra.loadInA(self.foo);
+
+        self.ra.asmFile.seek(0)
+        self.assertEqual("", self.ra.asmFile.read())
+
+    def test_loadInA_fromPointerInMemory(self):
+        # Just to force de to be used
+        self.ra.loadNameInRegister("foo", "bc")
+        self.ra.loadNameInRegister("foo", "hl")
+
+        self.ra.loadInA(self.derefPtr);
+
+        self.ra.asmFile.seek(0)
+        output = self.ra.asmFile.read()
+        self.assertIn("\tld\td, (ix + 3)", output)
+        self.assertIn("\tld\te, (ix + 2)", output)
+        self.assertIn("\tld\ta, (de)", output)
+
+    def test_loadInA_fromPointerInRegister(self):
+        self.ra.loadNameInRegister("ptr", "de")
+        self.ra.loadInA(self.derefPtr);
+
+        self.ra.asmFile.seek(0)
+        output = self.ra.asmFile.read()
+        self.assertEqual("\tld\ta, (de)\n", output)
