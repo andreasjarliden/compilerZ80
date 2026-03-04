@@ -58,6 +58,10 @@ class RegisterAllocator:
         # Register no longer contains anything
         self.registers[r] = set()
 
+    def removeNameForRegister(self, n, r):
+        self.registers[r].remove(n)
+        self.addresses[n].remove(r)
+
     def spillScore(self, r):
         score = 0
         print(f"Determining spill Score for {r} with live {self.currentInstruction.live}")
@@ -103,6 +107,19 @@ class RegisterAllocator:
         regs = self.addresses[name] & possibleRegisters
         if regs:
             return regs.pop()
+
+    # Like getRegisterForArg but doesn't spill
+    def decideRegisterForArg(self, name, possibleRegisters):
+        # Already loaded?
+        regs = self.addresses[name] & possibleRegisters
+        if regs:
+            return regs.pop()
+        # No, pick one of the free registers
+        regs = self.freeRegisters & possibleRegisters
+        if regs:
+            return regs.pop()
+        # No free, have to spill
+        return self.bestRegisterToSpill(possibleRegisters)
 
     # TODO this does not register the name as loaded in the register, maybe it
     # should. Maybe this should be private and there should be public version
@@ -254,6 +271,19 @@ class Z80RegisterAllocator(RegisterAllocator):
             self.asmFile.write(f"\tld\t(ix + {offset+1}), {r[0]}\n")
             self.asmFile.write(f"\tld\t(ix + {offset}), {r[1]}\n")
 
+    # E.g. ld a, (de)
+    def writeAsmLoadRegisterFromPointer(self, r, rp, pointerName):
+        if len(r) == 1:
+            self.asmFile.write(f'\tld\t{r}, ({rp})\n')
+        elif len(r) == 2:
+            self.asmFile.write(f'\tld\t{r[1]}, ({rp})\n')
+            self.asmFile.write(f'\tinc\t{rp}\n')
+            self.asmFile.write(f'\tld\t{r[0]}, ({rp})\n')
+            if self.currentInstruction.live[pointerName]:
+                self.asmFile.write(f'\tdec\t{rp}\n')
+            else:
+                self.removeNameForRegister(pointerName, rp)
+
     def loadInA(self, address):
         return self.doLoadInRegister8(address, { "a" } )
 
@@ -263,7 +293,7 @@ class Z80RegisterAllocator(RegisterAllocator):
             self.asmFile.write(f'\tld\t{regX}, {address.value}\n')
             return regX
         elif isinstance(address.impl, PointerAddress):
-            regY = self.isInRegister(address.name, { "bc", "de", "hl" })
+            regY = self.isInRegister(address.impl.pointer.name, { "bc", "de", "hl" })
             if not regY:
                 print(f"Must be loaded from address.impl.pointer {address.impl.pointer}")
                 name = address.impl.pointer.name 
@@ -272,12 +302,10 @@ class Z80RegisterAllocator(RegisterAllocator):
                 self.loadNameInRegister(name, regY)
             # TODO we are really storing *p to regX which we don't have a
             # proper name for yet. Probably why this code should move into
-            # IRDereference.  Therefore, we have to explicitly spill the
-            # register so we don't use it under the wrong name. This is similar
-            # to constants.
+            # IRDereference.
             regX = self.getTemporaryRegister(possibleRegisters)
-            self.spillRegister(regX)
-            self.asmFile.write(f'\tld\t{regX}, ({regY})\n')
+            # ld regX, (regY)
+            self.writeAsmLoadRegisterFromPointer(regX, regY, address.impl.pointer.name)
             return regX
         else:
             regY = self.isInRegister(address.name, possibleRegisters)
@@ -288,8 +316,7 @@ class Z80RegisterAllocator(RegisterAllocator):
             if regY:
                 self.asmWriter.loadRegisterWithRegister(regX, regY)
             else:
-                regX = self.getRegisterForArg(address.name, possibleRegisters)
-                self.asmFile.write(f'\tld\t{regX}, {address.impl.codeArg()}\n')
+                self.asmWriter.loadRegisterWithAddress(regX, address.impl)
             self.loadNameInRegister(address.name, regX)
             return regX
 
@@ -297,32 +324,27 @@ class Z80RegisterAllocator(RegisterAllocator):
         # Is constant?
         if isinstance(address, Constant):
             # TODO what address to write for the value? Just spill a random register for now
-            regX = next(iter(possibleRegisters))
-            self.spillRegister(regX)
+            regX = self.getTemporaryRegister(possibleRegisters)
             self.asmFile.write(f'\tld\t{regX}, {address.value}\n')
             return regX
         elif isinstance(address.impl, PointerAddress):
-            # TODO possibleRegisters only applies for regX, we should look in all registers for the pointer
-            regY = self.isInRegister(address.name, possibleRegisters)
+            regY = self.isInRegister(address.impl.pointer.name, { "bc", "de", "hl" })
+            # This is the dereferenced address (equal to the ptr for now)
+            regX = self.decideRegisterForArg(address.name)
             if not regY:
                 print(f"Must be loaded from address.impl.pointer {address.impl.pointer}")
                 name = address.impl.pointer.name 
-                regY = self.getRegisterForArg(name, { "bc", "de", "hl" } )
+                # Don't use the register we will load to
+                regY = self.getRegisterForArg(name, { "bc", "de", "hl" } - regX)
                 self.asmWriter.loadRegisterWithAddress(regY, address.impl.pointer.impl)
                 self.loadNameInRegister(name, regY)
+            # TODO we are really storing *p to regX which we don't have a
+            # proper name for yet. Probably why this code should move into
+            # IRDereference.
             # Carefull not to spill the register we are loading from
-            regX = self.getRegisterForArg(address.name, possibleRegisters - { regY } )
-            # TODO address.name is e.g. p, but we are really storing *p to regX
-            # which we don't have a proper name for yet. Properly why this code
-            # should move into IRDereference.  Therefore, we have to explicitly
-            # spill the register so we don't use it under the wrong name. This
-            # is similar to constants.
-            self.spillRegister(regX)
-            self.asmFile.write(f'\tld\t{regX[1]}, ({regY})\n')
-            self.asmFile.write(f'\tinc\t{regY}\n')
-            self.asmFile.write(f'\tld\t{regX[0]}, ({regY})\n')
-            if self.currentInstruction.live[address.name]:
-                self.asmFile.write(f'\tdec\t{regY}\n')
+            regX = self.getTemporaryRegister(possibleRegisters - { regY } )
+            # ld regX, (regY)
+            self.writeAsmLoadRegisterFromPointer(regX, regY, address.impl.pointer.name)
             return regX
         else:
             regY = self.isInRegister(address.name, possibleRegisters)
@@ -340,7 +362,7 @@ class Z80RegisterAllocator(RegisterAllocator):
             # TODO what address to write for the value?
             self.asmFile.write(f'\tld\thl, {address.value}\n')
         elif isinstance(address.impl, PointerAddress):
-            regY = self.isInRegister(address.name, { "bc", "de", "hl" })
+            regY = self.isInRegister(address.impl.pointer.name, { "bc", "de", "hl" })
             print(f"loadInHL looking for {address} ra {self}")
             if not regY:
                 print(f"Must be loaded from address.impl.pointer {address.impl.pointer}")
@@ -351,22 +373,12 @@ class Z80RegisterAllocator(RegisterAllocator):
             # If the pointer is in HL (likely), transfer it to bc or de since
             # we are loading the dereferenced value into hl
             if regY == "hl":
-                regY = self.getRegisterForArg(address.name, { "bc", "de" } )
+                regY = self.getRegisterForArg(address.impl.pointer.name, { "bc", "de" } )
                 self.asmWriter.loadRegisterWithRegister(regY, "hl")
                 self.loadNameInRegister(address.name, regY)
-            # TODO address.name is e.g. p, but we are really storing *p to hl
-            # which we don't have a proper name for yet. Properly why this code
-            # should move into IRDereference.  Therefore, we have to explicitly
-            # spill the register so we don't use it under the wrong name. This
-            # is similar to constants.
-            # regX = self.getRegisterForArg(address.name, { "hl" } )
-            regX = "hl"
-            self.spillRegister("hl")
-            self.asmFile.write(f'\tld\t{regX[1]}, ({regY})\n')
-            self.asmFile.write(f'\tinc\t{regY}\n')
-            self.asmFile.write(f'\tld\t{regX[0]}, ({regY})\n')
-            if self.currentInstruction.live[address.name]:
-                self.asmFile.write(f'\tdec\t{regY}\n')
+            regX = self.getTemporaryRegister({ "hl" })
+            # ld regX, (regY)
+            self.writeAsmLoadRegisterFromPointer(regX, regY, address.impl.pointer.name)
         else:
             # Get register hl, spilling if needed
             regY = self.getRegisterForArg(address.name, { "hl" })
@@ -388,10 +400,12 @@ class TestZ80RA(unittest.TestCase):
     def setUp(self):
         self.foo = SymEntry("char", "char", "foo")
         self.foo.impl = StackAddress(0)
-        self.ptr = SymEntry("char", "char", "ptr")
+        self.ptr = SymEntry("int", "int", "ptr")
         self.ptr.impl = StackAddress(2)
         self.derefPtr = SymEntry("char", "char", "ptr")
         self.derefPtr.impl = PointerAddress(self.ptr)
+        self.derefPtr16 = SymEntry("int", "int", "ptr")
+        self.derefPtr16.impl = PointerAddress(self.ptr)
         self.bar = SymEntry("char", "char", "bar")
         self.bar.impl = StackAddress(-11)
         self.bar16 = SymEntry("char", "char", "bar16")
@@ -399,7 +413,7 @@ class TestZ80RA(unittest.TestCase):
         self.symbolTable = { "foo": self.foo, "bar": self.bar, "ptr": self.ptr, "bar16": self.bar16 }
         self.ra = Z80RegisterAllocator(StringIO(), self.symbolTable)
         self.ra.currentInstruction = IR()
-        self.ra.currentInstruction.live = { "foo": True, "bar": True }
+        self.ra.currentInstruction.live = { "foo": True, "bar": True, "ptr": True }
 
     def test_loadInA_alreadyLoaded(self):
         self.ra.loadNameInRegister("foo", "a")
@@ -488,3 +502,48 @@ class TestZ80RA(unittest.TestCase):
         self.ra.asmFile.seek(0)
         output = self.ra.asmFile.read()
         self.assertEqual("\tld\ta, (de)\n", output)
+
+    # loadInHL
+
+    def test_loadInHL_fromPointerInRegister(self):
+        self.ra.loadNameInRegister("ptr", "de")
+        self.ra.loadInHL(self.derefPtr16);
+
+        self.ra.asmFile.seek(0)
+        output = self.ra.asmFile.read()
+        self.assertIn("\tld\tl, (de)\n", output)
+        self.assertIn("\tinc\tde\n", output)
+        self.assertIn("\tld\th, (de)\n", output)
+        self.assertIn("\tdec\tde\n", output)
+
+    def test_loadInHL_fromPointerInRegisterWhichIsDead(self):
+        self.ra.loadNameInRegister("ptr", "de")
+        self.ra.currentInstruction.live["ptr"] = False
+        self.ra.loadInHL(self.derefPtr16);
+
+        self.ra.asmFile.seek(0)
+        output = self.ra.asmFile.read()
+        # No need to restore the pointer
+        self.assertNotIn("\tdec\tde\n", output)
+        self.assertFalse(self.ra.isInRegiser("ptr", { "de" }))
+        # TODO also check that we don't ruin the register if it also stores a different name
+
+    def test_loadInHL_fromPointerInHL(self):
+        # Just to force de to be used
+        self.ra.loadNameInRegister("foo", "bc")
+        self.ra.loadNameInRegister("ptr", "hl")
+        self.ra.loadInHL(self.derefPtr16);
+
+        self.ra.asmFile.seek(0)
+        output = self.ra.asmFile.read()
+        print(output)
+        # Expect copy pointer in hl to de
+        self.assertIn("\tld\td, h\n", output)
+        self.assertIn("\tld\te, l\n", output)
+        # Expect spilling of hl to ptr
+        self.assertIn("\tld\t(ix + 3), h\n", output)
+        self.assertIn("\tld\t(ix + 2), l\n", output)
+        # Expect loading hl from (de)
+        self.assertIn("\tld\tl, (de)\n", output)
+        self.assertIn("\tinc\tde\n", output)
+        self.assertIn("\tld\th, (de)\n", output)
