@@ -255,50 +255,11 @@ class Z80RegisterAllocator(RegisterAllocator):
             self.asmFile.write(f"\tld\t(ix + {offset}), {r[1]}\n")
 
     def loadInA(self, address):
-        # Is constant?
-        if isinstance(address, Constant):
-            self.spillRegister("a")
-            # TODO what address should we write for the value?
-            self.asmFile.write(f'\tld\ta, {address.value}\n')
-            return
-        elif isinstance(address.impl, PointerAddress):
-            regY = self.isInRegister(address.name, { "bc", "de", "hl" })
-            print(f"loadInA looking for {address.name} ra {self}")
-            if not regY:
-                print(f"Must be loaded from address.impl.pointer {address.impl.pointer}")
-                name = address.impl.pointer.name 
-                regY = self.getRegisterForArg(name, { "bc", "de", "hl" } )
-                self.asmWriter.loadRegisterWithAddress(regY, address.impl.pointer.impl)
-                self.loadNameInRegister(name, regY)
-            regX = self.getRegisterForArg(address.name, { "a" } )
-            # TODO address.name is e.g. p, but we are really storing *p to regX
-            # which we don't have a proper name for yet. Properly why this code
-            # should move into IRDereference.  Therefore, we have to explicitly
-            # spill the register so we don't use it under the wrong name. This
-            # is similar to constants.
-            self.spillRegister(regX)
-            self.asmFile.write(f'\tld\t{regX}, ({regY})\n')
-        else:
-            # Get register a, spilling if needed
-            regY = self.getRegisterForArg(address.name, { "a" })
-            # Already loaded?
-            if address.name not in self.registers[regY]:
-                # No, already in a register?
-                inReg = self.isInRegister(address.name, { "b", "c", "d", "e", "h", "l" })
-                if inReg:
-                    # Yes, just move register
-                    self.asmFile.write(f'\tld\ta, {inReg}\n')
-                    self.loadNameInRegister(address.name, "a")
-                else:
-                    # No, load from memory
-                    self.asmWriter.loadRegisterWithAddress(regY, address.impl)
-                    self.loadNameInRegister(address.name, regY)
-            return regY
+        return self.doLoadInRegister8(address, { "a" } )
 
     def doLoadInRegister8(self, address, possibleRegisters):
         if isinstance(address, Constant):
-            # TODO what address should we write for the value?
-            regX = self.getRegisterForArg(address.name, possibleRegisters)
+            regX = self.getTemporaryRegister(possibleRegisters)
             self.asmFile.write(f'\tld\t{regX}, {address.value}\n')
             return regX
         elif isinstance(address.impl, PointerAddress):
@@ -309,23 +270,28 @@ class Z80RegisterAllocator(RegisterAllocator):
                 regY = self.getRegisterForArg(name, { "bc", "de", "hl" } )
                 self.asmWriter.loadRegisterWithAddress(regY, address.impl.pointer.impl)
                 self.loadNameInRegister(name, regY)
-            # TODO address.name is e.g. p, but we are really storing *p to regX
-            # which we don't have a proper name for yet. Properly why this code
-            # should move into IRDereference.  Therefore, we have to explicitly
-            # spill the register so we don't use it under the wrong name. This
-            # is similar to constants.
-            regX = self.getRegisterForArg(address.name, possibleRegisters)
+            # TODO we are really storing *p to regX which we don't have a
+            # proper name for yet. Probably why this code should move into
+            # IRDereference.  Therefore, we have to explicitly spill the
+            # register so we don't use it under the wrong name. This is similar
+            # to constants.
+            regX = self.getTemporaryRegister(possibleRegisters)
             self.spillRegister(regX)
             self.asmFile.write(f'\tld\t{regX}, ({regY})\n')
             return regX
         else:
             regY = self.isInRegister(address.name, possibleRegisters)
-            if not regY:
+            if regY:
+                return regY
+            regX = self.getRegisterForArg(address.name, possibleRegisters)
+            regY = self.isInRegister(address.name, { "a", "b", "c", "d", "e", "h", "l" } )
+            if regY:
+                self.asmWriter.loadRegisterWithRegister(regX, regY)
+            else:
                 regX = self.getRegisterForArg(address.name, possibleRegisters)
                 self.asmFile.write(f'\tld\t{regX}, {address.impl.codeArg()}\n')
-                self.loadNameInRegister(address.name, regX)
-                return regX
-            return regY
+            self.loadNameInRegister(address.name, regX)
+            return regX
 
     def doLoadInRegister16(self, address, possibleRegisters):
         # Is constant?
