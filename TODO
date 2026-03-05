@@ -1,8 +1,5 @@
-- Remove duplication between loadInHl and doLoadInRegister16
-- Add abstractions for assembler patterns, e.g. copying between registers,
-  loading to register from memory etc. Should make it easier to write generic
-  code between 8/16 bits.
-- Use proper names for dereferenced pointers and values.
+- also check that we don't ruin the register if it also stores a different name
+- remove duplication between doLoadRegister8 and 16
 - Cleanup register allocator.
 - More unit tests.
 - Move more code generation to IRDereferenced?

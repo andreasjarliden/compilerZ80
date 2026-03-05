@@ -232,17 +232,16 @@ class Dereference:
 
     def visit(self):
         pointer = self.expr.visit()
-        # TODO is it necessary to copy it?
-        resAddr = copy(pointer)
-        print(f"Dereference: created code for pointer receiving {self.expr} address {resAddr}")
-        resAddr.completeType = resAddr.completeType[1:] # remove leading *
-        if resAddr.completeType.startswith("*"):
-            resAddr.type = "int"
+        print(f"Dereference: created code for pointer receiving {self.expr} address {pointer}")
+        ct = pointer.completeType[1:] # remove leading *
+        if pointer.completeType.startswith("*"):
+            t = "int"
         else:
-            resAddr.type = resAddr.completeType
-        resAddr.impl = PointerAddress(pointer)
-        addIR(IRDereference(resAddr, currentSymbolTable()))
-        return resAddr
+            t = ct
+        deref = IRDereference(pointer, addTemporary(t, ct), currentSymbolTable())
+        addIR(deref)
+        deref.resultAddr.impl = PointerAddress(pointer)
+        return deref.resultAddr
 
 class FunctionCall:
     def __init__(self, name, arguments=[]):

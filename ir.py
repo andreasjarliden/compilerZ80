@@ -317,8 +317,8 @@ class IRAddressOf(IR):
         ra.loadNameInRegister(self.resultAddr.name, regX)
 
 class IRDereference(IR):
-    def __init__(self, symEntry, symbolTable):
-        super().__init__(lhsAddr=symEntry)
+    def __init__(self, symEntry, resAddr, symbolTable):
+        super().__init__(resultAddr=resAddr, lhsAddr=symEntry)
         self.symbolTable = symbolTable
 
     def genCode(self):
