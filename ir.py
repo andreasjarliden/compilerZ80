@@ -394,14 +394,6 @@ class IRAssignToPointer(IR):
         super().__init__(resultAddr=lvalue, lhsAddr=rhsAddress)
         self.symbolTable = symbolTable
 
-    def updateLive(self, live):
-        # don't set p=DEAD for *p=... as we currently don't have a proper temporary name for *p
-        # TODO update when we do
-        if isinstance(self.lhsAddr, SymEntry):
-            self.lhsLive = live[self.lhsAddr.name]
-            # 3
-            live[self.lhsAddr.name] = True
-
     def genCode(self):
         ra = registerAllocator.RA
 

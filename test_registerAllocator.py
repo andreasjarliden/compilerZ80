@@ -214,6 +214,15 @@ class TestZ80RA(unittest.TestCase):
         self.assertFalse(self.ra.isInRegiser("ptr", { "de" }))
         # TODO also check that we don't ruin the register if it also stores a different name
 
+    def test_loadInHL_fromOtherRegister(self):
+        self.ra.loadNameInRegister("foo", "de")
+        self.ra.loadInHL(self.foo);
+
+        self.ra.asmFile.seek(0)
+        output = self.ra.asmFile.read()
+        self.assertIn("\tld\th, d\n", output)
+        self.assertIn("\tld\tl, e\n", output)
+
     def test_loadInHL_fromPointerInHL(self):
         # Just to force de to be used
         self.ra.loadNameInRegister("foo", "bc")

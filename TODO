@@ -1,5 +1,4 @@
 - also check that we don't ruin the register if it also stores a different name
-- remove duplication between doLoadRegister8 and 16
 - Cleanup register allocator.
 - More unit tests.
 - Move more code generation to IRDereferenced?

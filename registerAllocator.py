@@ -212,49 +212,27 @@ class Z80RegisterAllocator(RegisterAllocator):
     def loadInA(self, address):
         return self.doLoadInRegister8(address, { "a" } )
 
+    def loadInHL(self, address):
+        return self.doLoadInRegister16(address, { "hl" })
+
     def doLoadInRegister8(self, address, possibleRegisters):
-        if isinstance(address, Constant):
-            regX = self.getTemporaryRegister(possibleRegisters)
-            self.asmFile.write(f'\tld\t{regX}, {address.value}\n')
-            return regX
-        elif isinstance(address.impl, PointerAddress):
-            regY = self.isInRegister(address.impl.pointer.name, { "bc", "de", "hl" })
-            if not regY:
-                name = address.impl.pointer.name 
-                regY = self.getRegisterForArg(name, { "bc", "de", "hl" } )
-                self.asmWriter.loadRegisterWithAddress(regY, address.impl.pointer.impl)
-                self.loadNameInRegister(name, regY)
-            regX = self.getRegisterForArg(address.name, possibleRegisters)
-            # ld regX, (regY)
-            self.writeAsmLoadRegisterFromPointer(regX, regY, address.impl.pointer.name)
-            return regX
-        else:
-            regY = self.isInRegister(address.name, possibleRegisters)
-            if regY:
-                return regY
-            regX = self.getRegisterForArg(address.name, possibleRegisters)
-            regY = self.isInRegister(address.name, { "a", "b", "c", "d", "e", "h", "l" } )
-            if regY:
-                self.asmWriter.loadRegisterWithRegister(regX, regY)
-            else:
-                self.asmWriter.loadRegisterWithAddress(regX, address.impl)
-            self.loadNameInRegister(address.name, regX)
-            return regX
+        return self.doLoadInRegister(address, possibleRegisters, { "a", "b", "c", "d", "e", "h", "l" }, { "bc", "de", "hl" })
 
     def doLoadInRegister16(self, address, possibleRegisters):
-        # Is constant?
+        return self.doLoadInRegister(address, possibleRegisters, { "bc", "de", "hl" }, { "bc", "de", "hl" })
+
+    def doLoadInRegister(self, address, possibleRegisters, allRegisters, allPointerRegisters):
         if isinstance(address, Constant):
             regX = self.getTemporaryRegister(possibleRegisters)
             self.asmFile.write(f'\tld\t{regX}, {address.value}\n')
             return regX
         elif isinstance(address.impl, PointerAddress):
-            regY = self.isInRegister(address.impl.pointer.name, { "bc", "de", "hl" })
-            # This is the dereferenced address (equal to the ptr for now)
+            regY = self.isInRegister(address.impl.pointer.name, allPointerRegisters)
             regX = self.decideRegisterForArg(address.name, possibleRegisters)
             if not regY:
                 name = address.impl.pointer.name 
                 # Don't use the register we will load to
-                regY = self.getRegisterForArg(name, { "bc", "de", "hl" } - { regX })
+                regY = self.getRegisterForArg(name, allPointerRegisters - { regX })
                 self.asmWriter.loadRegisterWithAddress(regY, address.impl.pointer.impl)
                 self.loadNameInRegister(name, regY)
             # Are we loading from the same register that we're loading from?
@@ -262,7 +240,7 @@ class Z80RegisterAllocator(RegisterAllocator):
             # (It is common that the pointer is already in HL and that we must load into HL)
             elif regX == regY:
                 name = address.impl.pointer.name 
-                regY2 = self.getRegisterForArg(address.impl.pointer.name, { "bc", "de", "hl" } - { regX } )
+                regY2 = self.getRegisterForArg(address.impl.pointer.name, allPointerRegisters - { regX } )
                 self.asmWriter.loadRegisterWithRegister(regY2, regY)
                 self.loadNameInRegister(address.name, regY2)
                 regY = regY2
@@ -274,14 +252,16 @@ class Z80RegisterAllocator(RegisterAllocator):
             return regX
         else:
             regY = self.isInRegister(address.name, possibleRegisters)
-            if not regY:
-                regX = self.getRegisterForArg(address.name, possibleRegisters)
+            if regY:
+                return regY
+            regX = self.getRegisterForArg(address.name, possibleRegisters)
+            regY = self.isInRegister(address.name, allRegisters )
+            if regY:
+                self.asmWriter.loadRegisterWithRegister(regX, regY)
+            else:
                 self.asmWriter.loadRegisterWithAddress(regX, address.impl)
-                self.loadNameInRegister(address.name, regX)
-                return regX
-            return regY
+            self.loadNameInRegister(address.name, regX)
+            return regX
 
-    def loadInHL(self, address):
-        return self.doLoadInRegister16(address, { "hl" })
 
 
