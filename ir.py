@@ -3,7 +3,8 @@ from symEntry import *
 import registerAllocator
 from asmWriter import *
 
-asmFile = open("a.asm", "w")
+# TODO maybe add asmWriter.write and then we can only use asmWriter
+asmFile = None
 asmWriter = AsmWriter(asmFile)
 
 IR_FUNCTIONS = []
@@ -24,6 +25,7 @@ class IR:
         self.resultAddr=resultAddr
         self.lhsAddr=lhsAddr
         self.rhsAddr=rhsAddr
+        self.live = {}
 
     @property
     def exprAddr(self):
@@ -335,11 +337,13 @@ class IRAssign(IR):
 
     def genCode(self):
         ra = registerAllocator.RA
+        print(f"IRAssign {self}")
         if self.live[self.resultAddr.name]:
             # Stores to register
             if self.resultAddr.type == "char":
                 if isinstance(self.lhsAddr, Constant):
                     reg = ra.getRegisterForArg(self.resultAddr.name, { "a", "b", "c", "d", "e", "h", "l" })
+                    print(f"Assigning to {reg} {asmFile}")
                     asmFile.write(f'\tld\t{reg}, {self.lhsAddr.value}\n')
                 else:
                     reg = ra.doLoadInRegister8(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" })

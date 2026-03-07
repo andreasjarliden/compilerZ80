@@ -1,7 +1,12 @@
 from pprint import pprint
-from ir import *
+import ir
+# from ir import *
 from parser import *
 import registerAllocator
+
+asmFile = open("a.asm", "w")
+ir.asmFile = asmFile
+ir.asmWriter = AsmWriter(ir.asmFile)
 
 # Add external functions
 addSymbolEntry("printHex16", Function("void", "printHex16", [], [Argument("int", None)]))
