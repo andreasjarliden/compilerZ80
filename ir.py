@@ -83,10 +83,11 @@ class IR:
         ra.loadInA(self.lhsAddr)
 
         # TODO shouldn't this be replaced with doLoadInRegister8?
+        # No, that loads into a register, but we often want just an argument
         if isinstance(self.rhsAddr, Constant):
             return self.rhsAddr.value
         elif isinstance(self.rhsAddr.impl, PointerAddress):
-            # Must have the pointer in hl (or ix/iy)
+            # Must have the pointer in hl (or ix/iy). bc & de not supported by Z80
             regZ = ra.getRegisterForArg(self.rhsAddr.name, { "hl" })
             if not regZ:
                 otherReg = ra.isInRegister(self.rhsAddr.name, { "bc", "de" })
@@ -100,7 +101,7 @@ class IR:
                     # Load pointer from memory
                     asmWriter.loadRegisterWithAddress("hl", self.rhsAddr.impl)
             return "(hl)"
-        elif ra.isInRegister(self.rhsAddr.name) or self.rhsNextUse:
+        elif ra.isInRegister(self.rhsAddr.name) or self.live[self.rhsAddr.name]:
             regZ = ra.getRegisterForArg(self.rhsAddr.name, { "b", "c", "d", "e", "h", "l" })
             if self.rhsAddr.name not in ra.registers[regZ]:
                 asmWriter.loadRegisterWithAddress(regZ, self.rhsAddr.impl)
