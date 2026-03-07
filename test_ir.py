@@ -109,6 +109,23 @@ class TestIR(unittest.TestCase):
         self.assertFalse(registerAllocator.RA.isInRegister("bar"))
         self.assertFalse(registerAllocator.RA.isInRegister("baz"))
 
+    # Load the rhs via register from memory as the rhs will be used again
+    def test_IRAdd_rhsViaRegister(self):
+        # foo = bar + baz
+        ira = ir.IRAdd(self.foo, self.bar, self.baz)
+        ira.live[self.foo.name] = True
+        ira.live[self.bar.name] = False # Not necessary to spill bar
+        ira.live[self.baz.name] = True # bas will be used later so makes sense to load in register
+        registerAllocator.RA.currentInstruction = ira
+        ira.genCode()
+
+        ir.asmFile.seek(0)
+        output = ir.asmFile.read()
+        self.assertIn("\tld\ta, (ix + 2)", output)
+        self.assertRegex(output, r"ld\t., \(ix \+ 3\)")
+        self.assertEqual(registerAllocator.RA.isInRegister("foo"), "a")
+        self.assertFalse(registerAllocator.RA.isInRegister("bar"))
+        self.assertTrue(registerAllocator.RA.isInRegister("baz"))
 
     # lhs is in another register, rhs is a constant
     def test_IRAdd_rhsIsConstant(self):
@@ -134,9 +151,9 @@ class TestIR(unittest.TestCase):
 
         # foo = bar + 42
         ira = ir.IRAdd(self.foo, self.bar, self.derefPtr)
-        ira.live[self.foo.name] = True
-        ira.live[self.bar.name] = False # Not necessary to spill bar
-        ira.live[self.ptr.name] = False # No more use for ptr
+        ira.live["foo"] = True
+        ira.live["bar"] = False # Not necessary to spill bar
+        ira.live["ptr"] = False # No more use for ptr
         registerAllocator.RA.currentInstruction = ira
         ira.genCode()
 
@@ -144,12 +161,32 @@ class TestIR(unittest.TestCase):
         output = ir.asmFile.read()
         self.assertEqual(output, "\tadd\ta, (hl)\n")
         self.assertEqual(registerAllocator.RA.isInRegister("foo"), "a")
-        self.assertFalse(registerAllocator.RA.isInRegister("ptr"))
+        self.assertEqual(registerAllocator.RA.isInRegister("ptr"), "hl")
 
     # Load rhs via pointer already in other register
     def test_IRAdd_rhsIsPointerInOtherRegister(self):
         registerAllocator.RA.loadNameInRegister("bar", "a")
         registerAllocator.RA.loadNameInRegister("ptr", "de")
+
+        # foo = bar + 42
+        ira = ir.IRAdd(self.foo, self.bar, self.derefPtr)
+        ira.live["foo"] = True
+        ira.live["bar"] = False # Not necessary to spill bar
+        ira.live["ptr"] = False # No more use for ptr
+        registerAllocator.RA.currentInstruction = ira
+        ira.genCode()
+
+        ir.asmFile.seek(0)
+        output = ir.asmFile.read()
+        self.assertIn("\tld\th, d\n", output)
+        self.assertIn("\tld\tl, e\n", output)
+        self.assertIn("\tadd\ta, (hl)\n", output)
+        self.assertEqual(registerAllocator.RA.isInRegister("foo"), "a")
+        self.assertEqual(registerAllocator.RA.addresses["ptr"], {"ptr", "hl", "de"})
+
+    # Load rhs via pointer that must be loaded from memory
+    def test_IRAdd_rhsIsPointerFromMemory(self):
+        registerAllocator.RA.loadNameInRegister("bar", "a")
 
         # foo = bar + 42
         ira = ir.IRAdd(self.foo, self.bar, self.derefPtr)
@@ -161,9 +198,12 @@ class TestIR(unittest.TestCase):
 
         ir.asmFile.seek(0)
         output = ir.asmFile.read()
-        self.assertEqual(output, "\tadd\ta, (hl)\n")
+        self.assertIn("\tld\th, (ix + 5)\n", output)
+        self.assertIn("\tld\tl, (ix + 4)\n", output)
+        self.assertIn("\tadd\ta, (hl)\n", output)
         self.assertEqual(registerAllocator.RA.isInRegister("foo"), "a")
-        self.assertEqual(registerAllocator.RA.addresses["ptr"], {"ptr", "hl", "de"})
+        self.assertEqual(registerAllocator.RA.addresses["ptr"], {"ptr", "hl"})
+
 
 
 

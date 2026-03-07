@@ -1,6 +1,6 @@
+- Test IRAssign
 - also check that we don't ruin the register if it also stores a different name
 - Cleanup register allocator.
-- More unit tests.
 - Move more code generation to IRDereferenced?
 - With the Z80 we constantly have to spill A and HL although there are free
   register.  Consider spilling to other registers for live variables

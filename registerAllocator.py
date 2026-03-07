@@ -63,6 +63,12 @@ class RegisterAllocator:
         self.registers[r].remove(n)
         self.addresses[n].remove(r)
 
+    def removeName(self, n):
+        registers = self.addresses[n] & ALL_REGISTERS;
+        for r in registers:
+            self.registers[r].remove(n)
+        self.addresses[n] = set()
+
     def spillScore(self, r):
         score = 0
         print(f"Determining spill Score for {r} with live {self.currentInstruction.live}")

@@ -72,6 +72,36 @@ class IR:
         xtra = self.extraDescription()
         return "".join([live, name,r,o1,o2,xtra, str(self.live)])
 
+    # Similar to doLoadInRegister8 but only prepares the rhs for an assembler
+    # instruction. Not loading to a register.
+    # TODO: Move to registerAllocator?
+    def loadRhs8(self, rhsAddr):
+        ra = registerAllocator.RA
+        if isinstance(rhsAddr, Constant):
+            return rhsAddr.value
+        elif isinstance(rhsAddr.impl, PointerAddress):
+            # Must have the pointer in hl (or ix/iy). bc & de not supported by Z80
+            regZ = ra.isInRegister(rhsAddr.impl.pointer.name, { "hl" })
+            # Already in hl?
+            if not regZ:
+                otherReg = ra.isInRegister(rhsAddr.impl.pointer.name, { "bc", "de" })
+                if otherReg:
+                    # Copy from other register
+                    asmWriter.loadRegisterWithRegister("hl", otherReg)
+                else:
+                    # Load pointer from memory
+                    asmWriter.loadRegisterWithAddress("hl", rhsAddr.impl.pointer.impl)
+                ra.loadNameInRegister(rhsAddr.impl.pointer.name, "hl")
+            return "(hl)"
+        elif ra.isInRegister(rhsAddr.name) or self.live[self.rhsAddr.name]:
+            regZ = ra.getRegisterForArg(rhsAddr.name, { "b", "c", "d", "e", "h", "l" })
+            if rhsAddr.name not in ra.registers[regZ]:
+                asmWriter.loadRegisterWithAddress(regZ, rhsAddr.impl)
+                ra.loadNameInRegister(rhsAddr.name, regZ)
+            return regZ
+        else:
+            return rhsAddr.impl.codeArg()
+
     def load8bitLhsAndRhs(self, transitive=False):
         ra = registerAllocator.RA
 
@@ -81,41 +111,14 @@ class IR:
                 self.lhsAddr, self.rhsAddr = self.rhsAddr, self.lhsAddr
 
         ra.loadInA(self.lhsAddr)
-
-        # TODO shouldn't this be replaced with doLoadInRegister8?
-        # No, that loads into a register, but we often want just an argument
-        if isinstance(self.rhsAddr, Constant):
-            return self.rhsAddr.value
-        elif isinstance(self.rhsAddr.impl, PointerAddress):
-            # Must have the pointer in hl (or ix/iy). bc & de not supported by Z80
-            regZ = ra.getRegisterForArg(self.rhsAddr.name, { "hl" })
-            if not regZ:
-                otherReg = ra.isInRegister(self.rhsAddr.name, { "bc", "de" })
-                if otherReg:
-                    # Copy from other register
-                    asmWriter.loadRegisterWithRegister("hl", otherReg)
-                    # TODO this name should really be p, not *p. How to keep
-                    # track of this if we use proper names for dereferences?
-                    ra.loadNameInRegister(self.rhsAddr.name, "hl")
-                else:
-                    # Load pointer from memory
-                    asmWriter.loadRegisterWithAddress("hl", self.rhsAddr.impl)
-            return "(hl)"
-        elif ra.isInRegister(self.rhsAddr.name) or self.live[self.rhsAddr.name]:
-            regZ = ra.getRegisterForArg(self.rhsAddr.name, { "b", "c", "d", "e", "h", "l" })
-            if self.rhsAddr.name not in ra.registers[regZ]:
-                asmWriter.loadRegisterWithAddress(regZ, self.rhsAddr.impl)
-                ra.loadNameInRegister(self.rhsAddr.name, regZ)
-            return regZ
-        else:
-            return self.rhsAddr.impl.codeArg()
+        return self.loadRhs8(self.rhsAddr)
 
     def load16bitLhsAndRhs(self, transitive=False):
         ra = registerAllocator.RA
 
         if transitive:
             # if the rhs is already in register a, then swap them
-            if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr.name) == "a":
+            if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr.name) == "hl":
                 self.lhsAddr, self.rhsAddr = self.rhsAddr, self.lhsAddr
 
         ra.loadInHL(self.lhsAddr)
@@ -161,6 +164,8 @@ class IRFunExit(IR):
         self.symbolTable = symbolTable
 
     def genCode(self):
+        ra = registerAllocator.RA
+        ra.spillAll()
         asmFile.write(f"{self.function.name}_exit:\n")
         global IR_FUNCTION
         IR_FUNCTION=None
@@ -418,16 +423,19 @@ class IRAssignToPointer(IR):
                 asmFile.write(f'\tld\t({regX}), {self.lhsAddr.value >> 8 & 0xff}\n')
                 if self.live[self.resultAddr.name]:
                     asmFile.write(f'\tdec\t{regX}\n')
+                else:
+                    ra.removeNameForRegister(self.resultAddr.name, regX)
             else:
                 print(f"IRAssignToPointer resultAddr {self.resultAddr} ra {ra}")
-                # TODO: This might spill regX again!
-                regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } ) 
                 regY = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } )
+                regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } - {regY}) 
                 asmFile.write(f'\tld\t({regX}), {regY[1]}\n')
                 asmFile.write(f'\tinc\t{regX}\n')
                 asmFile.write(f'\tld\t({regX}), {regY[0]}\n')
                 if self.live[self.resultAddr.name]:
                     asmFile.write(f'\tdec\t{regX}\n')
+                else:
+                    ra.removeNameForRegister(self.resultAddr.name, regX)
         else:
             error()
 
@@ -438,6 +446,7 @@ class IRAdd(IR):
 
     def genCode(self):
         ra = registerAllocator.RA
+        ra.removeName(self.resultAddr.name)
         if self.lhsAddr.type == "char":
             regZ = self.load8bitLhsAndRhs(transitive=True)
             ra.spillRegister("a")
@@ -445,7 +454,6 @@ class IRAdd(IR):
             ra.loadNameInRegister(self.resultAddr.name, "a")
         elif self.lhsAddr.type == "int":
             regZ = self.load16bitLhsAndRhs(transitive=True)
-            print(f"IRAdd before explicit spill hl: ra {ra}")
             ra.spillRegister("hl")
             asmFile.write(f"\tadd\thl, {regZ}\n")
             ra.loadNameInRegister(self.resultAddr.name, "hl")

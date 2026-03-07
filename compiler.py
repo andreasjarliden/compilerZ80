@@ -21,10 +21,8 @@ int foo() {
     int B;
     int C;
     int* p;
-    A=2;
     p=&A;
-    *p=3;
-    A=*p+3;
+    *p=B;
     }
 """) 
 
