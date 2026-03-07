@@ -47,12 +47,15 @@ class TestRA(unittest.TestCase):
         self.assertTrue("foo" in self.ra.addresses["foo"])
 
     # bar = foo
+
     def test_assignment(self):
         self.ra.loadNameInRegister("bar", "b") # bar was previously in reg b
         self.ra.loadNameInRegister("foo", "a") # foo is loaded in a
         self.ra.assignToNameWithRegister("bar", "a") # store foo (loaded in a) to bar
         self.assertEqual(self.ra.addresses["bar"], {"a"}) # Note: b no longer holds updated bar and it is not stored yet to bar
         self.assertEqual(self.ra.registers["a"], {"foo", "bar"}) # Now a holds both foo and bar
+
+    # Spilling
 
     def test_spillRegister(self):
         self.ra.loadNameInRegister("foo", "a")
@@ -80,6 +83,15 @@ class TestRA(unittest.TestCase):
         self.assertEqual(self.ra.addresses["foo"], {"foo"})
         # Check register a is now free
         self.assertTrue("a" in self.ra.freeRegisters)
+
+    def test_spillRegister_dead(self):
+        self.ra.loadNameInRegister("foo", "a")
+        self.ra.currentInstruction.live["foo"] = False
+
+        self.ra.spillRegister("a")
+
+        self.assertEqual(self.ra.registers["a"], set())
+        self.assertEqual(self.ra.addresses["foo"], {"foo"})
 
 
 class TestZ80RA(unittest.TestCase):

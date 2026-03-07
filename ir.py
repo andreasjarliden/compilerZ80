@@ -82,6 +82,7 @@ class IR:
 
         ra.loadInA(self.lhsAddr)
 
+        # TODO shouldn't this be replaced with doLoadInRegister8?
         if isinstance(self.rhsAddr, Constant):
             return self.rhsAddr.value
         elif isinstance(self.rhsAddr.impl, PointerAddress):
@@ -337,23 +338,12 @@ class IRAssign(IR):
 
     def genCode(self):
         ra = registerAllocator.RA
-        print(f"IRAssign {self}")
         if self.live[self.resultAddr.name]:
             # Stores to register
             if self.resultAddr.type == "char":
-                if isinstance(self.lhsAddr, Constant):
-                    reg = ra.getRegisterForArg(self.resultAddr.name, { "a", "b", "c", "d", "e", "h", "l" })
-                    print(f"Assigning to {reg} {asmFile}")
-                    asmFile.write(f'\tld\t{reg}, {self.lhsAddr.value}\n')
-                else:
-                    reg = ra.doLoadInRegister8(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" })
+                reg = ra.doLoadInRegister8(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" })
             elif self.resultAddr.type == "int":
-                if isinstance(self.lhsAddr, Constant):
-                    reg = ra.getRegisterForArg(self.resultAddr.name, { "bc", "de", "hl" })
-                    asmFile.write(f'\tld\t{reg}, {self.lhsAddr.value}\n')
-                else:
-                    # TODO add IY?
-                    reg = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" })
+                reg = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" })
             ra.assignToNameWithRegister(self.resultAddr.name, reg)
         else:
             # Stores directly to memory

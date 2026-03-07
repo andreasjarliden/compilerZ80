@@ -49,11 +49,12 @@ class RegisterAllocator:
     # Sometimes we want that (e.g. when spilling at end of block) but not
     # otherwise.
     def spillRegister(self, r):
+        print(f"spillRegister {r} {self.currentInstruction.live} {self}")
         # Remove register from all addresses
         for n in self.registers[r]:
+            self.addresses[n].remove(r)
+            self.addresses[n].add(n)
             if self.currentInstruction.live[n]:
-                self.addresses[n].remove(r)
-                self.addresses[n].add(n)
                 self.doSpill(r, n)
         # Register no longer contains anything
         self.registers[r] = set()
