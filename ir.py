@@ -13,7 +13,6 @@ IR_FUNCTIONS = []
 # Size of all local stack variables
 def stackFrameSize(symbolTable):
     smallestOffset = 0
-    print(symbolTable)
     for s in symbolTable.values():
         if isinstance(s.impl, StackAddress):
             smallestOffset = min(s.impl.offset, smallestOffset)
@@ -333,7 +332,6 @@ class IRDereference(IR):
     def genCode(self):
         ra = registerAllocator.RA
         t = self.lhsAddr.completeType
-        print(f'IRDereference spilling all matching type {t}')
         ra.spillAllMatchingType(t, self.symbolTable)
 
 
@@ -344,7 +342,11 @@ class IRAssign(IR):
 
     def genCode(self):
         ra = registerAllocator.RA
-        if self.live[self.resultAddr.name]:
+        # If we are assigning to variable that has no more uses, store it
+        # directly to memory. Note: this is somewhat different from being
+        # live.
+        # TODO Just always assign to register for now
+        if True: # self.live[self.resultAddr.name]:
             # Stores to register
             if self.resultAddr.type == "char":
                 reg = ra.doLoadInRegister8(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" })
@@ -355,15 +357,7 @@ class IRAssign(IR):
             # Stores directly to memory
             if self.resultAddr.type == "char":
                 if isinstance(self.lhsAddr, Constant):
-                    if isinstance(self.resultAddr.impl, StackAddress):
-                        asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg()}, {self.lhsAddr.value}\n')
-                    elif isinstance(self.resultAddr.impl, PointerAddress):
-                        print(f"Assign to Deref Pointer {self.resultAddr}")
-                        print(f"RA {ra}")
-                        regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } ) 
-                        asmFile.write(f'\tld\t{regX}, {self.lhsAddr.value}\n')
-                    else:
-                        error()
+                    asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg()}, {self.lhsAddr.value}\n')
                 else:
                     regY = ra.isInRegister(self.lhsAddr.name, { "a", "b", "c", "d", "e", "h", "l" })
                     if regY:
@@ -397,26 +391,20 @@ class IRAssignToPointer(IR):
     def genCode(self):
         ra = registerAllocator.RA
 
-        # spill all symbols of matching type
-        # TODO: not sure they need to be spilled, probably only invalidated
         t = self.resultAddr.completeType[1:]
         ra.spillAllMatchingType(t, self.symbolTable)
 
-        print(f"IRAssignToPointer completeType {self.resultAddr.completeType}")
         if self.resultAddr.completeType == "*char":
             if isinstance(self.lhsAddr, Constant):
-                print(f"IRAssignToPointer resultAddr {self.resultAddr} ra {ra}")
                 regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } ) 
                 asmFile.write(f'\tld\t({regX}), {self.lhsAddr.value}\n')
             else:
-                print(f"IRAssignToPointer resultAddr {self.resultAddr} ra {ra}")
-                # TODO: This might spill regX again!
                 regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } ) 
-                regY = ra.doLoadInRegister8(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" } )
+                # Carefull not to trigger a spill of regX by using a coupled register
+                regY = ra.doLoadInRegister8(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" } - ra.coupledRegisters[regX])
                 asmFile.write(f'\tld\t({regX}), {regY}\n')
         elif self.resultAddr.completeType == "*int":
             if isinstance(self.lhsAddr, Constant):
-                print(f"IRAssignToPointer resultAddr {self.resultAddr} ra {ra}")
                 regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } ) 
                 asmFile.write(f'\tld\t({regX}), {self.lhsAddr.value & 0xff}\n')
                 asmFile.write(f'\tinc\t{regX}\n')
@@ -426,7 +414,6 @@ class IRAssignToPointer(IR):
                 else:
                     ra.removeNameForRegister(self.resultAddr.name, regX)
             else:
-                print(f"IRAssignToPointer resultAddr {self.resultAddr} ra {ra}")
                 regY = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } )
                 regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } - {regY}) 
                 asmFile.write(f'\tld\t({regX}), {regY[1]}\n')

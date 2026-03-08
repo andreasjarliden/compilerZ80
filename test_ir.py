@@ -9,6 +9,7 @@ import asmWriter
 class TestIR(unittest.TestCase):
     def setUp(self):
         self.foo = SymEntry("char", "char", "foo")
+        self.foo16 = SymEntry("int", "int", "foo")
         self.bar = SymEntry("char", "char", "bar")
         self.baz = SymEntry("char", "char", "baz")
         self.ptr = SymEntry("int", "int*", "ptr")
@@ -30,7 +31,7 @@ class TestIR(unittest.TestCase):
 
     # IRAssign
 
-    def test_IRAssign_constant(self):
+    def test_IRAssign_constant8(self):
         ira = ir.IRAssign(self.foo, Constant("char", 42))
         ira.live[self.foo.name] = True
         ira.genCode()
@@ -38,6 +39,16 @@ class TestIR(unittest.TestCase):
         ir.asmFile.seek(0)
         output = ir.asmFile.read()
         self.assertRegex(output, "\tld\t., 42\n")
+        self.assertTrue(registerAllocator.RA.isInRegister("foo"))
+
+    def test_IRAssign_constant16(self):
+        ira = ir.IRAssign(self.foo16, Constant("int", 0x1234))
+        ira.live[self.foo16.name] = True
+        ira.genCode()
+
+        ir.asmFile.seek(0)
+        output = ir.asmFile.read()
+        self.assertRegex(output, f"\tld\t.., {0x1234}\n")
         self.assertTrue(registerAllocator.RA.isInRegister("foo"))
 
     def test_IRAssign_stackVariable(self):

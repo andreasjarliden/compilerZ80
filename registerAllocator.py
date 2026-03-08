@@ -49,7 +49,6 @@ class RegisterAllocator:
     # Sometimes we want that (e.g. when spilling at end of block) but not
     # otherwise.
     def spillRegister(self, r):
-        print(f"spillRegister {r} {self.currentInstruction.live} {self}")
         # Remove register from all addresses
         for n in self.registers[r]:
             self.addresses[n].remove(r)
@@ -71,7 +70,6 @@ class RegisterAllocator:
 
     def spillScore(self, r):
         score = 0
-        print(f"Determining spill Score for {r} with live {self.currentInstruction.live}")
         # TODO also handle coupled registers
         for n in self.registers[r]:
             # If n is in some other register. Consider it free to spill.
@@ -90,7 +88,6 @@ class RegisterAllocator:
         return score
 
     def spillName(self, n):
-        print(f"spillName {n} isLive {self.currentInstruction.live[n]} and addresses {self.addresses[n]}")
         if self.currentInstruction.live[n] and n not in self.addresses[n]:
             # pick one of register contining n
             r = next(iter(self.addresses[n] - set(n)))
@@ -106,7 +103,6 @@ class RegisterAllocator:
                 self.spillName(n)
             
     def bestRegisterToSpill(self, possibleRegisters):
-        print(f"bestRegisterToSpill possible {possibleRegisters}")
         return min(possibleRegisters, key=self.spillScore)
 
     def isInRegiser(self, name, possibleRegisters):

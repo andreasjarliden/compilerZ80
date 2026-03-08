@@ -16,13 +16,11 @@ print("Parsing")
 print("=======")
 
 ast = parser.parse("""
-int foo() {
-    int A;
-    int B;
-    int C;
-    int* p;
-    p=&A;
-    *p=B;
+char foo() {
+    char A;
+    char B;
+    A=2;
+    B=A+1;
     }
 """) 
 
@@ -66,7 +64,6 @@ def genCode():
             registerAllocator.RA.currentInstruction = i
             i.genCode()
         # Spill everything live that is only in a register at the end of the block
-        print(f"Spilling at end of block, register allocator {registerAllocator.RA}")
         registerAllocator.RA.spillAll()
     asmFile.write('\n\t#include "libc.asm"\n')
 
