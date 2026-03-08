@@ -92,13 +92,16 @@ class IR:
                     asmWriter.loadRegisterWithAddress("hl", rhsAddr.impl.pointer.impl)
                 ra.loadNameInRegister(rhsAddr.impl.pointer.name, "hl")
             return "(hl)"
+        # TODO this should check nextUse and not liveness
         elif ra.isInRegister(rhsAddr.name) or self.live[self.rhsAddr.name]:
+            # Use via register as already in register or will be used later
             regZ = ra.getRegisterForArg(rhsAddr.name, { "b", "c", "d", "e", "h", "l" })
             if rhsAddr.name not in ra.registers[regZ]:
                 asmWriter.loadRegisterWithAddress(regZ, rhsAddr.impl)
                 ra.loadNameInRegister(rhsAddr.name, regZ)
             return regZ
         else:
+            # Use directly from memory, e.g. add a, (ix + 42)
             return rhsAddr.impl.codeArg()
 
     def load8bitLhsAndRhs(self, transitive=False):
@@ -346,6 +349,7 @@ class IRAssign(IR):
         # directly to memory. Note: this is somewhat different from being
         # live.
         # TODO Just always assign to register for now
+        # TODO could probably use loadRhs8
         if True: # self.live[self.resultAddr.name]:
             # Stores to register
             if self.resultAddr.type == "char":
