@@ -37,8 +37,11 @@ class IR:
             live[self.lhsAddr.name] = True
         if self.rhsAddr and isinstance(self.rhsAddr, SymEntry):
             live[self.rhsAddr.name] = True
+        self.live = live.copy()
 
     def liveStr(self):
+        if not self.live:
+            return ""
         if self.resultAddr and isinstance(self.resultAddr, SymEntry):
             s1 = "L" if self.live[self.resultAddr.name] else "D"
         else:

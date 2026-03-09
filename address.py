@@ -13,7 +13,7 @@ class Constant:
         return f"Constant {self.type} {self.value}"
 
     # Because it doubles an AST Node
-    def visit(self):
+    def visit(self, context):
         return self
 
 

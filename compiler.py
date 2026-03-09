@@ -2,10 +2,14 @@ from pprint import pprint
 import ir
 from parser import *
 import registerAllocator
+from collections import namedtuple
 
-def astToThreeCode(ast):
+def astToThreeCode(ast, Factory = BlockFactory):
+    ASTContext = namedtuple('ASTContext', [ 'blockFactory' ])
+    context = ASTContext(Factory())
     for n in ast:
-        n.visit()
+        n.visit(context)
+    return context.blockFactory.blocks()
 
 def mapSymbols():
     for f in IR_FUNCTIONS:
@@ -17,20 +21,20 @@ def mapSymbols():
                 offset -= symbol.size
                 symbol.impl = StackAddress(offset)
 
-def updateLive():
-    for b in BASIC_BLOCKS.values():
+def updateLive(blocks):
+    for b in blocks.values():
         vars = [ s.name for s in b.symbolTable.values() ]
         live = { v: not v.startswith("temp") for v in vars }
         for i in reversed(b.statements):
-            i.live = live.copy()
+            # i.live = live.copy()
             i.updateLive(live)
 
 RA = None
-def genCode():
+def genCode(blocks):
     ir.asmFile.write("\t.org 08000h\n")
     ir.asmFile.write('\t#include "constants.asm"\n')
     ir.asmFile.write('\tjp\tmain\n')
-    for b in BASIC_BLOCKS.values():
+    for b in blocks.values():
         print(f"\nBasic Block {b.name}\n")
         ir.asmFile.write(f'; Basic Block {b.name}\n')
         registerAllocator.RA = registerAllocator.Z80RegisterAllocator(ir.asmFile, b.symbolTable)

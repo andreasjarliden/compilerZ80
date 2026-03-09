@@ -32,18 +32,18 @@ print()
 
 print("AST to 3-code")
 print("=============")
-astToThreeCode(ast)
-updateLive()
+blocks = astToThreeCode(ast)
+updateLive(blocks)
 
 print("BASIC_BLOCKS")
-pprint(BASIC_BLOCKS)
+pprint(blocks)
 
 print("Mapping symbols");
 mapSymbols()
 
 print("IR mapped symbols")
 print("=================")
-pprint(BASIC_BLOCKS)
+pprint(blocks)
 print()
 
-genCode()
+genCode(blocks)

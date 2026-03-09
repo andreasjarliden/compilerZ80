@@ -12,10 +12,6 @@ ENV = [ {} ]
 FUNCTION = None
 FUNCTION_LABELS = 0
 
-BASIC_BLOCKS = {}
-BLOCK_PREFIX = None
-BLOCK_NUMBER = 1
-
 class BasicBlock:
     def __init__(self, symbolTable, name):
         self.statements = []
@@ -25,29 +21,30 @@ class BasicBlock:
     def __repr__(self):
         return f"Symbol table: {self.symbolTable}\nStatements:\n{pformat(self.statements)}\n\n"
 
-def addIR(ir):
-    global CURRENT_BLOCK
-    CURRENT_BLOCK.statements.append(ir)
-def enterBlock(name, symbolTable):
-    global BLOCK_NUMBER
-    global BLOCK_PREFIX
-    global CURRENT_BLOCK_NAME
-    CURRENT_BLOCK_NAME = name
-    BLOCK_PREFIX = name
-    BLOCK_NUMER = 0
-    enterSubBlock(symbolTable)
-def enterSubBlock(symbolTable):
-    global CURRENT_BLOCK
-    global CURRENT_BLOCK_NAME
-    global BLOCK_PREFIX
-    global BLOCK_NUMBER
-    CURRENT_BLOCK_NAME = f"{BLOCK_PREFIX}_{BLOCK_NUMBER:04}"
-    CURRENT_BLOCK = BasicBlock(symbolTable, CURRENT_BLOCK_NAME)
-    BLOCK_NUMBER+=1
-def exitBlock():
-    global CURRENT_BLOCK
-    global CURRENT_BLOCK_NAME
-    BASIC_BLOCKS[CURRENT_BLOCK_NAME] = CURRENT_BLOCK
+class BlockFactory:
+    def __init__(self):
+        self.basicBlocks = {}
+        self.blockPrefix = None
+
+    def enterBlock(self, name, symbolTable):
+        self.currentBlockName = name
+        self.blockPrefix = name
+        self.blockNumber = 0
+        self.enterSubBlock(symbolTable)
+
+    def enterSubBlock(self, symbolTable):
+        self.currentBlockName = f"{self.blockPrefix}_{self.blockNumber:04}"
+        self.currentBlock = BasicBlock(symbolTable, self.currentBlockName)
+        self.blockNumber+=1
+
+    def exitBlock(self):
+        self.basicBlocks[self.currentBlockName] = self.currentBlock
+
+    def blocks(self):
+        return self.basicBlocks
+
+    def addIR(self, ir):
+        self.currentBlock.statements.append(ir)
 
 # TODO this belongs to the AST and should probably be moved to parser
 # Any use should probably also be moved
@@ -104,9 +101,10 @@ class Function:
     def __repr__(self):
         return "Function " + self.name + " with statements " + str(self.statements)
 
-    def visit(self):
+    # TODO should symbol table and block factory be passed to visit?
+    def visit(self, context):
         enterFunction(self.name)
-        enterBlock(self.name, currentSymbolTable())
+        context.blockFactory.enterBlock(self.name, currentSymbolTable())
         # return address is at ix+2, ix+3. Rightmost argument (16-bit) is at ix+5, ix+4
         # If pushing AF, then A is at ix+5
         offset = 4
@@ -121,12 +119,12 @@ class Function:
                 error()
             addSymbolEntry(a.name, symEntry)
             offset+=2
-        addIR(IRDefFun(self, currentSymbolTable()))
+        context.blockFactory.addIR(IRDefFun(self, currentSymbolTable()))
         for s in self.statements:
-            s.visit()
-        addIR(IRFunExit(self, currentSymbolTable()))
+            s.visit(context)
+        context.blockFactory.addIR(IRFunExit(self, currentSymbolTable()))
         exitFunction()
-        exitBlock()
+        context.blockFactory.exitBlock()
 
 class If:
     def __init__(self, expr, statements):
@@ -136,19 +134,19 @@ class If:
     def __repr__(self):
         return f"IF {self.expr} with statements {self.statements}"
 
-    def visit(self):
+    def visit(self, context):
         print(f"If.visit: expr {self.expr}")
-        exprAddr = self.expr.visit()
+        exprAddr = self.expr.visit(context)
         print(f"exprAddr {exprAddr}")
         skipLabel = createLabel()
-        addIR(IRIf(exprAddr, skipLabel))
-        exitBlock()
-        enterSubBlock(currentSymbolTable())
+        context.blockFactory.addIR(IRIf(exprAddr, skipLabel))
+        context.blockFactory.exitBlock()
+        context.blockFactory.enterSubBlock(currentSymbolTable())
         for s in self.statements:
-            s.visit()
-        exitBlock()
+            s.visit(context)
+        context.blockFactory.exitBlock()
         enterSubBlock(currentSymbolTable())
-        addIR(IRLabel(skipLabel))
+        context.blockFactory.addIR(IRLabel(skipLabel))
 
 class VariableDefinition:
     def __init__(self, t, name):
@@ -164,7 +162,7 @@ class VariableDefinition:
     def __repr__(self):
         return f"variable definition {self.type} {self.name} at offset {self.offset}"
 
-    def visit(self):
+    def visit(self, context):
         addSymbol(self.type, self.completeType, self.name)
         pass
 
@@ -176,11 +174,11 @@ class VariableAssignment:
     def __repr__(self):
         return f"variable assignment {self.lvalue} = {self.rhs}"
 
-    def visit(self):
-        lvalue = self.lvalue.visit()
+    def visit(self, context):
+        lvalue = self.lvalue.visit(context)
         print(f"Variable assignment lvalue {lvalue}")
-        rhsAddr = self.rhs.visit()
-        addIR(IRAssign(lvalue, rhsAddr))
+        rhsAddr = self.rhs.visit(context)
+        context.blockFactory.addIR(IRAssign(lvalue, rhsAddr))
 
 class DerefPointerAssignment:
     def __init__(self, lvalue, rhs):
@@ -190,10 +188,10 @@ class DerefPointerAssignment:
     def __repr__(self):
         return f"Deref pointer assignment *{self.lvalue} = {self.rhs}"
 
-    def visit(self):
-        lvalue = self.lvalue.visit()
-        rhsAddr = self.rhs.visit()
-        addIR(IRAssignToPointer(lvalue, rhsAddr, currentSymbolTable()))
+    def visit(self, context):
+        lvalue = self.lvalue.visit(context)
+        rhsAddr = self.rhs.visit(context)
+        context.blockFactory.addIR(IRAssignToPointer(lvalue, rhsAddr, currentSymbolTable()))
 
 class Variable:
     def __init__(self, name):
@@ -204,7 +202,7 @@ class Variable:
     def __repr__(self):
         return f"<Variable type {self.type} complete type {self.completeType} name {self.name}>"
 
-    def visit(self):
+    def visit(self, context):
         symEntry = currentSymbolTable()[self.name]
         self.type = symEntry.type
         self.completeType = symEntry.completeType
@@ -217,10 +215,10 @@ class AddressOf:
     def __repr__(self):
         return f"AddressOf {self.expr}"
 
-    def visit(self):
-        exprAddr = self.expr.visit()
+    def visit(self, context):
+        exprAddr = self.expr.visit(context)
         irAddressOf = IRAddressOf(exprAddr, addTemporary("int", "*" + exprAddr.completeType))
-        addIR(irAddressOf)
+        context.blockFactory.addIR(irAddressOf)
         return irAddressOf.resultAddr
 
 class Dereference:
@@ -230,8 +228,8 @@ class Dereference:
     def __repr__(self):
         return f"Dereference {self.expr}"
 
-    def visit(self):
-        pointer = self.expr.visit()
+    def visit(self, context):
+        pointer = self.expr.visit(context)
         print(f"Dereference: created code for pointer receiving {self.expr} address {pointer}")
         ct = pointer.completeType[1:] # remove leading *
         if pointer.completeType.startswith("*"):
@@ -239,7 +237,7 @@ class Dereference:
         else:
             t = ct
         deref = IRDereference(pointer, addTemporary(t, ct), currentSymbolTable())
-        addIR(deref)
+        context.blockFactory.addIR(deref)
         deref.resultAddr.impl = PointerAddress(pointer)
         return deref.resultAddr
 
@@ -254,17 +252,17 @@ class FunctionCall:
     def __repr__(self):
         return f"call {self.name} with args {self.arguments}"
 
-    def visit(self):
+    def visit(self, context):
         for a in reversed(self.arguments):
-            exprAddress = a.visit()
-            addIR(IRArgument(exprAddress))
+            exprAddress = a.visit(context)
+            context.blockFactory.addIR(IRArgument(exprAddress))
         if self.storeResult:
             irfuncall = IRFunCall(self.type, self.name, len(self.arguments), addr=addTemporary(self.type, self.type))
-            addIR(irfuncall)
+            context.blockFactory.addIR(irfuncall)
             return irfuncall.resultAddr
         else:
             irfuncall = IRFunCall(self.type, self.name, len(self.arguments))
-            addIR(irfuncall)
+            context.blockFactory.addIR(irfuncall)
 
 class Return:
     def __init__(self, expr):
@@ -273,11 +271,11 @@ class Return:
     def __repr__(self):
         return "Return " + str(self.expr)
 
-    def visit(self):
+    def visit(self, context):
         # Function is in the symbol table above the current one
         t = ENV[-2][FUNCTION].type
-        exprAddress = self.expr.visit()
-        addIR(IRReturn(t, exprAddress))
+        exprAddress = self.expr.visit(context)
+        context.blockFactory.addIR(IRReturn(t, exprAddress))
 
 class Add:
     def __init__(self, lhs, rhs):
@@ -287,13 +285,13 @@ class Add:
     def __repr__(self):
         return "<Add " + str(self.lhs) + " " + str(self.rhs) + ">"
 
-    def visit(self):
-        lhsAddr = self.lhs.visit()
-        rhsAddr = self.rhs.visit()
+    def visit(self, context):
+        lhsAddr = self.lhs.visit(context)
+        rhsAddr = self.rhs.visit(context)
         t = lhsAddr.type # TODO promote
         ct = lhsAddr.completeType
         irAdd = IRAdd(addTemporary(t, ct), lhsAddr, rhsAddr)
-        addIR(irAdd)
+        context.blockFactory.addIR(irAdd)
         return irAdd.resultAddr
 
 class Equal:
@@ -304,11 +302,11 @@ class Equal:
     def __repr__(self):
         return "<Equal " + str(self.lhs) + " " + str(self.rhs) + ">"
 
-    def visit(self):
-        lhsAddr = self.lhs.visit()
-        rhsAddr = self.rhs.visit()
+    def visit(self, context):
+        lhsAddr = self.lhs.visit(context)
+        rhsAddr = self.rhs.visit(context)
         irEqual = IREqual(lhsAddr, rhsAddr)
-        addIR(irEqual)
+        context.blockFactory.addIR(irEqual)
         return irEqual.addr
 
 def p_statement_list(p):

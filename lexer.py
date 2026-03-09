@@ -44,6 +44,10 @@ def t_ID(t):
 
 t_ignore = ' \t\n'
 
+def t_COMMENT(t):
+    r'//[^\n]*'
+    pass
+
 def t_error(t):
     print(f"Illegal character '{t.value[0]}'")
     t.lexer.skip(1)
