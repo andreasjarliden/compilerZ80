@@ -42,7 +42,7 @@ B=A+1;""")
 int A;
 int B;
 A=1;
-B=A+1;
+B=A+1; // B becomes live afterwards but no next use (within block)
 A=2;""")
         self.assertEqual(type(irs[0]), IRAssign)
         self.assertEqual(type(irs[1]), IRAdd)
@@ -51,7 +51,8 @@ A=2;""")
         self.assertFalse(irs[0].live["A"]) # A=1
         self.assertTrue(irs[1].live["A"]) # A+1
         self.assertFalse(irs[2].live["A"]) # B=A+1
-        self.assertFalse(irs[3].live["A"]) # B=A+1
+        self.assertFalse(irs[3].live["A"]) # A=2
+        self.assertTrue(irs[3].live["B"]) # A=2
 
 
 

@@ -19,6 +19,8 @@ def stackFrameSize(symbolTable):
     return -smallestOffset
 
 
+# members:
+# - live[symbol] = bool, whether symbol is live _at_ this instruction.
 class IR:
     def __init__(self, resultAddr=None, lhsAddr=None, rhsAddr=None):
         self.resultAddr=resultAddr
