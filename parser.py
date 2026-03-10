@@ -145,7 +145,7 @@ class If:
         for s in self.statements:
             s.visit(context)
         context.blockFactory.exitBlock()
-        enterSubBlock(currentSymbolTable())
+        context.blockFactory.enterSubBlock(currentSymbolTable())
         context.blockFactory.addIR(IRLabel(skipLabel))
 
 class VariableDefinition:
