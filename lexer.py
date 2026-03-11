@@ -17,6 +17,11 @@ tokens = [
         'SEMI',
         'ASSIGN',
         'EQUAL',
+        'NOT_EQUAL',
+        'LESS',
+        'LESS_OR_EQUAL',
+        'GREATER',
+        'GREATER_OR_EQUAL',
         'PLUS',
         'COMMA',
         'STAR',
@@ -31,6 +36,11 @@ t_RCURL = r'\}'
 t_SEMI = r';'
 t_ASSIGN = r'='
 t_EQUAL = r'=='
+t_NOT_EQUAL = r'!='
+t_LESS = r'<'
+t_LESS_OR_EQUAL = r'<='
+t_GREATER = r'>'
+t_GREATER_OR_EQUAL = r'>='
 t_PLUS = r'\+'
 t_COMMA = r','
 t_STAR = r'\*'

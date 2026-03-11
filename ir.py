@@ -183,9 +183,9 @@ class IRFunExit(IR):
         asmFile.write(f'\tpop\tIX\n')
         asmFile.write(f'\tret\n\n')
 
-class IRIf(IR):
-    def __init__(self, exprAddr, skipLabel):
-        super().__init__(lhsAddr=exprAddr)
+class IRIfVariable(IR):
+    def __init__(self, lhsAddr, skipLabel):
+        super().__init__(lhsAddr=lhsAddr)
         self.skipLabel = skipLabel
 
     def extraDescription(self):
@@ -196,12 +196,42 @@ class IRIf(IR):
         # Spill before the jump as this will end the basic block. A later call
         # to spillAll will be a no-op.
         ra.spillAll()
-        if isinstance(self.exprAddr, Flags):
-            asmFile.write(f'\tjr\tnz, {self.skipLabel}\n') 
-        else:
-            ra.loadInA(self.lhsAddr)
-            asmFile.write(f'\tor\ta\n')
-            asmFile.write(f'\tjr\tz, {self.skipLabel}\n') 
+        # TODO handle 16 bits
+        ra.loadInA(self.lhsAddr)
+        asmFile.write(f'\tor\ta\n')
+        asmFile.write(f'\tjr\tz, {self.skipLabel}\n') 
+
+class IRIfRelation(IR):
+    # operation : flag, transitive, flip lhs/rhs
+    operations = {'==': ("nz", True, False),
+                  '!=': ("z", True, False),
+                  '<':  ("nc", False, False),
+                  '>=': ("c", False, False),
+                  '>':  ("nc", False, True), 
+                  '<':  ("c", False, True) }
+    def __init__(self, operation, lhsAddr, rhsAddr, skipLabel):
+        super().__init__(lhsAddr=lhsAddr, rhsAddr=rhsAddr)
+        self.skipLabel = skipLabel
+        self.operation = operation
+
+    def extraDescription(self):
+        return f"{self.skipLabel}"
+
+    def genCode(self):
+        ra = registerAllocator.RA
+        # Spill before the jump as this will end the basic block. A later call
+        # to spillAll will be a no-op.
+        ra.spillAll()
+        (flag, transitive, flip) = self.operations[self.operation]
+        if flip:
+            (self.lhsAddr, self.rhsAddr) = (self.rhsAddr, self.lhsAddr)
+        if self.lhsAddr.type == "char":
+            regZ = self.load8bitLhsAndRhs(transitive)
+            asmFile.write(f"\tcp\t{regZ}\n")
+        elif self.lhsAddr.type == "int":
+            regZ = self.load16bitLhsAndRhs(transitive)
+            asmFile.write(f"\tsbc\thl, {regZ}\n")
+        asmFile.write(f'\tjr\t{flag}, {self.skipLabel}\n') 
 
 class IRLabel(IR):
     def __init__(self, label):

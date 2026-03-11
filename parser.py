@@ -136,10 +136,17 @@ class If:
 
     def visit(self, context):
         print(f"If.visit: expr {self.expr}")
-        exprAddr = self.expr.visit(context)
-        print(f"exprAddr {exprAddr}")
         skipLabel = createLabel()
-        context.blockFactory.addIR(IRIf(exprAddr, skipLabel))
+        if isinstance(self.expr, Variable):
+            exprAddr = self.expr.visit(context)
+            ir = IRIfVariable(exprAddr, skipLabel)
+        elif isinstance(self.expr, Relation):
+            print("Creating IRIfRelation")
+            (lhsAddr, rhsAddr) = self.expr.visit(context)
+            ir = IRIfRelation(self.expr.operation, lhsAddr, rhsAddr, skipLabel)
+        else:
+            error()
+        context.blockFactory.addIR(ir)
         context.blockFactory.exitBlock()
         context.blockFactory.enterSubBlock(currentSymbolTable())
         for s in self.statements:
@@ -294,20 +301,17 @@ class Add:
         context.blockFactory.addIR(irAdd)
         return irAdd.resultAddr
 
-class Equal:
-    def __init__(self, lhs, rhs):
+class Relation:
+    def __init__(self, operation, lhs, rhs):
         self.lhs = lhs
         self.rhs = rhs
+        self.operation = operation
 
     def __repr__(self):
-        return "<Equal " + str(self.lhs) + " " + str(self.rhs) + ">"
+        return f"<Relation {self.lhs} {self.operation} {self.rhs}>"
 
     def visit(self, context):
-        lhsAddr = self.lhs.visit(context)
-        rhsAddr = self.rhs.visit(context)
-        irEqual = IREqual(lhsAddr, rhsAddr)
-        context.blockFactory.addIR(irEqual)
-        return irEqual.addr
+        return (self.lhs.visit(context), self.rhs.visit(context))
 
 def p_statement_list(p):
     '''
@@ -350,16 +354,21 @@ def p_ptrlvalue(p):
     p[0] = Variable(p[2])
 
 def p_value_expression(p):
-    'value_expression : equality'
+    'value_expression : comparisson'
     p[0] = p[1]
 
-def p_equality_single(p):
-    'equality : additive'
+def p_comparisson_single(p):
+    'comparisson : additive'
     p[0] = p[1]
 
-def p_equality_equal(p):
-    'equality : equality EQUAL additive'
-    p[0] = Equal(p[1], p[3])
+def p_comparisson_equal(p):
+    '''comparisson : comparisson EQUAL additive
+                   | comparisson NOT_EQUAL additive
+                   | comparisson LESS additive
+                   | comparisson LESS_OR_EQUAL additive
+                   | comparisson GREATER additive
+                   | comparisson GREATER_OR_EQUAL additive'''
+    p[0] = Relation(p[2], p[1], p[3])
 
 def p_additive_single(p):
     'additive : multiplicative'

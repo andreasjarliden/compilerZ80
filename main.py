@@ -20,8 +20,9 @@ ast = parser.parse("""
 char foo() {
     char A;
     char B;
-    A=2;
-    B=1+A;
+    if (2 < 3) {
+        A=2;
+    }
     }
 """) 
 
