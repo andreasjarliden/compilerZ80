@@ -250,6 +250,11 @@ class Add:
         self.lhs = lhs
         self.rhs = rhs
 
+    def __eq__(self, other):
+        if not isinstance(other, Add):
+            return NotImplemented
+        return self.lhs == other.lhs and self.rhs == other.rhs
+
     def __repr__(self):
         return "<Add " + str(self.lhs) + " " + str(self.rhs) + ">"
 

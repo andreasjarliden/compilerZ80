@@ -5,6 +5,11 @@ class Constant:
         self.type = t
         self.value = value
 
+    def __eq__(self, other):
+        if not isinstance(other, Constant):
+            return NotImplemented
+        return self.type == other.type and self.value == other.value
+
     @property
     def completeType(self):
         return self.type
@@ -35,11 +40,3 @@ class Temporary:
 
     def __repr__(self):
         return f"Temporary {self.type} {self.name}"
-
-
-class Flags:
-    def __init__(self):
-        pass
-
-    def __repr__(self):
-        return "Flags"

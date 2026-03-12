@@ -1,9 +1,11 @@
 from pprint import pprint
+import ir
 import parser
 from compiler import astToThreeCode, updateLive, mapSymbols, genCode
 from asmWriter import AsmWriter
 
 asmFile = open("a.asm", "w")
+# TODO move the asmFile from IR
 ir.asmFile = asmFile
 ir.asmWriter = AsmWriter(ir.asmFile)
 

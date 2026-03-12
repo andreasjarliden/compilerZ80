@@ -1,3 +1,5 @@
+- move asmFile somewhere from ir
+- Rename address.py
 - also check that we don't ruin the register if it also stores a different name
 - Store live in IR again and update a complete list when traversing the IRs
   during generation.
