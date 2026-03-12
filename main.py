@@ -1,22 +1,20 @@
 from pprint import pprint
-import ir
-# from ir import *
-from parser import *
-from compiler import *
-import registerAllocator
+import parser
+from compiler import astToThreeCode, updateLive, mapSymbols, genCode
+from asmWriter import AsmWriter
 
 asmFile = open("a.asm", "w")
 ir.asmFile = asmFile
 ir.asmWriter = AsmWriter(ir.asmFile)
 
 # Add external functions
-addSymbolEntry("printHex16", Function("void", "printHex16", [], [Argument("int", None)]))
-addSymbolEntry("printHex16", Function("void", "printHex8", [], [Argument("char", None)]))
+parser.addSymbolEntry("printHex16", parser.Function("void", "printHex16", [], [parser.Argument("int", None)]))
+parser.addSymbolEntry("printHex16", parser.Function("void", "printHex8", [], [parser.Argument("char", None)]))
 
 print("Parsing")
 print("=======")
 
-ast = parser.parse("""
+ast = parser.parser.parse("""
 char foo() {
     char A;
     char B;

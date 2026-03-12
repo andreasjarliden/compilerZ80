@@ -1,6 +1,7 @@
-from pprint import pprint
+from ir import IR_FUNCTIONS
+from symEntry import StackAddress
 import ir
-from parser import *
+from blocks import BlockFactory
 import registerAllocator
 from collections import namedtuple
 
@@ -29,7 +30,6 @@ def updateLive(blocks):
             # i.live = live.copy()
             i.updateLive(live)
 
-RA = None
 def genCode(blocks):
     ir.asmFile.write("\t.org 08000h\n")
     ir.asmFile.write('\t#include "constants.asm"\n')
