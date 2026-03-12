@@ -46,8 +46,6 @@ class BlockFactory:
     def addIR(self, ir):
         self.currentBlock.statements.append(ir)
 
-# TODO this belongs to the AST and should probably be moved to parser
-# Any use should probably also be moved
 # TODO create real SymbolTable class
 def addSymbol(t, completeType, name):
     entry = SymEntry(t, completeType, name)
@@ -78,7 +76,6 @@ def createLabel():
 
 class Argument:
     def __init__(self, t, name):
-        # TODO duplicate with Variable
         if t == "char" or t == "int":
             self.type = t
         elif t[0] == "*":
@@ -101,7 +98,6 @@ class Function:
     def __repr__(self):
         return "Function " + self.name + " with statements " + str(self.statements)
 
-    # TODO should symbol table and block factory be passed to visit?
     def visit(self, context):
         enterFunction(self.name)
         context.blockFactory.enterBlock(self.name, currentSymbolTable())
@@ -164,10 +160,9 @@ class VariableDefinition:
             self.type = "int"
         self.completeType = t
         self.name = name
-        self.offset = None
 
     def __repr__(self):
-        return f"variable definition {self.type} {self.name} at offset {self.offset}"
+        return f"variable definition {self.type} {self.name}"
 
     def visit(self, context):
         addSymbol(self.type, self.completeType, self.name)
