@@ -6,6 +6,8 @@ import sys
 from pprint import *
 from symEntry import *
 from copy import copy
+from dataclasses import dataclass
+from typing import Any
 
 # Stack of symbol tables
 ENV = [ {} ]
@@ -245,18 +247,10 @@ class Return:
         exprAddress = self.expr.visit(context)
         context.blockFactory.addIR(IRReturn(t, exprAddress))
 
+@dataclass(frozen=True)
 class Add:
-    def __init__(self, lhs, rhs):
-        self.lhs = lhs
-        self.rhs = rhs
-
-    def __eq__(self, other):
-        if not isinstance(other, Add):
-            return NotImplemented
-        return self.lhs == other.lhs and self.rhs == other.rhs
-
-    def __repr__(self):
-        return "<Add " + str(self.lhs) + " " + str(self.rhs) + ">"
+    lhs : Any
+    rhs : Any
 
     def visit(self, context):
         lhsAddr = self.lhs.visit(context)
@@ -267,14 +261,11 @@ class Add:
         context.blockFactory.addIR(irAdd)
         return irAdd.resultAddr
 
+@dataclass(frozen=True)
 class Relation:
-    def __init__(self, operation, lhs, rhs):
-        self.lhs = lhs
-        self.rhs = rhs
-        self.operation = operation
-
-    def __repr__(self):
-        return f"<Relation {self.lhs} {self.operation} {self.rhs}>"
+    operation : str
+    lhs : Any
+    rhs : Any
 
     def visit(self, context):
         return (self.lhs.visit(context), self.rhs.visit(context))
@@ -310,10 +301,6 @@ def p_expression(p):
 def p_lvalue(p):
     'lvalue : ID'
     p[0] = Variable(p[1])
-
-# def p_lvalue_deref(p):
-#     'lvalue : STAR lvalue'
-#     p[0] = Dereference(p[2])
 
 def p_ptrlvalue(p):
     'ptrlvalue : STAR ID'
@@ -451,10 +438,22 @@ def p_function_definition_args(p):
 
 def p_if_expression(p):
     '''
-    if_expression : IF LPARA value_expression RPARA LCURL statement_list RCURL
+    if_expression : IF LPARA value_expression RPARA block
     '''
-    print(f"IF {p[3]} {p[6]}")
-    p[0] = If(p[3], p[6])
+    print(f"IF {p[3]} {p[5]}")
+    p[0] = If(p[3], p[5])
+
+def p_block(p):
+    'block : LCURL statement_list RCURL'
+    p[0] = p[2]
+
+def p_block_single(p):
+    'block : statement'
+    p[0] = [p[1]]
+
+def p_block_empty(p):
+    'block : LCURL RCURL'
+    p[0] = []
 
 def p_expr_list_single(p):
     'expr_list : value_expression'
