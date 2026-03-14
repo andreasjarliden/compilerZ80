@@ -1,12 +1,12 @@
 from ir import IR_FUNCTIONS
 from symEntry import StackAddress
+from astnodes import ASTContext
 import ir
 from blocks import BlockFactory
 import registerAllocator
 from collections import namedtuple
 
 def astToThreeCode(ast, Factory = BlockFactory):
-    ASTContext = namedtuple('ASTContext', [ 'blockFactory' ])
     context = ASTContext(Factory())
     for n in ast:
         n.visit(context)

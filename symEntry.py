@@ -1,20 +1,20 @@
+from dataclasses import dataclass
+
 SIZE_FOR_TYPES = { "char": 1,
                    "int": 2 }
 
+@dataclass
 class SymEntry:
-    def __init__(self, t, completeType, name):
-        self.name = name
-        self.type = t
-        self.completeType = completeType
+    type : str
+    completeType : str
+    name : str
+
+    def __post_init__(self):
         self.impl = None
 
     @property
     def size(self):
         return SIZE_FOR_TYPES[self.type]
-
-    def __repr__(self):
-        return f"<SymEntry {self.name} {self.type} {self.completeType} {self.impl}>"
-
 
 class StackAddress:
     def __init__(self, offset):

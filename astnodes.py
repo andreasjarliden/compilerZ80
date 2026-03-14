@@ -1,39 +1,11 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 from ir import *
+from symbolTable import *
 
-# Stack of symbol tables
-ENV = [ {} ]
-FUNCTION = None
-FUNCTION_LABELS = 0
-
-# TODO create real SymbolTable class
-def addSymbol(t, completeType, name):
-    entry = SymEntry(t, completeType, name)
-    ENV[-1][name] = entry
-    return entry
-def addSymbolEntry(name, entry):
-    ENV[-1][name] = entry
-def enterFunction(name):
-    global FUNCTION
-    global FUNCTION_LABELS
-    ENV.append({})
-    FUNCTION = name
-    FUNCTION_LABELS = 0
-def exitFunction():
-    global FUNCTION
-    ENV.pop()
-    FUNCTION = None
-def currentSymbolTable():
-    return ENV[-1]
-def addTemporary(t, completeType):
-    temp = Temporary(t)
-    return addSymbol(t, completeType, temp.name)
-def createLabel():
-    global FUNCTION
-    global FUNCTION_LABELS
-    FUNCTION_LABELS += 1
-    return f"{FUNCTION}_l{FUNCTION_LABELS}"
+@dataclass
+class ASTContext:
+    blockFactory : Any
 
 class Argument:
     def __init__(self, t, name):
@@ -109,34 +81,30 @@ class If:
         context.blockFactory.enterSubBlock(currentSymbolTable())
         context.blockFactory.addIR(IRLabel(skipLabel))
 
+@dataclass(frozen=True)
 class VariableDefinition:
-    def __init__(self, t, name):
-        if t == "char" or t == "int":
-            self.type = t
-        elif t[0] == "*":
-            # Pointers are handled as int
-            self.type = "int"
-        self.completeType = t
-        self.name = name
+    completeType : Any
+    name : str
 
-    def __repr__(self):
-        return f"variable definition {self.type} {self.name}"
+    @property
+    def type(self):
+        if self.completeType[0] == "*":
+            # Pointers are handled as int
+            return "int"
+        else:
+            return self.completeType
 
     def visit(self, context):
         addSymbol(self.type, self.completeType, self.name)
         pass
 
+@dataclass(frozen=True)
 class VariableAssignment:
-    def __init__(self, lvalue, rhs):
-        self.lvalue = lvalue
-        self.rhs = rhs;
-
-    def __repr__(self):
-        return f"variable assignment {self.lvalue} = {self.rhs}"
+    lvalue : Any
+    rhs : Any
 
     def visit(self, context):
         lvalue = self.lvalue.visit(context)
-        print(f"Variable assignment lvalue {lvalue}")
         rhsAddr = self.rhs.visit(context)
         context.blockFactory.addIR(IRAssign(lvalue, rhsAddr))
 
@@ -153,19 +121,12 @@ class DerefPointerAssignment:
         rhsAddr = self.rhs.visit(context)
         context.blockFactory.addIR(IRAssignToPointer(lvalue, rhsAddr, currentSymbolTable()))
 
+@dataclass(frozen=True)
 class Variable:
-    def __init__(self, name):
-        self.type = None
-        self.completeType = None
-        self.name = name
-
-    def __repr__(self):
-        return f"<Variable type {self.type} complete type {self.completeType} name {self.name}>"
+    name : str
 
     def visit(self, context):
         symEntry = currentSymbolTable()[self.name]
-        self.type = symEntry.type
-        self.completeType = symEntry.completeType
         return currentSymbolTable()[self.name]
 
 class AddressOf:

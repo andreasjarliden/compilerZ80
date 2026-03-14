@@ -1,4 +1,5 @@
 from pprint import pformat
+from symbolTable import *
 
 class BasicBlock:
     def __init__(self, symbolTable, name):
@@ -34,4 +35,13 @@ class BlockFactory:
     def addIR(self, ir):
         self.currentBlock.statements.append(ir)
 
+class SingleBlockFactory:
+    def __init__(self):
+        self.block = BasicBlock(currentSymbolTable(), "block")
+
+    def addIR(self, ir):
+        self.block.statements.append(ir)
+
+    def blocks(self):
+        return { self.block.name: self.block }
 
