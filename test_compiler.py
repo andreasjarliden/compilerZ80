@@ -1,5 +1,6 @@
 import unittest
 import compiler
+from blocks import BasicBlock
 from parser import *
 
 class SingleBlockFactory:
