@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Any
 from ir import *
 from symbolTable import *
+import symbolTable
 
 @dataclass
 class ASTContext:
@@ -12,8 +13,7 @@ class Variable:
     name : str
 
     def visit(self, context):
-        symEntry = currentSymbolTable()[self.name]
-        return currentSymbolTable()[self.name]
+        return lookup(self.name)
 
 @dataclass(frozen=True)
 class Argument:
@@ -59,7 +59,8 @@ class Function:
         context.blockFactory.addIR(IRDefFun(self, currentSymbolTable()))
         for s in self.statements:
             s.visit(context)
-        context.blockFactory.addIR(IRFunExit(self, currentSymbolTable()))
+        hasStackFrame = len(currentSymbolTable()) > 0
+        context.blockFactory.addIR(IRFunExit(self, hasStackFrame))
         exitFunction()
         context.blockFactory.exitBlock()
 
@@ -69,13 +70,11 @@ class If:
     statements : list
 
     def visit(self, context):
-        print(f"If.visit: expr {self.expr}")
         skipLabel = createLabel()
         if isinstance(self.expr, Variable):
             exprAddr = self.expr.visit(context)
             ir = IRIfVariable(exprAddr, skipLabel)
         elif isinstance(self.expr, Relation):
-            print("Creating IRIfRelation")
             (lhsAddr, rhsAddr) = self.expr.visit(context)
             ir = IRIfRelation(self.expr.operation, lhsAddr, rhsAddr, skipLabel)
         else:
@@ -159,7 +158,6 @@ class FunctionCall:
         self.arguments = arguments
         self.storeResult = False
         self.type = currentSymbolTable()[name].type
-        print(f"Function call for {name} which is returning {self.type}")
 
     def __repr__(self):
         return f"call {self.name} with args {self.arguments}"
@@ -181,8 +179,7 @@ class Return:
     expr : Any
 
     def visit(self, context):
-        # Function is in the symbol table above the current one
-        t = ENV[-2][FUNCTION].type
+        t = lookup(symbolTable.FUNCTION).type
         exprAddress = self.expr.visit(context)
         context.blockFactory.addIR(IRReturn(t, exprAddress))
 

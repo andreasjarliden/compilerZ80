@@ -165,10 +165,10 @@ class IRDefFun(IR):
         asmFile.write('\t; Function content\n')
 
 class IRFunExit(IR):
-    def __init__(self, function, symbolTable):
+    def __init__(self, function, hasStackFrame):
         super().__init__()
         self.function = function
-        self.symbolTable = symbolTable
+        self.hasStackFrame = hasStackFrame
 
     def genCode(self):
         ra = registerAllocator.RA
@@ -176,7 +176,7 @@ class IRFunExit(IR):
         asmFile.write(f"{self.function.name}_exit:\n")
         global IR_FUNCTION
         IR_FUNCTION=None
-        if len(self.symbolTable) > 0:
+        if self.hasStackFrame:
             asmFile.write('\t;Restore stack pointer (free local variables)\n')
             asmFile.write(f'\tld\tSP, IX\n')
         asmFile.write('\t;Restore previous frame pointer IX and return\n')
@@ -248,6 +248,11 @@ class IRReturn(IR):
     def __init__(self, t, exprAddr):
         super().__init__(lhsAddr=exprAddr)
         self.type = t
+
+    def __eq__(self, other):
+        if not isinstance(other, IRReturn):
+            return NotImplemented
+        return self.lhsAddr == other.lhsAddr and self.type == other.type
 
     def extraDescription(self):
         return f"type {self.type}"

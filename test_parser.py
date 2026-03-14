@@ -2,7 +2,7 @@ import unittest
 from parser import parser
 from astnodes import *
 from address import Constant
-from blocks import SingleBlockFactory
+from blocks import SingleBlockFactory, BlockFactory
 
 class TestParser(unittest.TestCase):
     #
@@ -58,4 +58,29 @@ class TestParser(unittest.TestCase):
                                   Add(Constant("char", 1), Constant("char", 2)),
                                   Add(Constant("char", 3), Constant("char", 4))))
 
+    #
+    # Function
+    #
+    def test_function_noStackFrame(self):
+        ast = parser.parse("char foo() { return 0; }")
+        blockFactory = BlockFactory()
+        context = ASTContext(blockFactory)
+        ast[0].visit(context)
+        blocks = blockFactory.blocks()
+        block = blocks["foo_0000"]
+        self.assertTrue(isinstance(block.statements[0], IRDefFun))
+        self.assertEqual(block.statements[1], IRReturn("char", Constant("char", 0)))
+        self.assertTrue(isinstance(block.statements[2], IRFunExit))
+        self.assertEqual(block.statements[2].hasStackFrame, False)
+
+    def test_function_stackFrame(self):
+        ast = parser.parse("char foo() { int a; }")
+        blockFactory = BlockFactory()
+        context = ASTContext(blockFactory)
+        ast[0].visit(context)
+        blocks = blockFactory.blocks()
+        block = blocks["foo_0000"]
+        self.assertTrue(isinstance(block.statements[0], IRDefFun))
+        self.assertTrue(isinstance(block.statements[1], IRFunExit))
+        self.assertEqual(block.statements[1].hasStackFrame, True)
 
