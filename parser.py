@@ -90,13 +90,10 @@ class Function:
         exitFunction()
         context.blockFactory.exitBlock()
 
+@dataclass(frozen=True)
 class If:
-    def __init__(self, expr, statements):
-        self.expr = expr
-        self.statements = statements
-
-    def __repr__(self):
-        return f"IF {self.expr} with statements {self.statements}"
+    expr : Any
+    statements : list
 
     def visit(self, context):
         print(f"If.visit: expr {self.expr}")
@@ -234,12 +231,9 @@ class FunctionCall:
             irfuncall = IRFunCall(self.type, self.name, len(self.arguments))
             context.blockFactory.addIR(irfuncall)
 
+@dataclass(frozen=True)
 class Return:
-    def __init__(self, expr):
-        self.expr = expr
-
-    def __repr__(self):
-        return "Return " + str(self.expr)
+    expr : Any
 
     def visit(self, context):
         # Function is in the symbol table above the current one

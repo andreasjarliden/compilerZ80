@@ -1,5 +1,5 @@
 import unittest
-from parser import parser, If, Relation, Add
+from parser import parser, If, Relation, Add, Return
 from address import Constant
 
 class TestParser(unittest.TestCase):
@@ -8,11 +8,12 @@ class TestParser(unittest.TestCase):
 
     def test_if_simple(self):
         ast = parser.parse("""if (1) { }""")
-        # TODO check more
+        self.assertEqual(ast[0], If(Constant("char", 1), []))
 
     def test_if_single_statement(self):
         ast = parser.parse("""if (1) return 42;""")
-        # TODO check more
+        self.assertEqual(ast[0], If(Constant("char", 1),
+                                    [ Return(Constant("char", 42)) ] ))
 
     def test_if_equality(self):
         ast = parser.parse("""if (1 + 2 == 3 + 4) return 0;""")
