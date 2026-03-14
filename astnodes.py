@@ -7,18 +7,26 @@ from symbolTable import *
 class ASTContext:
     blockFactory : Any
 
-class Argument:
-    def __init__(self, t, name):
-        if t == "char" or t == "int":
-            self.type = t
-        elif t[0] == "*":
-            # Pointers are handled as int
-            self.type = "int"
-        self.completeType = t
-        self.name = name
+@dataclass(frozen=True)
+class Variable:
+    name : str
 
-    def __repr__(self):
-        return f"Argument {self.type} {self.name}"
+    def visit(self, context):
+        symEntry = currentSymbolTable()[self.name]
+        return currentSymbolTable()[self.name]
+
+@dataclass(frozen=True)
+class Argument:
+    completeType : Any
+    name : str
+
+    @property
+    def type(self):
+        if self.completeType[0] == "*":
+            # Pointers are handled as int
+            return "int"
+        else:
+            return self.completeType
 
 class Function:
     def __init__(self, t, name, statements, arguments=[]):
@@ -108,33 +116,20 @@ class VariableAssignment:
         rhsAddr = self.rhs.visit(context)
         context.blockFactory.addIR(IRAssign(lvalue, rhsAddr))
 
+@dataclass(frozen=True)
 class DerefPointerAssignment:
-    def __init__(self, lvalue, rhs):
-        self.lvalue = lvalue
-        self.rhs = rhs;
-
-    def __repr__(self):
-        return f"Deref pointer assignment *{self.lvalue} = {self.rhs}"
+    lvalue : Any
+    rhs : Any
 
     def visit(self, context):
         lvalue = self.lvalue.visit(context)
         rhsAddr = self.rhs.visit(context)
         context.blockFactory.addIR(IRAssignToPointer(lvalue, rhsAddr, currentSymbolTable()))
 
+
 @dataclass(frozen=True)
-class Variable:
-    name : str
-
-    def visit(self, context):
-        symEntry = currentSymbolTable()[self.name]
-        return currentSymbolTable()[self.name]
-
 class AddressOf:
-    def __init__(self, expr):
-        self.expr = expr
-
-    def __repr__(self):
-        return f"AddressOf {self.expr}"
+    expr : Any
 
     def visit(self, context):
         exprAddr = self.expr.visit(context)
@@ -142,16 +137,12 @@ class AddressOf:
         context.blockFactory.addIR(irAddressOf)
         return irAddressOf.resultAddr
 
+@dataclass(frozen=True)
 class Dereference:
-    def __init__(self, expr):
-        self.expr = expr
-
-    def __repr__(self):
-        return f"Dereference {self.expr}"
+    expr : Any
 
     def visit(self, context):
         pointer = self.expr.visit(context)
-        print(f"Dereference: created code for pointer receiving {self.expr} address {pointer}")
         ct = pointer.completeType[1:] # remove leading *
         if pointer.completeType.startswith("*"):
             t = "int"
