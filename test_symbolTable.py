@@ -2,22 +2,22 @@ import unittest
 from symbolTable import *
 
 class TestSymbolTable(unittest.TestCase):
+    def setUp(self):
+        self.symbolTable = SymbolTable()
+    
     def test_singleFrame(self):
-        addSymbol("char", "char", "a")
-        print(ENV)
-        self.assertEqual(lookup("a").type, "char")
+        self.symbolTable.addSymbol("char", "char", "a")
+        self.assertEqual(self.symbolTable.lookup("a").type, "char")
 
     def test_replaceWithLocal(self):
-        addSymbol("char", "char", "a")
-        pushFrame();
-        addSymbol("int", "int", "a")
-        print(ENV)
-        self.assertEqual(lookup("a").type, "int")
+        self.symbolTable.addSymbol("char", "char", "a")
+        self.symbolTable.pushFrame();
+        self.symbolTable.addSymbol("int", "int", "a")
+        self.assertEqual(self.symbolTable.lookup("a").type, "int")
 
     def test_inOuterFrame(self):
-        addSymbol("char", "char", "a")
-        pushFrame();
-        addSymbol("int", "int", "b")
-        print(ENV)
-        self.assertEqual(lookup("a").type, "char")
-        self.assertEqual(lookup("b").type, "int")
+        self.symbolTable.addSymbol("char", "char", "a")
+        self.symbolTable.pushFrame();
+        self.symbolTable.addSymbol("int", "int", "b")
+        self.assertEqual(self.symbolTable.lookup("a").type, "char")
+        self.assertEqual(self.symbolTable.lookup("b").type, "int")

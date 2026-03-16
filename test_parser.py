@@ -30,7 +30,8 @@ class TestParser(unittest.TestCase):
     # Variable use
     #
     def test_variableUse(self):
-        context = ASTContext(SingleBlockFactory())
+        symbolTable = SymbolTable()
+        context = ASTContext(SingleBlockFactory(symbolTable.currentSymbolTable()), symbolTable)
         ast = parser.parse("char a;return a;");
         ast[0].visit(context)
         self.assertEqual(ast[1].expr.visit(context),

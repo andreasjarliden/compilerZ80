@@ -36,8 +36,8 @@ class BlockFactory:
         self.currentBlock.statements.append(ir)
 
 class SingleBlockFactory:
-    def __init__(self):
-        self.block = BasicBlock(currentSymbolTable(), "block")
+    def __init__(self, symbolTable):
+        self.block = BasicBlock(symbolTable, "block")
 
     def addIR(self, ir):
         self.block.statements.append(ir)

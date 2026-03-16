@@ -6,14 +6,15 @@ import symbolTable
 
 @dataclass
 class ASTContext:
-    blockFactory : Any
+    blockFactory : Any 
+    symbolTable : SymbolTable = SymbolTable()
 
 @dataclass(frozen=True)
 class Variable:
     name : str
 
     def visit(self, context):
-        return lookup(self.name)
+        return context.symbolTable.lookup(self.name)
 
 @dataclass(frozen=True)
 class Argument:
@@ -34,14 +35,18 @@ class Function:
         self.name = name
         self.statements = statements
         self.arguments = arguments
-        addSymbolEntry(name, self)
 
     def __repr__(self):
         return "Function " + self.name + " with statements " + str(self.statements)
 
     def visit(self, context):
-        enterFunction(self.name)
-        context.blockFactory.enterBlock(self.name, currentSymbolTable())
+        context.symbolTable.addSymbolEntry(self.name, self)
+        context.symbolTable.pushFrame()
+        global FUNCTION
+        global FUNCTION_LABELS
+        FUNCTION = self.name
+        FUNCTION_LABELS = 0
+        context.blockFactory.enterBlock(self.name, context.symbolTable.currentSymbolTable())
         # return address is at ix+2, ix+3. Rightmost argument (16-bit) is at ix+5, ix+4
         # If pushing AF, then A is at ix+5
         offset = 4
@@ -54,14 +59,15 @@ class Function:
                 symEntry.impl = StackAddress(offset+1)
             else:
                 error()
-            addSymbolEntry(a.name, symEntry)
+            context.symbolTable.addSymbolEntry(a.name, symEntry)
             offset+=2
-        context.blockFactory.addIR(IRDefFun(self, currentSymbolTable()))
+        context.blockFactory.addIR(IRDefFun(self, context.symbolTable.currentSymbolTable()))
         for s in self.statements:
             s.visit(context)
-        hasStackFrame = len(currentSymbolTable()) > 0
+        hasStackFrame = len(context.symbolTable.currentSymbolTable()) > 0
         context.blockFactory.addIR(IRFunExit(self, hasStackFrame))
-        exitFunction()
+        context.symbolTable.popFrame()
+        FUNCTION = None
         context.blockFactory.exitBlock()
 
 @dataclass(frozen=True)
@@ -81,11 +87,11 @@ class If:
             error()
         context.blockFactory.addIR(ir)
         context.blockFactory.exitBlock()
-        context.blockFactory.enterSubBlock(currentSymbolTable())
+        context.blockFactory.enterSubBlock(context.symbolTable.currentSymbolTable())
         for s in self.statements:
             s.visit(context)
         context.blockFactory.exitBlock()
-        context.blockFactory.enterSubBlock(currentSymbolTable())
+        context.blockFactory.enterSubBlock(context.symbolTable.currentSymbolTable())
         context.blockFactory.addIR(IRLabel(skipLabel))
 
 @dataclass(frozen=True)
@@ -102,7 +108,8 @@ class VariableDefinition:
             return self.completeType
 
     def visit(self, context):
-        addSymbol(self.type, self.completeType, self.name)
+        print(f"VariableDefinition adding {self.name} to {context.symbolTable}")
+        context.symbolTable.addSymbol(self.type, self.completeType, self.name)
         pass
 
 @dataclass(frozen=True)
@@ -123,7 +130,7 @@ class DerefPointerAssignment:
     def visit(self, context):
         lvalue = self.lvalue.visit(context)
         rhsAddr = self.rhs.visit(context)
-        context.blockFactory.addIR(IRAssignToPointer(lvalue, rhsAddr, currentSymbolTable()))
+        context.blockFactory.addIR(IRAssignToPointer(lvalue, rhsAddr, context.symbolTable.currentSymbolTable()))
 
 
 @dataclass(frozen=True)
@@ -147,7 +154,7 @@ class Dereference:
             t = "int"
         else:
             t = ct
-        deref = IRDereference(pointer, addTemporary(t, ct), currentSymbolTable())
+        deref = IRDereference(pointer, addTemporary(t, ct), context.symbolTable.currentSymbolTable())
         context.blockFactory.addIR(deref)
         deref.resultAddr.impl = PointerAddress(pointer)
         return deref.resultAddr
@@ -157,17 +164,17 @@ class FunctionCall:
         self.name = name
         self.arguments = arguments
         self.storeResult = False
-        self.type = currentSymbolTable()[name].type
 
     def __repr__(self):
         return f"call {self.name} with args {self.arguments}"
 
     def visit(self, context):
+        self.type = context.symbolTable.lookup(self.name).type
         for a in reversed(self.arguments):
             exprAddress = a.visit(context)
             context.blockFactory.addIR(IRArgument(exprAddress))
         if self.storeResult:
-            irfuncall = IRFunCall(self.type, self.name, len(self.arguments), addr=addTemporary(self.type, self.type))
+            irfuncall = IRFunCall(self.type, self.name, len(self.arguments), addr=context.symbolTable.addTemporary(self.type, self.type))
             context.blockFactory.addIR(irfuncall)
             return irfuncall.resultAddr
         else:
@@ -179,7 +186,7 @@ class Return:
     expr : Any
 
     def visit(self, context):
-        t = lookup(symbolTable.FUNCTION).type
+        t = context.symbolTable.lookup(FUNCTION).type
         exprAddress = self.expr.visit(context)
         context.blockFactory.addIR(IRReturn(t, exprAddress))
 
@@ -193,7 +200,7 @@ class Add:
         rhsAddr = self.rhs.visit(context)
         t = lhsAddr.type # TODO promote
         ct = lhsAddr.completeType
-        irAdd = IRAdd(addTemporary(t, ct), lhsAddr, rhsAddr)
+        irAdd = IRAdd(context.symbolTable.addTemporary(t, ct), lhsAddr, rhsAddr)
         context.blockFactory.addIR(irAdd)
         return irAdd.resultAddr
 

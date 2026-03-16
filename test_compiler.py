@@ -2,10 +2,13 @@ import unittest
 import compiler
 from blocks import BasicBlock, SingleBlockFactory
 from parser import *
+from pprint import *
 
 def compileBlockToIR(code):
     ast = parser.parse(code)
-    blocks = compiler.astToThreeCode(ast, SingleBlockFactory)
+    symbolTable = SymbolTable()
+    blockFactory = SingleBlockFactory(symbolTable.currentSymbolTable())
+    blocks = compiler.astToThreeCode(ast, blockFactory, symbolTable)
     compiler.updateLive(blocks)
     bb = blocks["block"]
     return bb.statements
@@ -26,6 +29,7 @@ B=A+1;""")
         self.assertEqual(type(irs[3]), IRAssign)
         self.assertFalse(irs[0].live["A"]) # A=1
         self.assertFalse(irs[1].live["A"]) # A=2
+        pprint(irs)
         self.assertTrue(irs[3].live["A"]) # B=A+1
 
     def test_2(self):
@@ -44,7 +48,3 @@ A=2;""")
         self.assertFalse(irs[2].live["A"]) # B=A+1
         self.assertFalse(irs[3].live["A"]) # A=2
         self.assertTrue(irs[3].live["B"]) # A=2
-
-
-
-

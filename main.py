@@ -10,18 +10,21 @@ ir.asmFile = asmFile
 ir.asmWriter = AsmWriter(ir.asmFile)
 
 # Add external functions
-parser.addSymbolEntry("printHex16", parser.Function("void", "printHex16", [], [parser.Argument("int", None)]))
-parser.addSymbolEntry("printHex16", parser.Function("void", "printHex8", [], [parser.Argument("char", None)]))
+# parser.addSymbolEntry("printHex16", parser.Function("void", "printHex16", [], [parser.Argument("int", None)]))
+# parser.addSymbolEntry("printHex16", parser.Function("void", "printHex8", [], [parser.Argument("char", None)]))
 
 print("Parsing")
 print("=======")
 
 ast = parser.parser.parse("""
+char bar(char N) {
+    return N + 1;
+    }
 char foo() {
     char A;
     char B;
     if (2 < 3) {
-        A=2;
+        A=bar(3);
     }
     }
 """) 
