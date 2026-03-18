@@ -130,7 +130,7 @@ class DerefPointerAssignment:
     def visit(self, context):
         lvalue = self.lvalue.visit(context)
         rhsAddr = self.rhs.visit(context)
-        context.blockFactory.addIR(IRAssignToPointer(lvalue, rhsAddr, context.symbolTable.currentSymbolTable()))
+        context.blockFactory.addIR(IRAssignToPointer(lvalue, rhsAddr))
 
 
 @dataclass(frozen=True)
@@ -154,7 +154,7 @@ class Dereference:
             t = "int"
         else:
             t = ct
-        deref = IRDereference(pointer, addTemporary(t, ct), context.symbolTable.currentSymbolTable())
+        deref = IRDereference(pointer, addTemporary(t, ct))
         context.blockFactory.addIR(deref)
         deref.resultAddr.impl = PointerAddress(pointer)
         return deref.resultAddr

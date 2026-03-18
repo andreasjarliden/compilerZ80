@@ -1,6 +1,8 @@
 from pprint import pprint
 import ir
-import parser
+from parser import parser
+from symbolTable import SymbolTable
+from astnodes import Function, Argument
 from compiler import astToThreeCode, updateLive, mapSymbols, genCode
 from asmWriter import AsmWriter
 
@@ -9,14 +11,15 @@ asmFile = open("a.asm", "w")
 ir.asmFile = asmFile
 ir.asmWriter = AsmWriter(ir.asmFile)
 
+symbolTable = SymbolTable()
 # Add external functions
-# parser.addSymbolEntry("printHex16", parser.Function("void", "printHex16", [], [parser.Argument("int", None)]))
-# parser.addSymbolEntry("printHex16", parser.Function("void", "printHex8", [], [parser.Argument("char", None)]))
+symbolTable.addSymbolEntry("printHex16", Function("void", "printHex16", [], [Argument("int", None)]))
+symbolTable.addSymbolEntry("printHex16", Function("void", "printHex8", [], [Argument("char", None)]))
 
 print("Parsing")
 print("=======")
 
-ast = parser.parser.parse("""
+ast = parser.parse("""
 char bar(char N) {
     return N + 1;
     }
@@ -36,7 +39,7 @@ print()
 
 print("AST to 3-code")
 print("=============")
-blocks = astToThreeCode(ast)
+blocks = astToThreeCode(ast, symbolTable=symbolTable)
 updateLive(blocks)
 
 print("BASIC_BLOCKS")

@@ -1,5 +1,6 @@
 import unittest
 from registerAllocator import *
+from symbolTable import SymbolTable
 from io import StringIO
 from symEntry import *
 from address import *
@@ -9,7 +10,11 @@ from ir import *
 
 class TestRA(unittest.TestCase):
     def setUp(self):
-        self.ra = RegisterAllocator(["foo", "bar", "fiz"])
+        symbolTable = SymbolTable()
+        symbolTable.addSymbol("char", "char", "foo")
+        symbolTable.addSymbol("char", "char", "bar")
+        symbolTable.addSymbol("int", "int", "baz")
+        self.ra = RegisterAllocator(symbolTable.currentSymbolTable())
         self.ra.currentInstruction = IR()
         self.ra.currentInstruction.live = { "foo": True, "bar": True, "fiz": True }
 
@@ -92,6 +97,37 @@ class TestRA(unittest.TestCase):
 
         self.assertEqual(self.ra.registers["a"], set())
         self.assertEqual(self.ra.addresses["foo"], {"foo"})
+
+    def test_spillAllMatchingType_char(self):
+        self.ra.currentInstruction.live["foo"] = True
+        self.ra.currentInstruction.live["bar"] = True
+        self.ra.currentInstruction.live["baz"] = True
+        self.ra.assignToNameWithRegister("foo", "a") # char
+        self.ra.assignToNameWithRegister("bar", "b") # char
+        self.ra.assignToNameWithRegister("baz", "c") # int
+
+        self.ra.spillAllMatchingType("char")
+
+        self.assertEqual(self.ra.registers["a"], set())
+        self.assertEqual(self.ra.addresses["foo"], {"foo"})
+        self.assertEqual(self.ra.registers["b"], set())
+        self.assertEqual(self.ra.addresses["bar"], {"bar"})
+        self.assertEqual(self.ra.registers["c"], {"baz"})
+
+    def test_spillAllMatchingType_int(self):
+        self.ra.currentInstruction.live["foo"] = True
+        self.ra.currentInstruction.live["bar"] = True
+        self.ra.currentInstruction.live["baz"] = True
+        self.ra.assignToNameWithRegister("foo", "a") # char
+        self.ra.assignToNameWithRegister("bar", "b") # char
+        self.ra.assignToNameWithRegister("baz", "c") # int
+
+        self.ra.spillAllMatchingType("int")
+
+        self.assertEqual(self.ra.registers["a"], {"foo"})
+        self.assertEqual(self.ra.registers["b"], {"bar"})
+        self.assertEqual(self.ra.registers["c"], set())
+        self.assertEqual(self.ra.addresses["baz"], {"baz"})
 
 
 class TestZ80RA(unittest.TestCase):

@@ -368,14 +368,13 @@ class IRAddressOf(IR):
         ra.loadNameInRegister(self.resultAddr.name, regX)
 
 class IRDereference(IR):
-    def __init__(self, symEntry, resAddr, symbolTable):
+    def __init__(self, symEntry, resAddr):
         super().__init__(resultAddr=resAddr, lhsAddr=symEntry)
-        self.symbolTable = symbolTable
 
     def genCode(self):
         ra = registerAllocator.RA
         t = self.lhsAddr.completeType
-        ra.spillAllMatchingType(t, self.symbolTable)
+        ra.spillAllMatchingType(t)
 
 
 class IRAssign(IR):
@@ -428,15 +427,14 @@ class IRAssign(IR):
 
 
 class IRAssignToPointer(IR):
-    def __init__(self, lvalue, rhsAddress, symbolTable):
+    def __init__(self, lvalue, rhsAddress):
         super().__init__(resultAddr=lvalue, lhsAddr=rhsAddress)
-        self.symbolTable = symbolTable
 
     def genCode(self):
         ra = registerAllocator.RA
 
         t = self.resultAddr.completeType[1:]
-        ra.spillAllMatchingType(t, self.symbolTable)
+        ra.spillAllMatchingType(t)
 
         if self.resultAddr.completeType == "*char":
             if isinstance(self.lhsAddr, Constant):

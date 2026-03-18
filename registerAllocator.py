@@ -9,7 +9,9 @@ RA = None
 ALL_REGISTERS = {'a', 'b', 'c', 'd', 'e', 'h', 'l', 'bc', 'de', 'hl'}
 
 class RegisterAllocator:
-    def __init__(self, addresses):
+    def __init__(self, symbolTable):
+        addresses = symbolTable.keys()
+        self.symbolTable = symbolTable
         self.registers = {r: set() for r in ALL_REGISTERS}
         self.addresses = {a: {a} for a in addresses}
         self.coupledRegisters = { 'bc': ('b', 'c'),
@@ -90,15 +92,17 @@ class RegisterAllocator:
     def spillName(self, n):
         if self.currentInstruction.live[n] and n not in self.addresses[n]:
             # pick one of register contining n
-            r = next(iter(self.addresses[n] - set(n)))
+            r = next(iter(self.addresses[n]))
+            # TODO if r contains two names, might it needlessly spill?
+            print(f"spillRegister({r})")
             self.spillRegister(r)
 
     def spillAll(self):
         for n in self.addresses:
             self.spillName(n)
 
-    def spillAllMatchingType(self, t, symbolTable):
-        for n, s in symbolTable.items():
+    def spillAllMatchingType(self, t):
+        for n, s in self.symbolTable.items():
             if s.completeType == t:
                 self.spillName(n)
             
@@ -185,8 +189,7 @@ class RegisterAllocator:
 
 class Z80RegisterAllocator(RegisterAllocator):
     def __init__(self, asmFile, symbolTable):
-        super().__init__(symbolTable.keys())
-        self.symbolTable = symbolTable
+        super().__init__(symbolTable)
         self.asmFile = asmFile
         self.asmWriter = AsmWriter(asmFile)
 
