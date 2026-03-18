@@ -35,7 +35,7 @@ class TestParser(unittest.TestCase):
         ast = parser.parse("char a;return a;");
         ast[0].visit(context)
         self.assertEqual(ast[1].expr.visit(context),
-                         SymEntry("char", "char", "a"))
+                         SymEntry("char", "a"))
 
     # 
     # IF

@@ -5,12 +5,18 @@ SIZE_FOR_TYPES = { "char": 1,
 
 @dataclass
 class SymEntry:
-    type : str
     completeType : str
     name : str
 
     def __post_init__(self):
         self.impl = None
+
+    @property
+    def type(self):
+        if self.completeType.startswith("*"):
+            return "int"
+        else:
+            return self.completeType
 
     @property
     def size(self):

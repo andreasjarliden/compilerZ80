@@ -51,7 +51,7 @@ class Function:
         # If pushing AF, then A is at ix+5
         offset = 4
         for a in reversed(self.arguments):
-            symEntry = SymEntry(a.type, a.completeType, a.name)
+            symEntry = SymEntry(a.completeType, a.name)
             if a.type == "int":
                 symEntry.impl = StackAddress(offset)
             elif a.type == "char":
@@ -109,7 +109,7 @@ class VariableDefinition:
 
     def visit(self, context):
         print(f"VariableDefinition adding {self.name} to {context.symbolTable}")
-        context.symbolTable.addSymbol(self.type, self.completeType, self.name)
+        context.symbolTable.addSymbol(self.completeType, self.name)
         pass
 
 @dataclass(frozen=True)
@@ -174,7 +174,7 @@ class FunctionCall:
             exprAddress = a.visit(context)
             context.blockFactory.addIR(IRArgument(exprAddress))
         if self.storeResult:
-            irfuncall = IRFunCall(self.type, self.name, len(self.arguments), addr=context.symbolTable.addTemporary(self.type, self.type))
+            irfuncall = IRFunCall(self.type, self.name, len(self.arguments), addr=context.symbolTable.addTemporary(self.type))
             context.blockFactory.addIR(irfuncall)
             return irfuncall.resultAddr
         else:
@@ -198,9 +198,8 @@ class Add:
     def visit(self, context):
         lhsAddr = self.lhs.visit(context)
         rhsAddr = self.rhs.visit(context)
-        t = lhsAddr.type # TODO promote
         ct = lhsAddr.completeType
-        irAdd = IRAdd(context.symbolTable.addTemporary(t, ct), lhsAddr, rhsAddr)
+        irAdd = IRAdd(context.symbolTable.addTemporary(ct), lhsAddr, rhsAddr)
         context.blockFactory.addIR(irAdd)
         return irAdd.resultAddr
 

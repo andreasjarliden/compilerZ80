@@ -11,9 +11,9 @@ from ir import *
 class TestRA(unittest.TestCase):
     def setUp(self):
         symbolTable = SymbolTable()
-        symbolTable.addSymbol("char", "char", "foo")
-        symbolTable.addSymbol("char", "char", "bar")
-        symbolTable.addSymbol("int", "int", "baz")
+        symbolTable.addSymbol("char", "foo")
+        symbolTable.addSymbol("char", "bar")
+        symbolTable.addSymbol("int", "baz")
         self.ra = RegisterAllocator(symbolTable.currentSymbolTable())
         self.ra.currentInstruction = IR()
         self.ra.currentInstruction.live = { "foo": True, "bar": True, "fiz": True }
@@ -132,17 +132,17 @@ class TestRA(unittest.TestCase):
 
 class TestZ80RA(unittest.TestCase):
     def setUp(self):
-        self.foo = SymEntry("char", "char", "foo")
+        self.foo = SymEntry("char", "foo")
         self.foo.impl = StackAddress(0)
-        self.ptr = SymEntry("int", "int", "ptr")
+        self.ptr = SymEntry("int", "ptr")
         self.ptr.impl = StackAddress(2)
-        self.derefPtr = SymEntry("char", "char", "deref")
+        self.derefPtr = SymEntry("char", "deref")
         self.derefPtr.impl = PointerAddress(self.ptr)
-        self.derefPtr16 = SymEntry("int", "int", "deref16")
+        self.derefPtr16 = SymEntry("int", "deref16")
         self.derefPtr16.impl = PointerAddress(self.ptr)
-        self.bar = SymEntry("char", "char", "bar")
+        self.bar = SymEntry("char", "bar")
         self.bar.impl = StackAddress(-11)
-        self.bar16 = SymEntry("char", "char", "bar16")
+        self.bar16 = SymEntry("char", "bar16")
         self.bar16.impl = StackAddress(-2)
         self.symbolTable = { "foo": self.foo, "bar": self.bar, "ptr": self.ptr, "bar16": self.bar16, "deref": self.derefPtr, "deref16": self.derefPtr16 }
         self.ra = Z80RegisterAllocator(StringIO(), self.symbolTable)
@@ -151,7 +151,7 @@ class TestZ80RA(unittest.TestCase):
 
     def test_loadInA_alreadyLoaded(self):
         self.ra.loadNameInRegister("foo", "a")
-        r = self.ra.loadInA(SymEntry("char", "char", "foo")) 
+        r = self.ra.loadInA(SymEntry("char", "foo")) 
         self.assertEqual(r, "a")
         self.ra.asmFile.seek(0)
         self.assertEqual(self.ra.asmFile.read(), "")
@@ -164,7 +164,7 @@ class TestZ80RA(unittest.TestCase):
 
     def test_loadInA_loadedInOtherRegister(self):
         self.ra.loadNameInRegister("foo", "b")
-        r = self.ra.loadInA(SymEntry("char", "char", "foo"))
+        r = self.ra.loadInA(SymEntry("char", "foo"))
         self.assertEqual(r, "a")
         self.ra.asmFile.seek(0)
         self.assertEqual(self.ra.asmFile.read(), "\tld\ta, b\n")

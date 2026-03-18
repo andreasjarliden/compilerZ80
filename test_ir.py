@@ -8,12 +8,12 @@ import asmWriter
 
 class TestIR(unittest.TestCase):
     def setUp(self):
-        self.foo = SymEntry("char", "char", "foo")
-        self.foo16 = SymEntry("int", "int", "foo")
-        self.bar = SymEntry("char", "char", "bar")
-        self.baz = SymEntry("char", "char", "baz")
-        self.ptr = SymEntry("int", "int*", "ptr")
-        self.derefPtr = SymEntry("char", "char", "derefPtr")
+        self.foo = SymEntry("char", "foo")
+        self.foo16 = SymEntry("int", "foo")
+        self.bar = SymEntry("char", "bar")
+        self.baz = SymEntry("char", "baz")
+        self.ptr = SymEntry("int*", "ptr")
+        self.derefPtr = SymEntry("char", "derefPtr")
         symbolTable = { self.foo.name: self.foo,
                        self.bar.name: self.bar,
                        self.baz.name: self.baz,
