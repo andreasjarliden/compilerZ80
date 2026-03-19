@@ -3,12 +3,8 @@ from symEntry import *
 import registerAllocator
 from asmWriter import *
 
-# TODO maybe add asmWriter.write and then we can only use asmWriter
-asmFile = None
-asmWriter = AsmWriter(asmFile)
-
+# TODO Remove?
 IR_FUNCTIONS = []
-
 
 # Size of all local stack variables
 def stackFrameSize(symbolTable):
@@ -79,7 +75,7 @@ class IR:
     # Similar to doLoadInRegister8 but only prepares the rhs for an assembler
     # instruction. Not loading to a register.
     # TODO: Move to registerAllocator?
-    def loadRhs8(self, rhsAddr):
+    def loadRhs8(self, rhsAddr, asmWriter):
         ra = registerAllocator.RA
         if isinstance(rhsAddr, Constant):
             return rhsAddr.value
@@ -109,7 +105,7 @@ class IR:
             # Use directly from memory, e.g. add a, (ix + 42)
             return rhsAddr.impl.codeArg()
 
-    def load8bitLhsAndRhs(self, transitive=False):
+    def load8bitLhsAndRhs(self, asmWriter, transitive=False):
         ra = registerAllocator.RA
 
         if transitive:
@@ -118,7 +114,7 @@ class IR:
                 self.lhsAddr, self.rhsAddr = self.rhsAddr, self.lhsAddr
 
         ra.loadInA(self.lhsAddr)
-        return self.loadRhs8(self.rhsAddr)
+        return self.loadRhs8(self.rhsAddr, asmWriter)
 
     def load16bitLhsAndRhs(self, transitive=False):
         ra = registerAllocator.RA
@@ -142,27 +138,27 @@ class IRDefFun(IR):
     def extraDescription(self):
         return f"{self.function} symbolTable {self.symbolTable}"
 
-    def genCode(self):
+    def genCode(self, asmWriter):
         global IR_FUNCTION
         IR_FUNCTION=self.function.name
-        asmFile.write(self.function.name + ":\n");
+        asmWriter.write(self.function.name + ":\n");
         # Let IX be frame-pointer
-        asmFile.write('\t; Let IX be frame-pointer\n')
-        asmFile.write('\tpush\tIX\n')
-        asmFile.write('\tld\tIX, 0\n')
-        asmFile.write('\tadd\tIX, SP\n')
+        asmWriter.write('\t; Let IX be frame-pointer\n')
+        asmWriter.write('\tpush\tIX\n')
+        asmWriter.write('\tld\tIX, 0\n')
+        asmWriter.write('\tadd\tIX, SP\n')
 
         # Reserve space for local variables
         size = stackFrameSize(self.symbolTable)
         if size > 0:
             negSize=65536-size
             negHexSize=f'{negSize:05x}h'
-            asmFile.write('\t; Reserve space for local variables\n')
-            asmFile.write(f'\tld\tHL, {negHexSize}\n')
-            asmFile.write(f'\tadd\tHL, SP\n')
-            asmFile.write(f'\tld\tSP, HL\n')
+            asmWriter.write('\t; Reserve space for local variables\n')
+            asmWriter.write(f'\tld\tHL, {negHexSize}\n')
+            asmWriter.write(f'\tadd\tHL, SP\n')
+            asmWriter.write(f'\tld\tSP, HL\n')
 
-        asmFile.write('\t; Function content\n')
+        asmWriter.write('\t; Function content\n')
 
 class IRFunExit(IR):
     def __init__(self, function, hasStackFrame):
@@ -170,18 +166,18 @@ class IRFunExit(IR):
         self.function = function
         self.hasStackFrame = hasStackFrame
 
-    def genCode(self):
+    def genCode(self, asmWriter):
         ra = registerAllocator.RA
         ra.spillAll()
-        asmFile.write(f"{self.function.name}_exit:\n")
+        asmWriter.write(f"{self.function.name}_exit:\n")
         global IR_FUNCTION
         IR_FUNCTION=None
         if self.hasStackFrame:
-            asmFile.write('\t;Restore stack pointer (free local variables)\n')
-            asmFile.write(f'\tld\tSP, IX\n')
-        asmFile.write('\t;Restore previous frame pointer IX and return\n')
-        asmFile.write(f'\tpop\tIX\n')
-        asmFile.write(f'\tret\n\n')
+            asmWriter.write('\t;Restore stack pointer (free local variables)\n')
+            asmWriter.write(f'\tld\tSP, IX\n')
+        asmWriter.write('\t;Restore previous frame pointer IX and return\n')
+        asmWriter.write(f'\tpop\tIX\n')
+        asmWriter.write(f'\tret\n\n')
 
 class IRIfVariable(IR):
     def __init__(self, lhsAddr, skipLabel):
@@ -191,15 +187,15 @@ class IRIfVariable(IR):
     def extraDescription(self):
         return f"{self.skipLabel}"
 
-    def genCode(self):
+    def genCode(self, asmWriter):
         ra = registerAllocator.RA
         # Spill before the jump as this will end the basic block. A later call
         # to spillAll will be a no-op.
         ra.spillAll()
         # TODO handle 16 bits
         ra.loadInA(self.lhsAddr)
-        asmFile.write(f'\tor\ta\n')
-        asmFile.write(f'\tjr\tz, {self.skipLabel}\n') 
+        asmWriter.write(f'\tor\ta\n')
+        asmWriter.write(f'\tjr\tz, {self.skipLabel}\n') 
 
 class IRIfRelation(IR):
     # operation : flag, transitive, flip lhs/rhs
@@ -217,7 +213,7 @@ class IRIfRelation(IR):
     def extraDescription(self):
         return f"{self.skipLabel}"
 
-    def genCode(self):
+    def genCode(self, asmWriter):
         ra = registerAllocator.RA
         # Spill before the jump as this will end the basic block. A later call
         # to spillAll will be a no-op.
@@ -226,12 +222,12 @@ class IRIfRelation(IR):
         if flip:
             (self.lhsAddr, self.rhsAddr) = (self.rhsAddr, self.lhsAddr)
         if self.lhsAddr.type == "char":
-            regZ = self.load8bitLhsAndRhs(transitive)
-            asmFile.write(f"\tcp\t{regZ}\n")
+            regZ = self.load8bitLhsAndRhs(transitive, asmWriter)
+            asmWriter.write(f"\tcp\t{regZ}\n")
         elif self.lhsAddr.type == "int":
             regZ = self.load16bitLhsAndRhs(transitive)
-            asmFile.write(f"\tsbc\thl, {regZ}\n")
-        asmFile.write(f'\tjr\t{flag}, {self.skipLabel}\n') 
+            asmWriter.write(f"\tsbc\thl, {regZ}\n")
+        asmWriter.write(f'\tjr\t{flag}, {self.skipLabel}\n') 
 
 class IRLabel(IR):
     def __init__(self, label):
@@ -241,8 +237,8 @@ class IRLabel(IR):
     def extraDescription(self):
         return f"{self.label}"
 
-    def genCode(self):
-        asmFile.write(self.label + ":\n")
+    def genCode(self, asmWriter):
+        asmWriter.write(self.label + ":\n")
 
 class IRReturn(IR):
     def __init__(self, t, exprAddr):
@@ -257,58 +253,58 @@ class IRReturn(IR):
     def extraDescription(self):
         return f"type {self.type}"
 
-    def genCode(self):
+    def genCode(self, asmWriter):
         ra = registerAllocator.RA
         if self.type == "char":
             ra.loadInA(self.lhsAddr)
         elif self.type =="int":
             ra.loadInHL(self.lhsAddr)
         ra.spillAll()
-        asmFile.write(f'\tjr\t{IR_FUNCTION}_exit\n')
+        asmWriter.write(f'\tjr\t{IR_FUNCTION}_exit\n')
 
 class IRArgument(IR):
     def __init__(self, exprAddr):
         super().__init__(lhsAddr=exprAddr)
 
-    def genCode(self):
+    def genCode(self, asmWriter):
         ra = registerAllocator.RA
         if self.exprAddr.type == "char":
             if isinstance(self.lhsAddr, Constant):
                 ra.loadInA(self.lhsAddr)
-                asmFile.write(f'\tpush\taf\n')
+                asmWriter.write(f'\tpush\taf\n')
             else:
                 # If in the high byte of a register pair, push it directly
                 regX = ra.isInRegister(self.lhsAddr.name, {'a', 'b', 'd', 'h'})
                 if regX:
                     if regX == "a":
-                        asmFile.write("\tpush\taf\n")
+                        asmWriter.write("\tpush\taf\n")
                     elif regX == "b":
-                        asmFile.write("\tpush\tbc\n")
+                        asmWriter.write("\tpush\tbc\n")
                     elif regX == "d":
-                        asmFile.write("\tpush\tde\n")
+                        asmWriter.write("\tpush\tde\n")
                     elif regX == "h":
-                        asmFile.write("\tpush\thl\n")
+                        asmWriter.write("\tpush\thl\n")
                     return
                 # If in the low byte of a register pair, transfer it to a
                 ra.getRegisterForArg(self.lhsAddr.name, {'a'})
                 regX = ra.isInRegister(self.lhsAddr.name, {'c', 'e', 'l' })
                 if regX:
-                    asmFile.write(f'\tld\ta, {regX}\n')
+                    asmWriter.write(f'\tld\ta, {regX}\n')
                 else:
                     ra.loadInA(self.lhsAddr)
-                asmFile.write(f'\tpush\taf\n')
+                asmWriter.write(f'\tpush\taf\n')
         elif self.exprAddr.type == "int":
             if isinstance(self.lhsAddr, Constant):
                 ra.loadInHL(self.lhsAddr)
-                asmFile.write(f'\tpush\thl\n')
+                asmWriter.write(f'\tpush\thl\n')
             else:
                 # If in the high byte of a register pair, push it directly
                 regX = ra.isInRegister(self.lhsAddr.name, {'bc', 'de', 'hl' })
                 if regX:
-                    asmFile.write(f"\tpush\t{regX}\n")
+                    asmWriter.write(f"\tpush\t{regX}\n")
                 else:
                     ra.loadInHL(self.lhsAddr)
-                    asmFile.write(f'\tpush\thl\n')
+                    asmWriter.write(f'\tpush\thl\n')
         else:
             error()
 
@@ -324,14 +320,14 @@ class IRFunCall(IR):
     def extraDescription(self):
         return self.name
 
-    def genCode(self):
-        asmFile.write(f'\tcall\t{self.name}\n')
+    def genCode(self, asmWriter):
+        asmWriter.write(f'\tcall\t{self.name}\n')
         for i in range(self.numArgs):
-            asmFile.write('\tpop\tbc\n') # Use a register we don't care about (yet)
+            asmWriter.write('\tpop\tbc\n') # Use a register we don't care about (yet)
         # if self.numArgs > 0:
-            # asmFile.write(f'\tld\thl, {2*self.numArgs}\n')
-            # asmFile.write(f'\tadd\thl, sp\n')
-            # asmFile.write(f'\tld\tsp, hl\n')
+            # asmWriter.write(f'\tld\thl, {2*self.numArgs}\n')
+            # asmWriter.write(f'\tadd\thl, sp\n')
+            # asmWriter.write(f'\tld\tsp, hl\n')
         if self.resultAddr:
             ra = registerAllocator.RA
             returnRegisterForType = { "char": "a",
@@ -348,7 +344,7 @@ class IRAddressOf(IR):
     def __init__(self, symEntry, resAddr):
         super().__init__(resultAddr=resAddr, lhsAddr=symEntry)
 
-    def genCode(self):
+    def genCode(self, asmWriter):
         ra = registerAllocator.RA
         # print(f'IRAddressOf spilling {self.lhsAddr.name} ra {ra}')
         # ra.spillName(self.lhsAddr.name)
@@ -360,18 +356,18 @@ class IRAddressOf(IR):
         regX = ra.getRegisterForArg(self.resultAddr.name, { "hl" })
         regT = ra.getTemporaryRegister({ "bc", "de" })
         # TODO maybe better to use IY instead of HL if small offset?
-        asmFile.write(f'\tld\t{regX[0]}, ixh\n')
-        asmFile.write(f'\tld\t{regX[1]}, ixl\n')
+        asmWriter.write(f'\tld\t{regX[0]}, ixh\n')
+        asmWriter.write(f'\tld\t{regX[1]}, ixl\n')
         # TODO Optimize for small values with INC / DEC
-        asmFile.write(f'\tld\t{regT}, {negHexOffset}\n')
-        asmFile.write(f'\tadd\t{regX}, {regT}\n')
+        asmWriter.write(f'\tld\t{regT}, {negHexOffset}\n')
+        asmWriter.write(f'\tadd\t{regX}, {regT}\n')
         ra.loadNameInRegister(self.resultAddr.name, regX)
 
 class IRDereference(IR):
     def __init__(self, symEntry, resAddr):
         super().__init__(resultAddr=resAddr, lhsAddr=symEntry)
 
-    def genCode(self):
+    def genCode(self, asmWriter):
         ra = registerAllocator.RA
         t = self.lhsAddr.completeType
         ra.spillAllMatchingType(t)
@@ -382,7 +378,7 @@ class IRAssign(IR):
         # TODO avoid use of lhsAddr for the rhs.  Use better naming convention
         super().__init__(resultAddr=lvalue, lhsAddr=rhsAddress)
 
-    def genCode(self):
+    def genCode(self, asmWriter):
         ra = registerAllocator.RA
         # If we are assigning to variable that has no more uses, store it
         # directly to memory. Note: this is somewhat different from being
@@ -400,29 +396,29 @@ class IRAssign(IR):
             # Stores directly to memory
             if self.resultAddr.type == "char":
                 if isinstance(self.lhsAddr, Constant):
-                    asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg()}, {self.lhsAddr.value}\n')
+                    asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg()}, {self.lhsAddr.value}\n')
                 else:
                     regY = ra.isInRegister(self.lhsAddr.name, { "a", "b", "c", "d", "e", "h", "l" })
                     if regY:
-                        asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg()}, {regY}\n')
+                        asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg()}, {regY}\n')
                     else:
                         # TODO use a free register instead of always reg a
                         ra.getRegisterForArg(self.lhsAddr.name , { "a" }) # TODO Only to spill it if needed. Better shorthand?
-                        asmFile.write(f'\tld\ta, {self.lhsAddr.impl.codeArg()}\n')
-                        asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg()}, a\n')
+                        asmWriter.write(f'\tld\ta, {self.lhsAddr.impl.codeArg()}\n')
+                        asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg()}, a\n')
                         ra.loadNameInRegister(self.lhsAddr.name, "a")
             elif self.resultAddr.type == "int":
                 # TODO handle constants
                 regY = ra.isInRegister(self.lhsAddr.name, { "bc", "de", "hl" })
                 if regY:
-                    asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg(+1)}, {regY[0]}\n')
-                    asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg()}, {regY[1]}\n')
+                    asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg(+1)}, {regY[0]}\n')
+                    asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg()}, {regY[1]}\n')
                 else:
                     ra.getRegisterForArg(self.lhsAddr.name , { "a" }) # TODO Only to spill it if needed. Better shorthand?
-                    asmFile.write(f'\tld\ta, {self.lhsAddr.impl.codeArg()}\n')
-                    asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg()}, a\n')
-                    asmFile.write(f'\tld\ta, {self.lhsAddr.impl.codeArg(+1)}\n')
-                    asmFile.write(f'\tld\t{self.resultAddr.impl.codeArg(+1)}, a\n')
+                    asmWriter.write(f'\tld\ta, {self.lhsAddr.impl.codeArg()}\n')
+                    asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg()}, a\n')
+                    asmWriter.write(f'\tld\ta, {self.lhsAddr.impl.codeArg(+1)}\n')
+                    asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg(+1)}, a\n')
             ra.storeToName(self.resultAddr.name)
 
 
@@ -430,7 +426,7 @@ class IRAssignToPointer(IR):
     def __init__(self, lvalue, rhsAddress):
         super().__init__(resultAddr=lvalue, lhsAddr=rhsAddress)
 
-    def genCode(self):
+    def genCode(self, asmWriter):
         ra = registerAllocator.RA
 
         t = self.resultAddr.completeType[1:]
@@ -439,30 +435,30 @@ class IRAssignToPointer(IR):
         if self.resultAddr.completeType == "*char":
             if isinstance(self.lhsAddr, Constant):
                 regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } ) 
-                asmFile.write(f'\tld\t({regX}), {self.lhsAddr.value}\n')
+                asmWriter.write(f'\tld\t({regX}), {self.lhsAddr.value}\n')
             else:
                 regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } ) 
                 # Carefull not to trigger a spill of regX by using a coupled register
                 regY = ra.doLoadInRegister8(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" } - ra.coupledRegisters[regX])
-                asmFile.write(f'\tld\t({regX}), {regY}\n')
+                asmWriter.write(f'\tld\t({regX}), {regY}\n')
         elif self.resultAddr.completeType == "*int":
             if isinstance(self.lhsAddr, Constant):
                 regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } ) 
-                asmFile.write(f'\tld\t({regX}), {self.lhsAddr.value & 0xff}\n')
-                asmFile.write(f'\tinc\t{regX}\n')
-                asmFile.write(f'\tld\t({regX}), {self.lhsAddr.value >> 8 & 0xff}\n')
+                asmWriter.write(f'\tld\t({regX}), {self.lhsAddr.value & 0xff}\n')
+                asmWriter.write(f'\tinc\t{regX}\n')
+                asmWriter.write(f'\tld\t({regX}), {self.lhsAddr.value >> 8 & 0xff}\n')
                 if self.live[self.resultAddr.name]:
-                    asmFile.write(f'\tdec\t{regX}\n')
+                    asmWriter.write(f'\tdec\t{regX}\n')
                 else:
                     ra.removeNameForRegister(self.resultAddr.name, regX)
             else:
                 regY = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } )
                 regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } - {regY}) 
-                asmFile.write(f'\tld\t({regX}), {regY[1]}\n')
-                asmFile.write(f'\tinc\t{regX}\n')
-                asmFile.write(f'\tld\t({regX}), {regY[0]}\n')
+                asmWriter.write(f'\tld\t({regX}), {regY[1]}\n')
+                asmWriter.write(f'\tinc\t{regX}\n')
+                asmWriter.write(f'\tld\t({regX}), {regY[0]}\n')
                 if self.live[self.resultAddr.name]:
-                    asmFile.write(f'\tdec\t{regX}\n')
+                    asmWriter.write(f'\tdec\t{regX}\n')
                 else:
                     ra.removeNameForRegister(self.resultAddr.name, regX)
         else:
@@ -473,18 +469,18 @@ class IRAdd(IR):
     def __init__(self, addr, addrLhs, addrRhs):
         super().__init__(addr, addrLhs, addrRhs)
 
-    def genCode(self):
+    def genCode(self, asmWriter):
         ra = registerAllocator.RA
         ra.removeName(self.resultAddr.name)
         if self.lhsAddr.type == "char":
-            regZ = self.load8bitLhsAndRhs(transitive=True)
+            regZ = self.load8bitLhsAndRhs(asmWriter, transitive=True)
             ra.spillRegister("a")
-            asmFile.write(f"\tadd\ta, {regZ}\n")
+            asmWriter.write(f"\tadd\ta, {regZ}\n")
             ra.loadNameInRegister(self.resultAddr.name, "a")
         elif self.lhsAddr.type == "int":
             regZ = self.load16bitLhsAndRhs(transitive=True)
             ra.spillRegister("hl")
-            asmFile.write(f"\tadd\thl, {regZ}\n")
+            asmWriter.write(f"\tadd\thl, {regZ}\n")
             ra.loadNameInRegister(self.resultAddr.name, "hl")
         else:
             error()
@@ -495,10 +491,10 @@ class IREqual(IR):
         super().__init__(lhsAddr=lhsAddr, rhsAddr=rhsAddr)
         self.addr = Flags()
 
-    def genCode(self):
+    def genCode(self, asmWriter):
         if self.lhsAddr.type == "char":
-            regZ = self.load8bitLhsAndRhs()
-            asmFile.write(f"\tcp\t{regZ}\n")
+            regZ = self.load8bitLhsAndRhs(asmWriter)
+            asmWriter.write(f"\tcp\t{regZ}\n")
         elif self.lhsAddr.type == "int":
             regZ = self.load16bitLhsAndRhs()
-            asmFile.write(f"\tsbc\thl, {regZ}\n")
+            asmWriter.write(f"\tsbc\thl, {regZ}\n")

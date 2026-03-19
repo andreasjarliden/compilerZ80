@@ -6,6 +6,15 @@ class AsmWriter:
     def __init__(self, file):
         self.file = file
 
+    def write(self, str):
+        self.file.write(str)
+
+    def seek(self, offset):
+        self.file.seek(offset)
+
+    def read(self):
+        return self.file.read()
+
     def loadRegisterWithAddress(self, r, v):
         if len(r) == 2:
             self.file.write(f'\tld\t{r[0]}, {v.codeArg(+1)}\n')

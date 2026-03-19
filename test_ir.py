@@ -24,30 +24,30 @@ class TestIR(unittest.TestCase):
         self.baz.impl = StackAddress(3)
         self.ptr.impl = StackAddress(4)
         self.derefPtr.impl = PointerAddress(self.ptr)
-        stringIO = StringIO()
-        ir.asmFile = stringIO
-        ir.asmWriter = asmWriter.AsmWriter(ir.asmFile)
-        registerAllocator.RA = registerAllocator.Z80RegisterAllocator(ir.asmFile, symbolTable)
+        self.asmWriter = asmWriter.AsmWriter(StringIO())
+        # self.asmWriter = self.asmWriter
+        # ir.asmWriter = self.asmWriter
+        registerAllocator.RA = registerAllocator.Z80RegisterAllocator(self.asmWriter, symbolTable)
 
     # IRAssign
 
     def test_IRAssign_constant8(self):
         ira = ir.IRAssign(self.foo, Constant("char", 42))
         ira.live[self.foo.name] = True
-        ira.genCode()
+        ira.genCode(self.asmWriter)
 
-        ir.asmFile.seek(0)
-        output = ir.asmFile.read()
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
         self.assertRegex(output, "\tld\t., 42\n")
         self.assertTrue(registerAllocator.RA.isInRegister("foo"))
 
     def test_IRAssign_constant16(self):
         ira = ir.IRAssign(self.foo16, Constant("int", 0x1234))
         ira.live[self.foo16.name] = True
-        ira.genCode()
+        ira.genCode(self.asmWriter)
 
-        ir.asmFile.seek(0)
-        output = ir.asmFile.read()
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
         self.assertRegex(output, f"\tld\t.., {0x1234}\n")
         self.assertTrue(registerAllocator.RA.isInRegister("foo"))
 
@@ -55,10 +55,10 @@ class TestIR(unittest.TestCase):
         ira = ir.IRAssign(self.foo, self.bar)
         ira.live[self.foo.name] = True
         ira.live[self.bar.name] = True
-        ira.genCode()
+        ira.genCode(self.asmWriter)
 
-        ir.asmFile.seek(0)
-        output = ir.asmFile.read()
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
         self.assertRegex(output, r"\tld\t., \(ix \+ 2\)")
         self.assertTrue(registerAllocator.RA.isInRegister("foo"))
 
@@ -74,10 +74,10 @@ class TestIR(unittest.TestCase):
         ira.live[self.bar.name] = False # Not necessary to spill bar
         ira.live[self.baz.name] = True
         registerAllocator.RA.currentInstruction = ira
-        ira.genCode()
+        ira.genCode(self.asmWriter)
 
-        ir.asmFile.seek(0)
-        output = ir.asmFile.read()
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
         print(registerAllocator.RA)
         self.assertEqual(output, "\tadd\ta, b\n")
         self.assertEqual(registerAllocator.RA.isInRegister("foo"), "a")
@@ -94,10 +94,10 @@ class TestIR(unittest.TestCase):
         ira.live[self.bar.name] = True 
         ira.live[self.baz.name] = False # Not necessary to spill
         registerAllocator.RA.currentInstruction = ira
-        ira.genCode()
+        ira.genCode(self.asmWriter)
 
-        ir.asmFile.seek(0)
-        output = ir.asmFile.read()
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
         self.assertEqual(output, "\tadd\ta, b\n")
         self.assertEqual(registerAllocator.RA.isInRegister("foo"), "a")
         self.assertEqual(registerAllocator.RA.isInRegister("bar"), "b")
@@ -111,10 +111,10 @@ class TestIR(unittest.TestCase):
         ira.live[self.bar.name] = False # Not necessary to spill bar
         ira.live[self.baz.name] = False # No more use for the rhs
         registerAllocator.RA.currentInstruction = ira
-        ira.genCode()
+        ira.genCode(self.asmWriter)
 
-        ir.asmFile.seek(0)
-        output = ir.asmFile.read()
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
         self.assertEqual(output, "\tld\ta, (ix + 2)\n\tadd\ta, (ix + 3)\n")
         self.assertEqual(registerAllocator.RA.isInRegister("foo"), "a")
         self.assertFalse(registerAllocator.RA.isInRegister("bar"))
@@ -128,10 +128,10 @@ class TestIR(unittest.TestCase):
         ira.live[self.bar.name] = False # Not necessary to spill bar
         ira.live[self.baz.name] = True # bas will be used later so makes sense to load in register
         registerAllocator.RA.currentInstruction = ira
-        ira.genCode()
+        ira.genCode(self.asmWriter)
 
-        ir.asmFile.seek(0)
-        output = ir.asmFile.read()
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
         self.assertIn("\tld\ta, (ix + 2)", output)
         self.assertRegex(output, r"ld\t., \(ix \+ 3\)")
         self.assertEqual(registerAllocator.RA.isInRegister("foo"), "a")
@@ -147,10 +147,10 @@ class TestIR(unittest.TestCase):
         ira.live[self.foo.name] = True
         ira.live[self.bar.name] = False # Not necessary to spill bar
         registerAllocator.RA.currentInstruction = ira
-        ira.genCode()
+        ira.genCode(self.asmWriter)
 
-        ir.asmFile.seek(0)
-        output = ir.asmFile.read()
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
         self.assertEqual(output, "\tld\ta, b\n\tadd\ta, 42\n")
         self.assertEqual(registerAllocator.RA.isInRegister("foo"), "a")
         self.assertEqual(registerAllocator.RA.isInRegister("bar"), "b")
@@ -166,10 +166,10 @@ class TestIR(unittest.TestCase):
         ira.live["bar"] = False # Not necessary to spill bar
         ira.live["ptr"] = False # No more use for ptr
         registerAllocator.RA.currentInstruction = ira
-        ira.genCode()
+        ira.genCode(self.asmWriter)
 
-        ir.asmFile.seek(0)
-        output = ir.asmFile.read()
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
         self.assertEqual(output, "\tadd\ta, (hl)\n")
         self.assertEqual(registerAllocator.RA.isInRegister("foo"), "a")
         self.assertEqual(registerAllocator.RA.isInRegister("ptr"), "hl")
@@ -185,10 +185,10 @@ class TestIR(unittest.TestCase):
         ira.live["bar"] = False # Not necessary to spill bar
         ira.live["ptr"] = False # No more use for ptr
         registerAllocator.RA.currentInstruction = ira
-        ira.genCode()
+        ira.genCode(self.asmWriter)
 
-        ir.asmFile.seek(0)
-        output = ir.asmFile.read()
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
         self.assertIn("\tld\th, d\n", output)
         self.assertIn("\tld\tl, e\n", output)
         self.assertIn("\tadd\ta, (hl)\n", output)
@@ -205,10 +205,10 @@ class TestIR(unittest.TestCase):
         ira.live[self.bar.name] = False # Not necessary to spill bar
         ira.live[self.ptr.name] = False # No more use for ptr
         registerAllocator.RA.currentInstruction = ira
-        ira.genCode()
+        ira.genCode(self.asmWriter)
 
-        ir.asmFile.seek(0)
-        output = ir.asmFile.read()
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
         self.assertIn("\tld\th, (ix + 5)\n", output)
         self.assertIn("\tld\tl, (ix + 4)\n", output)
         self.assertIn("\tadd\ta, (hl)\n", output)

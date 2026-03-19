@@ -1,11 +1,9 @@
 from ir import IR_FUNCTIONS
 from symEntry import StackAddress
 from astnodes import ASTContext
-import ir
 from blocks import BlockFactory
 from symbolTable import SymbolTable
 import registerAllocator
-from collections import namedtuple
 
 def astToThreeCode(ast, factory = BlockFactory(), symbolTable = SymbolTable()):
     context = ASTContext(factory, symbolTable)
@@ -31,18 +29,18 @@ def updateLive(blocks):
             # i.live = live.copy()
             i.updateLive(live)
 
-def genCode(blocks):
-    ir.asmFile.write("\t.org 08000h\n")
-    ir.asmFile.write('\t#include "constants.asm"\n')
-    ir.asmFile.write('\tjp\tmain\n')
+def genCode(blocks, asmWriter):
+    asmWriter.write("\t.org 08000h\n")
+    asmWriter.write('\t#include "constants.asm"\n')
+    asmWriter.write('\tjp\tmain\n')
     for b in blocks.values():
         print(f"\nBasic Block {b.name}\n")
-        ir.asmFile.write(f'; Basic Block {b.name}\n')
-        registerAllocator.RA = registerAllocator.Z80RegisterAllocator(ir.asmFile, b.symbolTable)
+        asmWriter.write(f'; Basic Block {b.name}\n')
+        registerAllocator.RA = registerAllocator.Z80RegisterAllocator(asmWriter, b.symbolTable)
         for i in b.statements:
             registerAllocator.RA.currentInstruction = i
-            i.genCode()
+            i.genCode(asmWriter)
         # Spill everything live that is only in a register at the end of the block
         registerAllocator.RA.spillAll()
-    ir.asmFile.write('\n\t#include "libc.asm"\n')
+    asmWriter.write('\n\t#include "libc.asm"\n')
 

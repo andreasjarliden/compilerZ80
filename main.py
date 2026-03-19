@@ -7,9 +7,7 @@ from compiler import astToThreeCode, updateLive, mapSymbols, genCode
 from asmWriter import AsmWriter
 
 asmFile = open("a.asm", "w")
-# TODO move the asmFile from IR
-ir.asmFile = asmFile
-ir.asmWriter = AsmWriter(ir.asmFile)
+asmWriter= AsmWriter(asmFile)
 
 symbolTable = SymbolTable()
 # Add external functions
@@ -53,4 +51,4 @@ print("=================")
 pprint(blocks)
 print()
 
-genCode(blocks)
+genCode(blocks, asmWriter)
