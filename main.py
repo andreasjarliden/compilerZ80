@@ -3,7 +3,7 @@ import ir
 from parser import parser
 from symbolTable import SymbolTable
 from astnodes import Function, Argument
-from compiler import astToThreeCode, updateLive, mapSymbols, genCode
+from compiler import astToThreeCode, updateLive, genCode
 from asmWriter import AsmWriter
 
 asmFile = open("a.asm", "w")
@@ -42,13 +42,5 @@ updateLive(blocks)
 
 print("BASIC_BLOCKS")
 pprint(blocks)
-
-print("Mapping symbols");
-mapSymbols()
-
-print("IR mapped symbols")
-print("=================")
-pprint(blocks)
-print()
 
 genCode(blocks, asmWriter)

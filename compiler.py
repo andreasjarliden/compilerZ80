@@ -1,4 +1,3 @@
-from ir import IR_FUNCTIONS
 from symEntry import StackAddress
 from astnodes import ASTContext
 from blocks import BlockFactory
@@ -10,16 +9,6 @@ def astToThreeCode(ast, factory = BlockFactory(), symbolTable = SymbolTable()):
     for n in ast:
         n.visit(context)
     return context.blockFactory.blocks()
-
-def mapSymbols():
-    for f in IR_FUNCTIONS:
-        symbolTable = f.symbolTable
-        # stack pointer points to last byte written, so first variable starts at one byte below SP
-        offset = 0
-        for symbol in symbolTable.values():
-            if not symbol.impl:
-                offset -= symbol.size
-                symbol.impl = StackAddress(offset)
 
 def updateLive(blocks):
     for b in blocks.values():

@@ -29,6 +29,7 @@ class Argument:
         else:
             return self.completeType
 
+
 class Function:
     def __init__(self, t, name, statements, arguments=[]):
         self.type = t
@@ -39,9 +40,18 @@ class Function:
     def __repr__(self):
         return "Function " + self.name + " with statements " + str(self.statements)
 
+    def mapSymbols(symbolTable):
+        # stack pointer points to last byte written, so first variable starts at one byte below SP
+        offset = 0
+        for symbol in symbolTable.values():
+            if not symbol.impl:
+                offset -= symbol.size
+                symbol.impl = StackAddress(offset)
+
     def visit(self, context):
         context.symbolTable.addSymbolEntry(self.name, self)
         context.symbolTable.pushFrame()
+        context.functionName = self.name
         global FUNCTION
         global FUNCTION_LABELS
         FUNCTION = self.name
@@ -61,10 +71,12 @@ class Function:
                 error()
             context.symbolTable.addSymbolEntry(a.name, symEntry)
             offset+=2
-        context.blockFactory.addIR(IRDefFun(self, context.symbolTable.currentSymbolTable()))
+        symbolTable = context.symbolTable.currentSymbolTable()
+        context.blockFactory.addIR(IRDefFun(self, symbolTable))
         for s in self.statements:
             s.visit(context)
-        hasStackFrame = len(context.symbolTable.currentSymbolTable()) > 0
+        Function.mapSymbols(symbolTable)
+        hasStackFrame = len(symbolTable) > 0
         context.blockFactory.addIR(IRFunExit(self, hasStackFrame))
         context.symbolTable.popFrame()
         FUNCTION = None
@@ -186,9 +198,9 @@ class Return:
     expr : Any
 
     def visit(self, context):
-        t = context.symbolTable.lookup(FUNCTION).type
+        t = context.symbolTable.lookup(context.functionName).type
         exprAddress = self.expr.visit(context)
-        context.blockFactory.addIR(IRReturn(t, exprAddress))
+        context.blockFactory.addIR(IRReturn(t, exprAddress, context.functionName))
 
 @dataclass(frozen=True)
 class Add:

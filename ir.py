@@ -3,9 +3,6 @@ from symEntry import *
 import registerAllocator
 from asmWriter import *
 
-# TODO Remove?
-IR_FUNCTIONS = []
-
 # Size of all local stack variables
 def stackFrameSize(symbolTable):
     smallestOffset = 0
@@ -133,14 +130,11 @@ class IRDefFun(IR):
         super().__init__()
         self.function = function
         self.symbolTable = symbolTable
-        IR_FUNCTIONS.append(self)
 
     def extraDescription(self):
         return f"{self.function} symbolTable {self.symbolTable}"
 
     def genCode(self, asmWriter):
-        global IR_FUNCTION
-        IR_FUNCTION=self.function.name
         asmWriter.write(self.function.name + ":\n");
         # Let IX be frame-pointer
         asmWriter.write('\t; Let IX be frame-pointer\n')
@@ -170,8 +164,6 @@ class IRFunExit(IR):
         ra = registerAllocator.RA
         ra.spillAll()
         asmWriter.write(f"{self.function.name}_exit:\n")
-        global IR_FUNCTION
-        IR_FUNCTION=None
         if self.hasStackFrame:
             asmWriter.write('\t;Restore stack pointer (free local variables)\n')
             asmWriter.write(f'\tld\tSP, IX\n')
@@ -241,9 +233,10 @@ class IRLabel(IR):
         asmWriter.write(self.label + ":\n")
 
 class IRReturn(IR):
-    def __init__(self, t, exprAddr):
+    def __init__(self, t, exprAddr, functionName):
         super().__init__(lhsAddr=exprAddr)
         self.type = t
+        self.functionName = functionName
 
     def __eq__(self, other):
         if not isinstance(other, IRReturn):
@@ -260,7 +253,7 @@ class IRReturn(IR):
         elif self.type =="int":
             ra.loadInHL(self.lhsAddr)
         ra.spillAll()
-        asmWriter.write(f'\tjr\t{IR_FUNCTION}_exit\n')
+        asmWriter.write(f'\tjr\t{self.functionName}_exit\n')
 
 class IRArgument(IR):
     def __init__(self, exprAddr):
