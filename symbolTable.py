@@ -29,11 +29,3 @@ class SymbolTable:
         return None
     def __repr__(self):
         return f"SymbolTable {id(self)=} {self.env}"
-
-FUNCTION = None
-FUNCTION_LABELS = 0
-def createLabel():
-    global FUNCTION
-    global FUNCTION_LABELS
-    FUNCTION_LABELS += 1
-    return f"{FUNCTION}_l{FUNCTION_LABELS}"

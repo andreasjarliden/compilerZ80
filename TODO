@@ -1,5 +1,4 @@
 - Rename address.py
-- Do something with FUNCTION
 - also check that we don't ruin the register if it also stores a different name
 - Store live in IR again and update a complete list when traversing the IRs
   during generation.

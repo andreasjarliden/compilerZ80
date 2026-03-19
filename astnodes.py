@@ -9,6 +9,10 @@ class ASTContext:
     blockFactory : Any 
     symbolTable : SymbolTable = SymbolTable()
 
+def createLabel(context):
+    context.functionLabels += 1
+    return f"{context.functionName}_l{context.functionLabels}"
+
 @dataclass(frozen=True)
 class Variable:
     name : str
@@ -52,10 +56,7 @@ class Function:
         context.symbolTable.addSymbolEntry(self.name, self)
         context.symbolTable.pushFrame()
         context.functionName = self.name
-        global FUNCTION
-        global FUNCTION_LABELS
-        FUNCTION = self.name
-        FUNCTION_LABELS = 0
+        context.functionLabels = 0
         context.blockFactory.enterBlock(self.name, context.symbolTable.currentSymbolTable())
         # return address is at ix+2, ix+3. Rightmost argument (16-bit) is at ix+5, ix+4
         # If pushing AF, then A is at ix+5
@@ -79,8 +80,8 @@ class Function:
         hasStackFrame = len(symbolTable) > 0
         context.blockFactory.addIR(IRFunExit(self, hasStackFrame))
         context.symbolTable.popFrame()
-        FUNCTION = None
         context.blockFactory.exitBlock()
+        context.functionName = None
 
 @dataclass(frozen=True)
 class If:
@@ -88,7 +89,7 @@ class If:
     statements : list
 
     def visit(self, context):
-        skipLabel = createLabel()
+        skipLabel = createLabel(context)
         if isinstance(self.expr, Variable):
             exprAddr = self.expr.visit(context)
             ir = IRIfVariable(exprAddr, skipLabel)
