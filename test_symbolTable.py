@@ -1,5 +1,23 @@
 import unittest
 from symbolTable import *
+from symEntry import *
+
+
+class TestSymEntry(unittest.TestCase):
+    def test_isObject(self):
+        s1 = SymEntry("int", "foo");
+        s1.impl = StackAddress(42)
+        s2 = SymEntry("int", "foo");
+        s2.impl = PointerAddress(123);
+        self.assertNotEqual(s1, s2)
+
+    def test_compareByValue(self):
+        s1 = SymEntry("int", "foo");
+        s1.impl = StackAddress(42) # equalByValue should ignore impl
+        s2 = SymEntry("int", "foo");
+        s2.impl = PointerAddress(123);
+        self.assertTrue(s1.equalByValue(s2))
+
 
 class TestSymbolTable(unittest.TestCase):
     def setUp(self):

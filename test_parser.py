@@ -34,8 +34,8 @@ class TestParser(unittest.TestCase):
         context = ASTContext(SingleBlockFactory(symbolTable.currentSymbolTable()), symbolTable)
         ast = parser.parse("char a;return a;");
         ast[0].visit(context)
-        self.assertEqual(ast[1].expr.visit(context),
-                         SymEntry("char", "a"))
+        self.assertTrue(ast[1].expr.visit(context).equalByValue(
+            SymEntry("char", "a")))
 
     # 
     # IF

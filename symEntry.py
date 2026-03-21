@@ -3,12 +3,10 @@ from dataclasses import dataclass
 SIZE_FOR_TYPES = { "char": 1,
                    "int": 2 }
 
-@dataclass
 class SymEntry:
-    completeType : str
-    name : str
-
-    def __post_init__(self):
+    def __init__(self, t, n):
+        self.completeType = t
+        self.name = n
         self.impl = None
 
     @property
@@ -21,6 +19,9 @@ class SymEntry:
     @property
     def size(self):
         return SIZE_FOR_TYPES[self.type]
+
+    def equalByValue(self, other):
+        return self.name == other.name and self.completeType == other.completeType
 
 class StackAddress:
     def __init__(self, offset):
