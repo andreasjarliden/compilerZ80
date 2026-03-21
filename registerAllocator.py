@@ -26,12 +26,12 @@ class RegisterAllocator:
         self.currentInstruction = None
 
     def __repr__(self):
-        return f"registers: {self.registers}\nfree registers: {self.freeRegisters}\naddresses: {self.addresses}"
+        return f"registers: {self.registers}\nfree registers: {self.freeRegisters}\naddresses: {self.addresses}\nsymbol table: {self.symbolTable}"
 
     def doSpill(self, reg, name):
         pass
 
-    def isFree(self, r):
+    def _isFree(self, r):
         if self.registers[r]:
             return False
         for cr in self.coupledRegisters.get(r, ()):
@@ -43,7 +43,7 @@ class RegisterAllocator:
     def freeRegisters(self):
         free = []
         for r in self.registers:
-            if self.isFree(r):
+            if self._isFree(r):
                 free.append(r)
         return set(free)
 
@@ -70,7 +70,7 @@ class RegisterAllocator:
             self.registers[r].remove(n)
         self.addresses[n] = set()
 
-    def spillScore(self, r):
+    def _spillScore(self, r):
         score = 0
         # TODO also handle coupled registers
         for n in self.registers[r]:
@@ -106,19 +106,14 @@ class RegisterAllocator:
             if s.completeType == t:
                 self.spillName(n)
             
-    def bestRegisterToSpill(self, possibleRegisters):
-        return min(possibleRegisters, key=self.spillScore)
-
-    def isInRegiser(self, name, possibleRegisters):
-        # Already loaded?
-        regs = self.addresses[name] & possibleRegisters
-        if regs:
-            return regs.pop()
+    def _bestRegisterToSpill(self, possibleRegisters):
+        return min(possibleRegisters, key=self._spillScore)
 
     # Like getRegisterForArg but doesn't spill
     def decideRegisterForArg(self, name, possibleRegisters):
         # Already loaded?
         regs = self.addresses[name] & possibleRegisters
+        pass
         if regs:
             return regs.pop()
         # No, pick one of the free registers
@@ -126,7 +121,7 @@ class RegisterAllocator:
         if regs:
             return regs.pop()
         # No free, have to spill
-        return self.bestRegisterToSpill(possibleRegisters)
+        return self._bestRegisterToSpill(possibleRegisters)
 
     # TODO this does not register the name as loaded in the register, maybe it
     # should. Maybe this should be private and there should be public version
@@ -141,7 +136,7 @@ class RegisterAllocator:
         if regs:
             return regs.pop()
         # No free, have to spill
-        r = self.bestRegisterToSpill(possibleRegisters)
+        r = self._bestRegisterToSpill(possibleRegisters)
         self.spillRegister(r)
         # Spill any coupled register, e.g. spilling bc means also spilling b and c (if loaded). 
         for cr in self.coupledRegisters.get(r, ()):
@@ -155,14 +150,13 @@ class RegisterAllocator:
         if regs:
             return regs.pop()
         # No free, have to spill
-        r = self.bestRegisterToSpill(possibleRegisters)
+        r = self._bestRegisterToSpill(possibleRegisters)
         self.spillRegister(r)
         # Spill any coupled register, e.g. spilling bc means also spilling b and c (if loaded). 
         for cr in self.coupledRegisters.get(r, ()):
             self.spillRegister(cr)
         return r
 
-    # TODO test
     def isInRegister(self, name, possibleRegisters = ALL_REGISTERS):
         # Already loaded?
         regs = self.addresses[name] & possibleRegisters

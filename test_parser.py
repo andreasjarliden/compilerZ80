@@ -70,7 +70,7 @@ class TestParser(unittest.TestCase):
         blocks = blockFactory.blocks()
         block = blocks["foo_0000"]
         self.assertTrue(isinstance(block.statements[0], IRDefFun))
-        self.assertEqual(block.statements[1], IRReturn("char", Constant("char", 0)))
+        self.assertEqual(block.statements[1], IRReturn("char", Constant("char", 0), "foo"))
         self.assertTrue(isinstance(block.statements[2], IRFunExit))
         self.assertEqual(block.statements[2].hasStackFrame, False)
 

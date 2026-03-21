@@ -396,7 +396,7 @@ class IRAssign(IR):
                         asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg()}, {regY}\n')
                     else:
                         # TODO use a free register instead of always reg a
-                        ra.getRegisterForArg(self.lhsAddr.name , { "a" }) # TODO Only to spill it if needed. Better shorthand?
+                        ra.getRegisterForArg(self.lhsAddr.name , { "a" })
                         asmWriter.write(f'\tld\ta, {self.lhsAddr.impl.codeArg()}\n')
                         asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg()}, a\n')
                         ra.loadNameInRegister(self.lhsAddr.name, "a")
@@ -407,6 +407,8 @@ class IRAssign(IR):
                     asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg(+1)}, {regY[0]}\n')
                     asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg()}, {regY[1]}\n')
                 else:
+                    ra.spillRegister("a")
+                    # TODO use a free register instead of always reg a
                     ra.getRegisterForArg(self.lhsAddr.name , { "a" }) # TODO Only to spill it if needed. Better shorthand?
                     asmWriter.write(f'\tld\ta, {self.lhsAddr.impl.codeArg()}\n')
                     asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg()}, a\n')

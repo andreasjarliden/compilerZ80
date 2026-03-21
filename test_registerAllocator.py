@@ -33,19 +33,19 @@ class TestRA(unittest.TestCase):
         self.assertFalse("a" in self.ra.freeRegisters)
 
     def test_isFree(self):
-        self.assertEqual(self.ra.isFree("b"), True); # Free from start
+        self.assertEqual(self.ra._isFree("b"), True); # Free from start
         self.ra.loadNameInRegister("foo", "b")
-        self.assertEqual(self.ra.isFree("b"), False); 
+        self.assertEqual(self.ra._isFree("b"), False); 
 
     def test_isFree_coupledRegisters(self):
-        self.assertEqual(self.ra.isFree("bc"), True); # Free from start
+        self.assertEqual(self.ra._isFree("bc"), True); # Free from start
         self.ra.loadNameInRegister("foo", "b")
-        self.assertEqual(self.ra.isFree("bc"), False); 
+        self.assertEqual(self.ra._isFree("bc"), False); 
 
     def test_isFree_coupledRegisters2(self):
-        self.assertEqual(self.ra.isFree("b"), True); # Free from start
+        self.assertEqual(self.ra._isFree("b"), True); # Free from start
         self.ra.loadNameInRegister("foo", "bc")
-        self.assertEqual(self.ra.isFree("b"), False); 
+        self.assertEqual(self.ra._isFree("b"), False); 
 
     def test_storeToName(self):
         self.ra.storeToName("foo")
@@ -259,7 +259,7 @@ class TestZ80RA(unittest.TestCase):
         output = self.ra.asmFile.read()
         # No need to restore the pointer
         self.assertNotIn("\tdec\tde\n", output)
-        self.assertFalse(self.ra.isInRegiser("ptr", { "de" }))
+        self.assertFalse(self.ra.isInRegister("ptr", { "de" }))
         # TODO also check that we don't ruin the register if it also stores a different name
 
     def test_loadInHL_fromOtherRegister(self):
