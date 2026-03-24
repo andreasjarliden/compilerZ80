@@ -25,7 +25,7 @@ def genCode(blocks, asmWriter):
     for b in blocks.values():
         print(f"\nBasic Block {b.name}\n")
         asmWriter.write(f'; Basic Block {b.name}\n')
-        registerAllocator.RA = registerAllocator.Z80RegisterAllocator(asmWriter, b.symbolTable)
+        registerAllocator.RA = registerAllocator.Z80RegisterAllocator(asmWriter)
         for i in b.statements:
             registerAllocator.RA.currentInstruction = i
             i.genCode(asmWriter)

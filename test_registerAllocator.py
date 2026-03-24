@@ -101,6 +101,24 @@ class TestRA(unittest.TestCase):
         self.assertEqual(self.ra.registers["a"], set())
         self.assertEqual(self.ra.symbols[self.foo], {self.foo})
 
+    # spillAll
+    def test_spillAll(self):
+        self.ra.currentInstruction.live["foo"] = True
+        self.ra.currentInstruction.live["bar"] = False
+        foo = SymEntry("char", "foo")
+        bar = SymEntry("char", "bar")
+        self.ra.assignToSymbolWithRegister(foo, "a") # char
+        self.ra.assignToSymbolWithRegister(bar, "b") # char
+
+        self.ra.spillAll()
+
+        self.assertEqual(self.ra.registers["a"], set())
+        self.assertEqual(self.ra.registers["b"], set())
+        # TODO how to test if it actually spills
+
+
+    # spillAllMatchingType
+
     def test_spillAllMatchingType_int(self):
         self.ra.currentInstruction.live["foo"] = True
         self.ra.currentInstruction.live["foo"] = True

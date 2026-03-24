@@ -80,19 +80,14 @@ class RegisterAllocator:
     def spillRegister(self, r):
         # Remove register from all addresses
         for s in self.registers[r]:
-            self.symbols[s].remove(r)
-            self.symbols[s].add(s)
-            # TODO use symbol instead of name for live
-            if self.currentInstruction.live[s.name]:
-                self.doSpillToSymbol(r, s)
-        # Register no longer contains anything
-        self.registers[r] = set()
+            spillRegisterToSymbol(s, r)
 
     def spillRegisterToSymbol(self, r, s):
         self.symbols[s].add(s)
         self.symbols[s].remove(r)
-        self.doSpillToSymbol(r, s)
-        self.registers[r] = set()
+        if self.currentInstruction.live[s.name]:
+            self.doSpillToSymbol(r, s)
+        self.registers[r].remove(s)
 
     # def removeNameForRegister(self, n, r):
     #     self.registers[r].remove(n)
@@ -164,8 +159,8 @@ class RegisterAllocator:
     #         self.spillRegister(r)
 
     def spillSymbol(self, s):
-        # TODO: This should use the symbol instead of name
-        if self.currentInstruction.live[s.name] and s not in self.symbols[s]:
+        # Already stored in memory?
+        if s not in self.symbols[s]:
             # pick one of register contining n
             r = next(iter(self.symbols[s]))
             self.spillRegisterToSymbol(r, s)
@@ -176,7 +171,7 @@ class RegisterAllocator:
 
     def spillAll(self):
         for s in self.symbols:
-            self.spillSymbol(n)
+            self.spillSymbol(s)
 
     # def spillAllMatchingType(self, t):
     #     for n, s in self.symbolTable.items():
