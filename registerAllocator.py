@@ -26,19 +26,8 @@ class RegisterAllocator:
     def __repr__(self):
         return f"registers: {self.registers}\nfree registers: {self.freeRegisters}\nsymbols: {self.symbols}"
 
-    # def doSpill(self, reg, name):
-    #     pass
-
     def doSpillToSymbol(self, reg, s):
         pass
-
-    # def _isFree(self, r):
-    #     if self.registers[r]:
-    #         return False
-    #     for cr in self.coupledRegisters.get(r, ()):
-    #         if self.registers[cr]:
-    #             return False
-    #     return True
 
     def isFree(self, r):
         if self.registers[r]:
@@ -48,14 +37,6 @@ class RegisterAllocator:
                 return False
         return True
 
-    # @property
-    # def freeRegisters(self):
-    #     free = []
-    #     for r in self.registers:
-    #         if self._isFree(r):
-    #             free.append(r)
-    #     return set(free)
-
     @property
     def freeRegisters(self):
         free = []
@@ -64,23 +45,11 @@ class RegisterAllocator:
                 free.append(r)
         return set(free)
 
-    # TODO this spills even if the name is available in a different register.
-    # Sometimes we want that (e.g. when spilling at end of block) but not
-    # otherwise.
-    # def spillRegister(self, r):
-    #     # Remove register from all addresses
-    #     for n in self.registers[r]:
-    #         self.addresses[n].remove(r)
-    #         self.addresses[n].add(n)
-    #         if self.currentInstruction.live[n]:
-    #             self.doSpill(r, n)
-    #     # Register no longer contains anything
-    #     self.registers[r] = set()
-
     def spillRegister(self, r):
         # Remove register from all addresses
-        for s in self.registers[r]:
-            spillRegisterToSymbol(s, r)
+        symbols = self.registers[r].copy()
+        for s in symbols:
+            self.spillRegisterToSymbol(r, s)
 
     def spillRegisterToSymbol(self, r, s):
         self.symbols[s].add(s)
@@ -89,19 +58,9 @@ class RegisterAllocator:
             self.doSpillToSymbol(r, s)
         self.registers[r].remove(s)
 
-    # def removeNameForRegister(self, n, r):
-    #     self.registers[r].remove(n)
-    #     self.addresses[n].remove(r)
-
     def removeSymbolForRegister(self, s, r):
         self.registers[r].remove(s)
         self.symbols[s].remove(r)
-
-    # def removeName(self, n):
-    #     registers = self.addresses[n] & ALL_REGISTERS;
-    #     for r in registers:
-    #         self.registers[r].remove(n)
-    #     self.addresses[n] = set()
 
     # TODO test
     def removeSymbol(self, s):
@@ -109,25 +68,6 @@ class RegisterAllocator:
         for r in registers:
             self.registers[r].remove(s)
         self.symbols[s] = set()
-
-    # def _spillScore(self, r):
-    #     score = 0
-    #     # TODO also handle coupled registers
-    #     for n in self.registers[r]:
-    #         # If n is in some other register. Consider it free to spill.
-    #         # (disregard if we have different groups of registers)
-    #         if len(self.addresses[n]) > 1:
-    #             continue
-    #         # # Is n what we are assigning to? In that case free to spill TODO
-    #         # # maybe not needed as we always have to load the lhs in A or HL
-    #         # if n == ir.resultAddr.name:
-    #         #     continue
-    #         # Is dead?
-    #         if not self.currentInstruction.live[n]:
-    #             continue
-    #         # Have to spill to n
-    #         score += 1
-    #     return score
 
     def _spillScore(self, r):
         score = 0
@@ -149,15 +89,6 @@ class RegisterAllocator:
             score += 1
         return score
 
-    # TODO remove
-    # def spillName(self, n):
-    #     if self.currentInstruction.live[n] and n not in self.addresses[n]:
-    #         # pick one of register contining n
-    #         r = next(iter(self.addresses[n]))
-    #         # TODO if r contains two names, might it needlessly spill?
-    #         print(f"spillRegister({r})")
-    #         self.spillRegister(r)
-
     def spillSymbol(self, s):
         # Already stored in memory?
         if s not in self.symbols[s]:
@@ -165,27 +96,15 @@ class RegisterAllocator:
             r = next(iter(self.symbols[s]))
             self.spillRegisterToSymbol(r, s)
 
-    # def spillAll(self):
-    #     for n in self.addresses:
-    #         self.spillName(n)
-
     def spillAll(self):
         for s in self.symbols:
             self.spillSymbol(s)
-
-    # def spillAllMatchingType(self, t):
-    #     for n, s in self.symbolTable.items():
-    #         if s.completeType == t:
-    #             self.spillName(n)
 
     def spillAllMatchingType(self, t):
         for s in self.symbols.keys():
             if s.completeType == t:
                 self.spillSymbol(s)
             
-    # def _bestRegisterToSpill(self, possibleRegisters):
-    #     return min(possibleRegisters, key=self._spillScore)
-
     def _bestRegisterToSpill(self, possibleRegisters):
         return min(possibleRegisters, key=self._spillScore)
 
@@ -206,26 +125,6 @@ class RegisterAllocator:
     # TODO this does not register the name as loaded in the register, maybe it
     # should. Maybe this should be private and there should be public version
     # that does all.
-    # def getRegisterForArg(self, name, possibleRegisters):
-    #     # Already loaded?
-    #     regs = self.addresses[name] & possibleRegisters
-    #     if regs:
-    #         return regs.pop()
-    #     # No, pick one of the free registers
-    #     regs = self.freeRegisters & possibleRegisters
-    #     if regs:
-    #         return regs.pop()
-    #     # No free, have to spill
-    #     r = self._bestRegisterToSpill(possibleRegisters)
-    #     self.spillRegister(r)
-    #     # Spill any coupled register, e.g. spilling bc means also spilling b and c (if loaded). 
-    #     for cr in self.coupledRegisters.get(r, ()):
-    #         self.spillRegister(cr)
-    #     return r
-
-    # TODO this does not register the name as loaded in the register, maybe it
-    # should. Maybe this should be private and there should be public version
-    # that does all.
     def getRegisterForSymbol(self, symbol, possibleRegisters):
         # Already loaded?
         regs = self.symbols.get(symbol, set()) & possibleRegisters
@@ -237,7 +136,6 @@ class RegisterAllocator:
             return regs.pop()
         # No free, have to spill
         r = self._bestRegisterToSpill(possibleRegisters)
-        print(f"getRegisterForSymbol best to spill {r}")
         self.spillRegister(r)
         # Spill any coupled register, e.g. spilling bc means also spilling b and c (if loaded). 
         for cr in self.coupledRegisters.get(r, ()):
@@ -266,11 +164,6 @@ class RegisterAllocator:
         else:
             return None
 
-    # Note: This doesn't handle any spilling. r is assumed to be free.
-    # def loadNameInRegister(self, n, r):
-    #     self.addresses[n].add(r)
-    #     self.registers[r].add(n)
-
     def loadSymbolInRegister(self, s, r):
         self.symbols.setdefault(s, set())
         self.symbols[s].add(r)
@@ -278,19 +171,9 @@ class RegisterAllocator:
         self.registers[r].add(s)
 
     # Example: LD (ix+n), a
-    # def storeToName(self, n):
-    #     self.addresses[n].add(n)
-
-    # Example: LD (ix+n), a
     def storeToSymbol(self, s):
         self.symbols.setdefault(s, set())
         self.symbols[s].add(s)
-
-    # Assigning to a name means that it is only the register that holds the
-    # name, it has not been spilled to memory yet.
-    # def assignToNameWithRegister(self, n, r):
-    #     self.registers[r].add(n)
-    #     self.addresses[n] = { r }
 
     # Assigning to a name means that it is only the register that holds the
     # name, it has not been spilled to memory yet.
@@ -304,15 +187,6 @@ class Z80RegisterAllocator(RegisterAllocator):
         super().__init__()
         self.asmFile = asmFile
         self.asmWriter = AsmWriter(asmFile)
-
-    # def doSpill(self, r, name):
-    #     self.asmFile.write(f"; spill register {r} to var {name}\n")
-    #     offset = self.symbolTable[name].impl.offset
-    #     if self.symbolTable[name].type == 'char':
-    #         self.asmFile.write(f"\tld\t(ix + {offset}), {r}\n")
-    #     if self.symbolTable[name].type == 'int':
-    #         self.asmFile.write(f"\tld\t(ix + {offset+1}), {r[0]}\n")
-    #         self.asmFile.write(f"\tld\t(ix + {offset}), {r[1]}\n")
 
     def doSpillToSymbol(self, r, s):
         self.asmFile.write(f"; spill register {r} to var {s.name}\n")
@@ -389,6 +263,4 @@ class Z80RegisterAllocator(RegisterAllocator):
             # self.loadSymEntryInRegister(address, regX)
             self.loadSymbolInRegister(address, regX)
             return regX
-
-
 

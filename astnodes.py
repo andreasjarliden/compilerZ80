@@ -121,7 +121,6 @@ class VariableDefinition:
             return self.completeType
 
     def visit(self, context):
-        print(f"VariableDefinition adding {self.name} to {context.symbolTable}")
         context.symbolTable.addSymbol(self.completeType, self.name)
         pass
 
