@@ -14,12 +14,12 @@ class TestIR(unittest.TestCase):
         self.baz = SymEntry("char", "baz")
         self.ptr = SymEntry("int*", "ptr")
         self.derefPtr = SymEntry("char", "derefPtr")
-        symbolTable = { self.foo.name: self.foo,
-                       self.bar.name: self.bar,
-                       self.baz.name: self.baz,
-                       self.ptr.name: self.ptr,
-                       self.derefPtr.name: self.derefPtr
-                       }
+        # symbolTable = { self.foo.name: self.foo,
+        #                self.bar.name: self.bar,
+        #                self.baz.name: self.baz,
+        #                self.ptr.name: self.ptr,
+        #                self.derefPtr.name: self.derefPtr
+        #                }
         self.bar.impl = StackAddress(2)
         self.baz.impl = StackAddress(3)
         self.ptr.impl = StackAddress(4)
@@ -27,7 +27,7 @@ class TestIR(unittest.TestCase):
         self.asmWriter = asmWriter.AsmWriter(StringIO())
         # self.asmWriter = self.asmWriter
         # ir.asmWriter = self.asmWriter
-        registerAllocator.RA = registerAllocator.Z80RegisterAllocator(self.asmWriter, symbolTable)
+        registerAllocator.RA = registerAllocator.Z80RegisterAllocator(self.asmWriter)
 
     # IRAssign
 
@@ -39,7 +39,7 @@ class TestIR(unittest.TestCase):
         self.asmWriter.seek(0)
         output = self.asmWriter.read()
         self.assertRegex(output, "\tld\t., 42\n")
-        self.assertTrue(registerAllocator.RA.isInRegister("foo"))
+        self.assertTrue(registerAllocator.RA.isInRegister(self.foo))
 
     def test_IRAssign_constant16(self):
         ira = ir.IRAssign(self.foo16, Constant("int", 0x1234))
@@ -49,7 +49,7 @@ class TestIR(unittest.TestCase):
         self.asmWriter.seek(0)
         output = self.asmWriter.read()
         self.assertRegex(output, f"\tld\t.., {0x1234}\n")
-        self.assertTrue(registerAllocator.RA.isInRegister("foo"))
+        self.assertTrue(registerAllocator.RA.isInRegister(self.foo16))
 
     def test_IRAssign_stackVariable(self):
         ira = ir.IRAssign(self.foo, self.bar)
@@ -60,13 +60,13 @@ class TestIR(unittest.TestCase):
         self.asmWriter.seek(0)
         output = self.asmWriter.read()
         self.assertRegex(output, r"\tld\t., \(ix \+ 2\)")
-        self.assertTrue(registerAllocator.RA.isInRegister("foo"))
+        self.assertTrue(registerAllocator.RA.isInRegister(self.foo))
 
     # IRAdd
 
     def test_IRAdd_bothAlreadyInRegisters(self):
-        registerAllocator.RA.loadNameInRegister("bar", "a")
-        registerAllocator.RA.loadNameInRegister("baz", "b")
+        registerAllocator.RA.loadSymbolInRegister(self.bar, "a")
+        registerAllocator.RA.loadSymbolInRegister(self.baz, "b")
 
         # foo = bar + baz
         ira = ir.IRAdd(self.foo, self.bar, self.baz)
@@ -74,19 +74,19 @@ class TestIR(unittest.TestCase):
         ira.live[self.bar.name] = False # Not necessary to spill bar
         ira.live[self.baz.name] = True
         registerAllocator.RA.currentInstruction = ira
+        print(registerAllocator.RA)
         ira.genCode(self.asmWriter)
 
         self.asmWriter.seek(0)
         output = self.asmWriter.read()
-        print(registerAllocator.RA)
         self.assertEqual(output, "\tadd\ta, b\n")
-        self.assertEqual(registerAllocator.RA.isInRegister("foo"), "a")
-        self.assertFalse(registerAllocator.RA.isInRegister("bar"))
-        self.assertEqual(registerAllocator.RA.isInRegister("baz"), "b")
+        self.assertEqual(registerAllocator.RA.isInRegister(self.foo), "a")
+        self.assertFalse(registerAllocator.RA.isInRegister(self.bar))
+        self.assertEqual(registerAllocator.RA.isInRegister(self.baz), "b")
 
     def test_IRAdd_swapsIfRhsInA(self):
-        registerAllocator.RA.loadNameInRegister("bar", "b")
-        registerAllocator.RA.loadNameInRegister("baz", "a")
+        registerAllocator.RA.loadSymbolInRegister(self.bar, "b")
+        registerAllocator.RA.loadSymbolInRegister(self.baz, "a")
 
         # foo = bar + baz
         ira = ir.IRAdd(self.foo, self.bar, self.baz)
@@ -99,9 +99,9 @@ class TestIR(unittest.TestCase):
         self.asmWriter.seek(0)
         output = self.asmWriter.read()
         self.assertEqual(output, "\tadd\ta, b\n")
-        self.assertEqual(registerAllocator.RA.isInRegister("foo"), "a")
-        self.assertEqual(registerAllocator.RA.isInRegister("bar"), "b")
-        self.assertFalse(registerAllocator.RA.isInRegister("baz"))
+        self.assertEqual(registerAllocator.RA.isInRegister(self.foo), "a")
+        self.assertEqual(registerAllocator.RA.isInRegister(self.bar), "b")
+        self.assertFalse(registerAllocator.RA.isInRegister(self.baz))
 
     # Load the rhs directly from memory, not via a register
     def test_IRAdd_rhsDirectlyFromMemory(self):
@@ -116,9 +116,9 @@ class TestIR(unittest.TestCase):
         self.asmWriter.seek(0)
         output = self.asmWriter.read()
         self.assertEqual(output, "\tld\ta, (ix + 2)\n\tadd\ta, (ix + 3)\n")
-        self.assertEqual(registerAllocator.RA.isInRegister("foo"), "a")
-        self.assertFalse(registerAllocator.RA.isInRegister("bar"))
-        self.assertFalse(registerAllocator.RA.isInRegister("baz"))
+        self.assertEqual(registerAllocator.RA.isInRegister(self.foo), "a")
+        self.assertFalse(registerAllocator.RA.isInRegister(self.bar))
+        self.assertFalse(registerAllocator.RA.isInRegister(self.baz))
 
     # Load the rhs via register from memory as the rhs will be used again
     def test_IRAdd_rhsViaRegister(self):
@@ -134,13 +134,13 @@ class TestIR(unittest.TestCase):
         output = self.asmWriter.read()
         self.assertIn("\tld\ta, (ix + 2)", output)
         self.assertRegex(output, r"ld\t., \(ix \+ 3\)")
-        self.assertEqual(registerAllocator.RA.isInRegister("foo"), "a")
-        self.assertFalse(registerAllocator.RA.isInRegister("bar"))
-        self.assertTrue(registerAllocator.RA.isInRegister("baz"))
+        self.assertEqual(registerAllocator.RA.isInRegister(self.foo), "a")
+        self.assertFalse(registerAllocator.RA.isInRegister(self.bar))
+        self.assertTrue(registerAllocator.RA.isInRegister(self.baz))
 
     # lhs is in another register, rhs is a constant
     def test_IRAdd_rhsIsConstant(self):
-        registerAllocator.RA.loadNameInRegister("bar", "b")
+        registerAllocator.RA.loadSymbolInRegister(self.bar, "b")
 
         # foo = bar + 42
         ira = ir.IRAdd(self.foo, self.bar, Constant("char", 42))
@@ -152,13 +152,13 @@ class TestIR(unittest.TestCase):
         self.asmWriter.seek(0)
         output = self.asmWriter.read()
         self.assertEqual(output, "\tld\ta, b\n\tadd\ta, 42\n")
-        self.assertEqual(registerAllocator.RA.isInRegister("foo"), "a")
-        self.assertEqual(registerAllocator.RA.isInRegister("bar"), "b")
+        self.assertEqual(registerAllocator.RA.isInRegister(self.foo), "a")
+        self.assertEqual(registerAllocator.RA.isInRegister(self.bar), "b")
 
     # Load rhs via pointer already in hl register
     def test_IRAdd_rhsIsPointerInHL(self):
-        registerAllocator.RA.loadNameInRegister("bar", "a")
-        registerAllocator.RA.loadNameInRegister("ptr", "hl")
+        registerAllocator.RA.loadSymbolInRegister(self.bar, "a")
+        registerAllocator.RA.loadSymbolInRegister(self.ptr, "hl")
 
         # foo = bar + 42
         ira = ir.IRAdd(self.foo, self.bar, self.derefPtr)
@@ -171,13 +171,13 @@ class TestIR(unittest.TestCase):
         self.asmWriter.seek(0)
         output = self.asmWriter.read()
         self.assertEqual(output, "\tadd\ta, (hl)\n")
-        self.assertEqual(registerAllocator.RA.isInRegister("foo"), "a")
-        self.assertEqual(registerAllocator.RA.isInRegister("ptr"), "hl")
+        self.assertEqual(registerAllocator.RA.isInRegister(self.foo), "a")
+        self.assertEqual(registerAllocator.RA.isInRegister(self.ptr), "hl")
 
     # Load rhs via pointer already in other register
     def test_IRAdd_rhsIsPointerInOtherRegister(self):
-        registerAllocator.RA.loadNameInRegister("bar", "a")
-        registerAllocator.RA.loadNameInRegister("ptr", "de")
+        registerAllocator.RA.loadSymbolInRegister(self.bar, "a")
+        registerAllocator.RA.loadSymbolInRegister(self.ptr, "de")
 
         # foo = bar + 42
         ira = ir.IRAdd(self.foo, self.bar, self.derefPtr)
@@ -192,12 +192,12 @@ class TestIR(unittest.TestCase):
         self.assertIn("\tld\th, d\n", output)
         self.assertIn("\tld\tl, e\n", output)
         self.assertIn("\tadd\ta, (hl)\n", output)
-        self.assertEqual(registerAllocator.RA.isInRegister("foo"), "a")
-        self.assertEqual(registerAllocator.RA.addresses["ptr"], {"ptr", "hl", "de"})
+        self.assertEqual(registerAllocator.RA.isInRegister(self.foo), "a")
+        self.assertEqual(registerAllocator.RA.symbols[self.ptr], {self.ptr, "hl", "de"})
 
     # Load rhs via pointer that must be loaded from memory
     def test_IRAdd_rhsIsPointerFromMemory(self):
-        registerAllocator.RA.loadNameInRegister("bar", "a")
+        registerAllocator.RA.loadSymbolInRegister(self.bar, "a")
 
         # foo = bar + 42
         ira = ir.IRAdd(self.foo, self.bar, self.derefPtr)
@@ -212,8 +212,8 @@ class TestIR(unittest.TestCase):
         self.assertIn("\tld\th, (ix + 5)\n", output)
         self.assertIn("\tld\tl, (ix + 4)\n", output)
         self.assertIn("\tadd\ta, (hl)\n", output)
-        self.assertEqual(registerAllocator.RA.isInRegister("foo"), "a")
-        self.assertEqual(registerAllocator.RA.addresses["ptr"], {"ptr", "hl"})
+        self.assertEqual(registerAllocator.RA.isInRegister(self.foo), "a")
+        self.assertEqual(registerAllocator.RA.symbols[self.ptr], {self.ptr, "hl"})
 
 
 

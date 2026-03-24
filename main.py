@@ -19,8 +19,8 @@ if __name__ == "__main__":
     print("=======")
 
     ast = parser.parse("""
-    char A;
     char main() {
+char A;
         A=1;
         }
     """) 
