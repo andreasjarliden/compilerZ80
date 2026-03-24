@@ -78,36 +78,39 @@ class IR:
             return rhsAddr.value
         elif isinstance(rhsAddr.impl, PointerAddress):
             # Must have the pointer in hl (or ix/iy). bc & de not supported by Z80
-            regZ = ra.isInRegister(rhsAddr.impl.pointer.name, { "hl" })
+            regZ = ra.isInRegister(rhsAddr.impl.pointer, { "hl" })
             # Already in hl?
             if not regZ:
-                otherReg = ra.isInRegister(rhsAddr.impl.pointer.name, { "bc", "de" })
+                otherReg = ra.isInRegister(rhsAddr.impl.pointer, { "bc", "de" })
                 if otherReg:
                     # Copy from other register
                     asmWriter.loadRegisterWithRegister("hl", otherReg)
                 else:
                     # Load pointer from memory
                     asmWriter.loadRegisterWithAddress("hl", rhsAddr.impl.pointer.impl)
-                ra.loadNameInRegister(rhsAddr.impl.pointer.name, "hl")
+                ra.loadSymbolInRegister(rhsAddr.impl.pointer, "hl")
             return "(hl)"
         # TODO this should check nextUse and not liveness
-        elif ra.isInRegister(rhsAddr.name) or self.live[self.rhsAddr.name]:
-            # Use via register as already in register or will be used later
-            regZ = ra.getRegisterForArg(rhsAddr.name, { "b", "c", "d", "e", "h", "l" })
-            if rhsAddr.name not in ra.registers[regZ]:
-                asmWriter.loadRegisterWithAddress(regZ, rhsAddr.impl)
-                ra.loadNameInRegister(rhsAddr.name, regZ)
-            return regZ
         else:
-            # Use directly from memory, e.g. add a, (ix + 42)
-            return rhsAddr.impl.codeArg()
+            regZ = ra.isInRegister(rhsAddr)
+            if regZ:
+                return regZ
+            elif self.live[self.rhsAddr.name]:
+                # Use via register as will be used later (hopefully without spilling)
+                regZ = ra.getRegisterForSymbol(rhsAddr, { "b", "c", "d", "e", "h", "l" })
+                asmWriter.loadRegisterWithAddress(regZ, rhsAddr.impl)
+                ra.loadSymbolInRegister(rhsAddr, regZ)
+                return regZ
+            else:
+                # Use directly from memory, e.g. add a, (ix + 42)
+                return rhsAddr.impl.codeArg()
 
     def load8bitLhsAndRhs(self, asmWriter, transitive=False):
         ra = registerAllocator.RA
 
         if transitive:
             # if the rhs is already in register a, then swap them
-            if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr.name) == "a":
+            if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr) == "a":
                 self.lhsAddr, self.rhsAddr = self.rhsAddr, self.lhsAddr
 
         ra.loadInA(self.lhsAddr)
@@ -118,7 +121,7 @@ class IR:
 
         if transitive:
             # if the rhs is already in register a, then swap them
-            if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr.name) == "hl":
+            if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr) == "hl":
                 self.lhsAddr, self.rhsAddr = self.rhsAddr, self.lhsAddr
 
         ra.loadInHL(self.lhsAddr)
@@ -267,7 +270,7 @@ class IRArgument(IR):
                 asmWriter.write(f'\tpush\taf\n')
             else:
                 # If in the high byte of a register pair, push it directly
-                regX = ra.isInRegister(self.lhsAddr.name, {'a', 'b', 'd', 'h'})
+                regX = ra.isInRegister(self.lhsAddr, {'a', 'b', 'd', 'h'})
                 if regX:
                     if regX == "a":
                         asmWriter.write("\tpush\taf\n")
@@ -279,8 +282,8 @@ class IRArgument(IR):
                         asmWriter.write("\tpush\thl\n")
                     return
                 # If in the low byte of a register pair, transfer it to a
-                ra.getRegisterForArg(self.lhsAddr.name, {'a'})
-                regX = ra.isInRegister(self.lhsAddr.name, {'c', 'e', 'l' })
+                ra.getRegisterForSymbol(self.lhsAddr, {'a'})
+                regX = ra.isInRegister(self.lhsAddr, {'c', 'e', 'l' })
                 if regX:
                     asmWriter.write(f'\tld\ta, {regX}\n')
                 else:
@@ -292,7 +295,7 @@ class IRArgument(IR):
                 asmWriter.write(f'\tpush\thl\n')
             else:
                 # If in the high byte of a register pair, push it directly
-                regX = ra.isInRegister(self.lhsAddr.name, {'bc', 'de', 'hl' })
+                regX = ra.isInRegister(self.lhsAddr, {'bc', 'de', 'hl' })
                 if regX:
                     asmWriter.write(f"\tpush\t{regX}\n")
                 else:
@@ -331,7 +334,7 @@ class IRFunCall(IR):
                 reg = "hl"
             else:
                 error()
-            ra.assignToNameWithRegister(self.resultAddr.name, returnRegisterForType[self.type])
+            ra.assignToSymbolWithRegister(self.resultAddr, returnRegisterForType[self.type])
 
 class IRAddressOf(IR):
     def __init__(self, symEntry, resAddr):
@@ -346,7 +349,7 @@ class IRAddressOf(IR):
         negOffset = 65536+offset
         negHexOffset = f'{negOffset:05x}h'
         # Might as well require HL
-        regX = ra.getRegisterForArg(self.resultAddr.name, { "hl" })
+        regX = ra.getRegisterForSymbol(self.resultAddr, { "hl" })
         regT = ra.getTemporaryRegister({ "bc", "de" })
         # TODO maybe better to use IY instead of HL if small offset?
         asmWriter.write(f'\tld\t{regX[0]}, ixh\n')
@@ -354,7 +357,7 @@ class IRAddressOf(IR):
         # TODO Optimize for small values with INC / DEC
         asmWriter.write(f'\tld\t{regT}, {negHexOffset}\n')
         asmWriter.write(f'\tadd\t{regX}, {regT}\n')
-        ra.loadNameInRegister(self.resultAddr.name, regX)
+        ra.loadSymbolInRegister(self.resultAddr, regX)
 
 class IRDereference(IR):
     def __init__(self, symEntry, resAddr):
@@ -384,32 +387,32 @@ class IRAssign(IR):
                 reg = ra.doLoadInRegister8(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" })
             elif self.resultAddr.type == "int":
                 reg = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" })
-            ra.assignToNameWithRegister(self.resultAddr.name, reg)
+            ra.assignToSymbolWithRegister(self.resultAddr, reg)
         else:
             # Stores directly to memory
             if self.resultAddr.type == "char":
                 if isinstance(self.lhsAddr, Constant):
                     asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg()}, {self.lhsAddr.value}\n')
                 else:
-                    regY = ra.isInRegister(self.lhsAddr.name, { "a", "b", "c", "d", "e", "h", "l" })
+                    regY = ra.isInRegister(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" })
                     if regY:
                         asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg()}, {regY}\n')
                     else:
                         # TODO use a free register instead of always reg a
-                        ra.getRegisterForArg(self.lhsAddr.name , { "a" })
+                        ra.getRegisterForSymbol(self.lhsAddr, { "a" })
                         asmWriter.write(f'\tld\ta, {self.lhsAddr.impl.codeArg()}\n')
                         asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg()}, a\n')
-                        ra.loadNameInRegister(self.lhsAddr.name, "a")
+                        ra.loadSymbolInRegister(self.lhsAddr, "a")
             elif self.resultAddr.type == "int":
                 # TODO handle constants
-                regY = ra.isInRegister(self.lhsAddr.name, { "bc", "de", "hl" })
+                regY = ra.isInRegister(self.lhsAddr, { "bc", "de", "hl" })
                 if regY:
                     asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg(+1)}, {regY[0]}\n')
                     asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg()}, {regY[1]}\n')
                 else:
                     ra.spillRegister("a")
                     # TODO use a free register instead of always reg a
-                    ra.getRegisterForArg(self.lhsAddr.name , { "a" }) # TODO Only to spill it if needed. Better shorthand?
+                    ra.getRegisterForSymbol(self.lhsAddr, { "a" }) # TODO Only to spill it if needed. Better shorthand?
                     asmWriter.write(f'\tld\ta, {self.lhsAddr.impl.codeArg()}\n')
                     asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg()}, a\n')
                     asmWriter.write(f'\tld\ta, {self.lhsAddr.impl.codeArg(+1)}\n')
@@ -445,7 +448,7 @@ class IRAssignToPointer(IR):
                 if self.live[self.resultAddr.name]:
                     asmWriter.write(f'\tdec\t{regX}\n')
                 else:
-                    ra.removeNameForRegister(self.resultAddr.name, regX)
+                    ra.removeSymbolForRegister(self.resultAddr, regX)
             else:
                 regY = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } )
                 regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } - {regY}) 
@@ -455,7 +458,7 @@ class IRAssignToPointer(IR):
                 if self.live[self.resultAddr.name]:
                     asmWriter.write(f'\tdec\t{regX}\n')
                 else:
-                    ra.removeNameForRegister(self.resultAddr.name, regX)
+                    ra.removeSymbolForRegister(self.resultAddr, regX)
         else:
             error()
 
@@ -466,17 +469,17 @@ class IRAdd(IR):
 
     def genCode(self, asmWriter):
         ra = registerAllocator.RA
-        ra.removeName(self.resultAddr.name)
+        ra.removeSymbol(self.resultAddr)
         if self.lhsAddr.type == "char":
             regZ = self.load8bitLhsAndRhs(asmWriter, transitive=True)
             ra.spillRegister("a")
             asmWriter.write(f"\tadd\ta, {regZ}\n")
-            ra.loadNameInRegister(self.resultAddr.name, "a")
+            ra.loadSymbolInRegister(self.resultAddr, "a")
         elif self.lhsAddr.type == "int":
             regZ = self.load16bitLhsAndRhs(transitive=True)
             ra.spillRegister("hl")
             asmWriter.write(f"\tadd\thl, {regZ}\n")
-            ra.loadNameInRegister(self.resultAddr.name, "hl")
+            ra.loadSymbolInRegister(self.resultAddr, "hl")
         else:
             error()
 

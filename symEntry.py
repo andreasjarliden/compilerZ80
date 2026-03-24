@@ -9,6 +9,9 @@ class SymEntry:
         self.name = n
         self.impl = None
 
+    def __repr__(self):
+        return f"<SymEntry type {self.completeType} name {self.name} {self.impl}"
+
     @property
     def type(self):
         if self.completeType.startswith("*"):

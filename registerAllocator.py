@@ -108,6 +108,13 @@ class RegisterAllocator:
     #         self.registers[r].remove(n)
     #     self.addresses[n] = set()
 
+    # TODO test
+    def removeSymbol(self, s):
+        registers = self.symbols.get(s, set()) & ALL_REGISTERS;
+        for r in registers:
+            self.registers[r].remove(s)
+        self.symbols[s] = set()
+
     # def _spillScore(self, r):
     #     score = 0
     #     # TODO also handle coupled registers
@@ -286,9 +293,9 @@ class RegisterAllocator:
 
     # Assigning to a name means that it is only the register that holds the
     # name, it has not been spilled to memory yet.
-    def assignToNameWithRegister(self, n, r):
-        self.registers[r].add(n)
-        self.addresses[n] = { r }
+    # def assignToNameWithRegister(self, n, r):
+    #     self.registers[r].add(n)
+    #     self.addresses[n] = { r }
 
     # Assigning to a name means that it is only the register that holds the
     # name, it has not been spilled to memory yet.
