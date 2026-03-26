@@ -51,7 +51,6 @@ class TestParser(unittest.TestCase):
 
     def test_if_equality(self):
         ast = parser.parse("""if (1 + 2 == 3 + 4) return 0;""")
-        print(ast)
         self.assertTrue(isinstance(ast[0], If))
         self.assertTrue(isinstance(ast[0].expr, Relation))
         self.assertEqual(ast[0].expr,

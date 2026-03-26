@@ -160,7 +160,7 @@ class AddressOf:
 
     def visit(self, context):
         exprAddr = self.expr.visit(context)
-        irAddressOf = IRAddressOf(exprAddr, addTemporary("int", "*" + exprAddr.completeType))
+        irAddressOf = IRAddressOf(exprAddr, context.symbolTable.addTemporary("*" + exprAddr.completeType))
         context.blockFactory.addIR(irAddressOf)
         return irAddressOf.resultAddr
 
@@ -175,7 +175,7 @@ class Dereference:
             t = "int"
         else:
             t = ct
-        deref = IRDereference(pointer, addTemporary(t, ct))
+        deref = IRDereference(pointer, context.symbolTable.addTemporary(ct))
         context.blockFactory.addIR(deref)
         deref.resultAddr.impl = PointerAddress(pointer)
         return deref.resultAddr

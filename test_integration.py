@@ -23,7 +23,7 @@ class TestIntegration(unittest.TestCase):
         self.asmWriter.seek(0)
         output = self.asmWriter.read()
         self.assertRegex(output, r"ld\t., 1")
-        self.assertRegex(output, r"ld\t\(ix \+ \-1\), .")
+        self.assertRegex(output, r"ld\t\(ix \- 1\), .")
 
     def test_globalVariable(self):
         ast = parser.parse("""
