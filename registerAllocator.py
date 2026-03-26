@@ -193,10 +193,10 @@ class Z80RegisterAllocator(RegisterAllocator):
         if isinstance(s.impl, StackAddress):
             offset = s.impl.offset
             if s.type == 'char':
-                self.asmFile.write(f"\tld\t(ix + {offset}), {r}\n")
+                self.asmFile.write(f"\tld\t{s.impl.codeArg()}, {r}\n")
             if s.type == 'int':
-                self.asmFile.write(f"\tld\t(ix + {offset+1}), {r[0]}\n")
-                self.asmFile.write(f"\tld\t(ix + {offset}), {r[1]}\n")
+                self.asmFile.write(f"\tld\t{s.impl.codeArg(+1)}, {r[0]}\n")
+                self.asmFile.write(f"\tld\t{s.impl.codeArg()}, {r[1]}\n")
         elif isinstance(s.impl, PointerAddress):
             pointer = s.impl.pointer
             if s.type == 'char':

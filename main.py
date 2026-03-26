@@ -13,15 +13,19 @@ if __name__ == "__main__":
     symbolTable = SymbolTable()
     # Add external functions
     symbolTable.addSymbolEntry("printHex16", Function("void", "printHex16", [], [Argument("int", None)]))
-    symbolTable.addSymbolEntry("printHex16", Function("void", "printHex8", [], [Argument("char", None)]))
+    symbolTable.addSymbolEntry("printHex8", Function("void", "printHex8", [], [Argument("char", None)]))
 
     print("Parsing")
     print("=======")
 
     ast = parser.parse("""
+    char add(char a, char b) {
+        return a + b;
+    }
     char main() {
-char A;
-        A=1;
+        char c;
+        c = add(4, 2);
+        printHex8(c);
         }
     """) 
 
