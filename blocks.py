@@ -2,9 +2,10 @@ from pprint import pformat
 from symbolTable import *
 
 class BasicBlock:
-    def __init__(self, symbolTable, name):
+    def __init__(self, name):
         self.statements = []
-        self.symbolTable = symbolTable
+        # TODO rename to e.g. symbols?
+        self.symbolTable = None
         self.name = name
 
     def __repr__(self):
@@ -15,18 +16,19 @@ class BlockFactory:
         self.basicBlocks = {}
         self.blockPrefix = None
 
-    def enterBlock(self, name, symbolTable):
+    def enterBlock(self, name):
         self.currentBlockName = name
         self.blockPrefix = name
         self.blockNumber = 0
-        self.enterSubBlock(symbolTable)
+        self.enterSubBlock()
 
-    def enterSubBlock(self, symbolTable):
+    def enterSubBlock(self):
         self.currentBlockName = f"{self.blockPrefix}_{self.blockNumber:04}"
-        self.currentBlock = BasicBlock(symbolTable, self.currentBlockName)
+        self.currentBlock = BasicBlock(self.currentBlockName)
         self.blockNumber+=1
 
-    def exitBlock(self):
+    def exitBlock(self, allSymbols):
+        self.currentBlock.symbolTable = allSymbols
         self.basicBlocks[self.currentBlockName] = self.currentBlock
 
     def blocks(self):
@@ -36,8 +38,8 @@ class BlockFactory:
         self.currentBlock.statements.append(ir)
 
 class SingleBlockFactory:
-    def __init__(self, symbolTable):
-        self.block = BasicBlock(symbolTable, "block")
+    def __init__(self):
+        self.block = BasicBlock("block")
 
     def addIR(self, ir):
         self.block.statements.append(ir)

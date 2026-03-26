@@ -8,6 +8,8 @@ import symbolTable
 class ASTContext:
     blockFactory : Any 
     symbolTable : SymbolTable = SymbolTable()
+    functionName : str = None
+    dataSegment : list[SymEntry] = field(default_factory=list)
 
 def createLabel(context):
     context.functionLabels += 1
@@ -18,7 +20,7 @@ class Variable:
     name : str
 
     def visit(self, context):
-        return context.symbolTable.lookup(self.name)
+        return context.symbolTable.lookUp(self.name)
 
 @dataclass(frozen=True)
 class Argument:
@@ -57,7 +59,8 @@ class Function:
         context.symbolTable.pushFrame()
         context.functionName = self.name
         context.functionLabels = 0
-        context.blockFactory.enterBlock(self.name, context.symbolTable.currentSymbolTable())
+        # context.blockFactory.enterBlock(self.name, context.symbolTable.allSymbols())
+        context.blockFactory.enterBlock(self.name)
         # return address is at ix+2, ix+3. Rightmost argument (16-bit) is at ix+5, ix+4
         # If pushing AF, then A is at ix+5
         offset = 4
@@ -73,14 +76,16 @@ class Function:
             context.symbolTable.addSymbolEntry(a.name, symEntry)
             offset+=2
         symbolTable = context.symbolTable.currentSymbolTable()
-        context.blockFactory.addIR(IRDefFun(self, symbolTable))
+        frameSize = stackFrameSize(symbolTable)
+        context.blockFactory.addIR(IRDefFun(self, frameSize))
         for s in self.statements:
             s.visit(context)
         Function.mapSymbols(symbolTable)
         hasStackFrame = len(symbolTable) > 0
         context.blockFactory.addIR(IRFunExit(self, hasStackFrame))
+        print(f"At end of block, {context.symbolTable.allSymbols()=}")
+        context.blockFactory.exitBlock(context.symbolTable.allSymbols())
         context.symbolTable.popFrame()
-        context.blockFactory.exitBlock()
         context.functionName = None
 
 @dataclass(frozen=True)
@@ -121,8 +126,13 @@ class VariableDefinition:
             return self.completeType
 
     def visit(self, context):
-        context.symbolTable.addSymbol(self.completeType, self.name)
-        pass
+        symbol = SymEntry(self.completeType, self.name)
+        context.symbolTable.addSymbolEntry(self.name, symbol)
+        if not context.functionName:
+            # Handle global variables as PointerAddresses
+            symbol.impl = PointerAddress(None)
+            context.dataSegment.append(symbol)
+
 
 @dataclass(frozen=True)
 class VariableAssignment:
@@ -181,7 +191,7 @@ class FunctionCall:
         return f"call {self.name} with args {self.arguments}"
 
     def visit(self, context):
-        self.type = context.symbolTable.lookup(self.name).type
+        self.type = context.symbolTable.lookUp(self.name).type
         for a in reversed(self.arguments):
             exprAddress = a.visit(context)
             context.blockFactory.addIR(IRArgument(exprAddress))
@@ -198,7 +208,7 @@ class Return:
     expr : Any
 
     def visit(self, context):
-        t = context.symbolTable.lookup(context.functionName).type
+        t = context.symbolTable.lookUp(context.functionName).type
         exprAddress = self.expr.visit(context)
         context.blockFactory.addIR(IRReturn(t, exprAddress, context.functionName))
 

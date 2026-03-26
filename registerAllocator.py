@@ -4,6 +4,7 @@ from symEntry import *
 from address import *
 from asmWriter import AsmWriter
 from ir import *
+from symEntry import StackAddress, PointerAddress
 
 RA = None
 ALL_REGISTERS = {'a', 'b', 'c', 'd', 'e', 'h', 'l', 'bc', 'de', 'hl'}
@@ -54,7 +55,7 @@ class RegisterAllocator:
     def spillRegisterToSymbol(self, r, s):
         self.symbols[s].add(s)
         self.symbols[s].remove(r)
-        if self.currentInstruction.live[s.name]:
+        if self.currentInstruction.live[s]:
             self.doSpillToSymbol(r, s)
         self.registers[r].remove(s)
 
@@ -82,8 +83,7 @@ class RegisterAllocator:
             # if n == ir.resultAddr.name:
             #     continue
             # Is dead?
-            # TODO use symbols instead of name
-            if not self.currentInstruction.live[s.name]:
+            if not self.currentInstruction.live[s]:
                 continue
             # Have to spill to n
             score += 1
@@ -190,12 +190,20 @@ class Z80RegisterAllocator(RegisterAllocator):
 
     def doSpillToSymbol(self, r, s):
         self.asmFile.write(f"; spill register {r} to var {s.name}\n")
-        offset = s.impl.offset
-        if s.type == 'char':
-            self.asmFile.write(f"\tld\t(ix + {offset}), {r}\n")
-        if s.type == 'int':
-            self.asmFile.write(f"\tld\t(ix + {offset+1}), {r[0]}\n")
-            self.asmFile.write(f"\tld\t(ix + {offset}), {r[1]}\n")
+        if isinstance(s.impl, StackAddress):
+            offset = s.impl.offset
+            if s.type == 'char':
+                self.asmFile.write(f"\tld\t(ix + {offset}), {r}\n")
+            if s.type == 'int':
+                self.asmFile.write(f"\tld\t(ix + {offset+1}), {r[0]}\n")
+                self.asmFile.write(f"\tld\t(ix + {offset}), {r[1]}\n")
+        elif isinstance(s.impl, PointerAddress):
+            pointer = s.impl.pointer
+            if s.type == 'char':
+                self.asmFile.write(f"\tld\t({s.name}), {r}\n")
+            if s.type == 'int':
+                self.asmFile.write(f"\tld\t({pointer+1}), {r[0]}\n")
+                self.asmFile.write(f"\tld\t({pointer}), {r[1]}\n")
 
 
     # E.g. ld a, (de)
@@ -206,7 +214,7 @@ class Z80RegisterAllocator(RegisterAllocator):
             self.asmFile.write(f'\tld\t{r[1]}, ({rp})\n')
             self.asmFile.write(f'\tinc\t{rp}\n')
             self.asmFile.write(f'\tld\t{r[0]}, ({rp})\n')
-            if self.currentInstruction.live[pointer.name]:
+            if self.currentInstruction.live[pointer]:
                 self.asmFile.write(f'\tdec\t{rp}\n')
             else:
                 self.removeSymbolForRegister(pointer, rp)

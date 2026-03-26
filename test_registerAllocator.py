@@ -1,6 +1,5 @@
 import unittest
 from registerAllocator import *
-from symbolTable import SymbolTable
 from io import StringIO
 from symEntry import *
 from address import *
@@ -10,15 +9,11 @@ from ir import *
 
 class TestRA(unittest.TestCase):
     def setUp(self):
-        # symbolTable = SymbolTable()
-        # symbolTable.addSymbol("char", "foo")
-        # symbolTable.addSymbol("char", "bar")
-        # symbolTable.addSymbol("int", "baz")
         self.foo = SymEntry("char", "foo")
         self.bar = SymEntry("char", "bar")
         self.ra = RegisterAllocator()
         self.ra.currentInstruction = IR()
-        self.ra.currentInstruction.live = { "foo": True, "bar": True, "fiz": True }
+        self.ra.currentInstruction.live = { self.foo: True, self.bar: True }
 
     # loadRegister
 
@@ -103,12 +98,10 @@ class TestRA(unittest.TestCase):
 
     # spillAll
     def test_spillAll(self):
-        self.ra.currentInstruction.live["foo"] = True
-        self.ra.currentInstruction.live["bar"] = False
-        foo = SymEntry("char", "foo")
-        bar = SymEntry("char", "bar")
-        self.ra.assignToSymbolWithRegister(foo, "a") # char
-        self.ra.assignToSymbolWithRegister(bar, "b") # char
+        self.ra.currentInstruction.live[self.foo] = True
+        self.ra.currentInstruction.live[self.bar] = False
+        self.ra.assignToSymbolWithRegister(self.foo, "a") # char
+        self.ra.assignToSymbolWithRegister(self.bar, "b") # char
 
         self.ra.spillAll()
 
@@ -120,12 +113,12 @@ class TestRA(unittest.TestCase):
     # spillAllMatchingType
 
     def test_spillAllMatchingType_int(self):
-        self.ra.currentInstruction.live["foo"] = True
-        self.ra.currentInstruction.live["foo"] = True
-        self.ra.currentInstruction.live["baz"] = True
         foo = SymEntry("char", "foo")
         foo2 = SymEntry("char", "foo")
         baz = SymEntry("int", "baz")
+        self.ra.currentInstruction.live[foo] = True
+        self.ra.currentInstruction.live[foo2] = True
+        self.ra.currentInstruction.live[baz] = True
         self.ra.assignToSymbolWithRegister(foo, "a") # char
         self.ra.assignToSymbolWithRegister(foo2, "b") # char
         self.ra.assignToSymbolWithRegister(baz, "c") # int
@@ -138,15 +131,15 @@ class TestRA(unittest.TestCase):
         self.assertEqual(self.ra.symbols[baz], {baz})
 
     def test_spillAllMatchingType_char(self):
-        self.ra.currentInstruction.live["foo"] = True
-        self.ra.currentInstruction.live["foo"] = True
-        self.ra.currentInstruction.live["baz"] = True
         foo = SymEntry("char", "foo")
         foo2 = SymEntry("char", "foo")
         baz = SymEntry("int", "baz")
+        self.ra.currentInstruction.live[foo] = True
+        self.ra.currentInstruction.live[foo2] = True
+        self.ra.currentInstruction.live[baz] = True
         self.ra.assignToSymbolWithRegister(foo, "a") # char
         self.ra.assignToSymbolWithRegister(foo2, "b") # char
-        self.ra.assignToSymbolWithRegister(baz, "c") # char
+        self.ra.assignToSymbolWithRegister(baz, "c") # int
 
         self.ra.spillAllMatchingType("char")
 
@@ -173,7 +166,7 @@ class TestZ80RA(unittest.TestCase):
         self.bar16.impl = StackAddress(-2)
         self.ra = Z80RegisterAllocator(StringIO())
         self.ra.currentInstruction = IR()
-        self.ra.currentInstruction.live = { "foo": True, "bar": True, "ptr": True }
+        self.ra.currentInstruction.live = { self.foo: True, self.bar: True, self.ptr: True }
 
     def test_loadInA_alreadyLoaded(self):
         self.ra.loadSymbolInRegister(self.foo, "a")
@@ -286,7 +279,7 @@ class TestZ80RA(unittest.TestCase):
 
     def test_loadInHL_fromPointerInRegisterWhichIsDead(self):
         self.ra.loadSymbolInRegister(self.ptr, "de")
-        self.ra.currentInstruction.live["ptr"] = False
+        self.ra.currentInstruction.live[self.ptr] = False
         self.ra.loadInHL(self.derefPtr16);
 
         self.ra.asmFile.seek(0)

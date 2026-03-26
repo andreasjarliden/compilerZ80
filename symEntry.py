@@ -6,11 +6,12 @@ SIZE_FOR_TYPES = { "char": 1,
 class SymEntry:
     def __init__(self, t, n):
         self.completeType = t
+        # TODO maybe name should be optional, only used for debugging?
         self.name = n
         self.impl = None
 
     def __repr__(self):
-        return f"<SymEntry type {self.completeType} name {self.name} {self.impl}"
+        return f"<SymEntry {id(self)} {self.completeType} {self.name} {self.impl}>"
 
     @property
     def type(self):

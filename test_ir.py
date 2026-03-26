@@ -14,26 +14,18 @@ class TestIR(unittest.TestCase):
         self.baz = SymEntry("char", "baz")
         self.ptr = SymEntry("int*", "ptr")
         self.derefPtr = SymEntry("char", "derefPtr")
-        # symbolTable = { self.foo.name: self.foo,
-        #                self.bar.name: self.bar,
-        #                self.baz.name: self.baz,
-        #                self.ptr.name: self.ptr,
-        #                self.derefPtr.name: self.derefPtr
-        #                }
         self.bar.impl = StackAddress(2)
         self.baz.impl = StackAddress(3)
         self.ptr.impl = StackAddress(4)
         self.derefPtr.impl = PointerAddress(self.ptr)
         self.asmWriter = asmWriter.AsmWriter(StringIO())
-        # self.asmWriter = self.asmWriter
-        # ir.asmWriter = self.asmWriter
         registerAllocator.RA = registerAllocator.Z80RegisterAllocator(self.asmWriter)
 
     # IRAssign
 
     def test_IRAssign_constant8(self):
         ira = ir.IRAssign(self.foo, Constant("char", 42))
-        ira.live[self.foo.name] = True
+        ira.live[self.foo] = True
         ira.genCode(self.asmWriter)
 
         self.asmWriter.seek(0)
@@ -43,7 +35,7 @@ class TestIR(unittest.TestCase):
 
     def test_IRAssign_constant16(self):
         ira = ir.IRAssign(self.foo16, Constant("int", 0x1234))
-        ira.live[self.foo16.name] = True
+        ira.live[self.foo16] = True
         ira.genCode(self.asmWriter)
 
         self.asmWriter.seek(0)
@@ -53,8 +45,8 @@ class TestIR(unittest.TestCase):
 
     def test_IRAssign_stackVariable(self):
         ira = ir.IRAssign(self.foo, self.bar)
-        ira.live[self.foo.name] = True
-        ira.live[self.bar.name] = True
+        ira.live[self.foo] = True
+        ira.live[self.bar] = True
         ira.genCode(self.asmWriter)
 
         self.asmWriter.seek(0)
@@ -70,9 +62,9 @@ class TestIR(unittest.TestCase):
 
         # foo = bar + baz
         ira = ir.IRAdd(self.foo, self.bar, self.baz)
-        ira.live[self.foo.name] = True
-        ira.live[self.bar.name] = False # Not necessary to spill bar
-        ira.live[self.baz.name] = True
+        ira.live[self.foo] = True
+        ira.live[self.bar] = False # Not necessary to spill bar
+        ira.live[self.baz] = True
         registerAllocator.RA.currentInstruction = ira
         print(registerAllocator.RA)
         ira.genCode(self.asmWriter)
@@ -90,9 +82,9 @@ class TestIR(unittest.TestCase):
 
         # foo = bar + baz
         ira = ir.IRAdd(self.foo, self.bar, self.baz)
-        ira.live[self.foo.name] = True
-        ira.live[self.bar.name] = True 
-        ira.live[self.baz.name] = False # Not necessary to spill
+        ira.live[self.foo] = True
+        ira.live[self.bar] = True 
+        ira.live[self.baz] = False # Not necessary to spill
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
@@ -107,9 +99,9 @@ class TestIR(unittest.TestCase):
     def test_IRAdd_rhsDirectlyFromMemory(self):
         # foo = bar + baz
         ira = ir.IRAdd(self.foo, self.bar, self.baz)
-        ira.live[self.foo.name] = True
-        ira.live[self.bar.name] = False # Not necessary to spill bar
-        ira.live[self.baz.name] = False # No more use for the rhs
+        ira.live[self.foo] = True
+        ira.live[self.bar] = False # Not necessary to spill bar
+        ira.live[self.baz] = False # No more use for the rhs
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
@@ -124,9 +116,9 @@ class TestIR(unittest.TestCase):
     def test_IRAdd_rhsViaRegister(self):
         # foo = bar + baz
         ira = ir.IRAdd(self.foo, self.bar, self.baz)
-        ira.live[self.foo.name] = True
-        ira.live[self.bar.name] = False # Not necessary to spill bar
-        ira.live[self.baz.name] = True # bas will be used later so makes sense to load in register
+        ira.live[self.foo] = True
+        ira.live[self.bar] = False # Not necessary to spill bar
+        ira.live[self.baz] = True # bas will be used later so makes sense to load in register
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
@@ -144,8 +136,8 @@ class TestIR(unittest.TestCase):
 
         # foo = bar + 42
         ira = ir.IRAdd(self.foo, self.bar, Constant("char", 42))
-        ira.live[self.foo.name] = True
-        ira.live[self.bar.name] = False # Not necessary to spill bar
+        ira.live[self.foo] = True
+        ira.live[self.bar] = False # Not necessary to spill bar
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
@@ -162,9 +154,9 @@ class TestIR(unittest.TestCase):
 
         # foo = bar + 42
         ira = ir.IRAdd(self.foo, self.bar, self.derefPtr)
-        ira.live["foo"] = True
-        ira.live["bar"] = False # Not necessary to spill bar
-        ira.live["ptr"] = False # No more use for ptr
+        ira.live[self.foo] = True
+        ira.live[self.bar] = False # Not necessary to spill bar
+        ira.live[self.ptr] = False # No more use for ptr
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
@@ -181,9 +173,9 @@ class TestIR(unittest.TestCase):
 
         # foo = bar + 42
         ira = ir.IRAdd(self.foo, self.bar, self.derefPtr)
-        ira.live["foo"] = True
-        ira.live["bar"] = False # Not necessary to spill bar
-        ira.live["ptr"] = False # No more use for ptr
+        ira.live[self.foo] = True
+        ira.live[self.bar] = False # Not necessary to spill bar
+        ira.live[self.ptr] = False # No more use for ptr
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
@@ -201,9 +193,9 @@ class TestIR(unittest.TestCase):
 
         # foo = bar + 42
         ira = ir.IRAdd(self.foo, self.bar, self.derefPtr)
-        ira.live[self.foo.name] = True
-        ira.live[self.bar.name] = False # Not necessary to spill bar
-        ira.live[self.ptr.name] = False # No more use for ptr
+        ira.live[self.foo] = True
+        ira.live[self.bar] = False # Not necessary to spill bar
+        ira.live[self.ptr] = False # No more use for ptr
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 

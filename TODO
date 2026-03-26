@@ -3,7 +3,7 @@
 - Store live in IR again and update a complete list when traversing the IRs
   during generation.
 - ... and keep track of next use.
-- Cleanup register allocator.
+- Don't reserve stack space for temps that doesn't have to be spilled
 - Move more code generation to IRDereferenced?
 - With the Z80 we constantly have to spill A and HL although there are free
   register.  Consider spilling to other registers for live variables

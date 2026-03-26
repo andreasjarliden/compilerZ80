@@ -27,26 +27,26 @@ class IR:
 
     def updateLive(self, live):
         if self.resultAddr and isinstance(self.resultAddr, SymEntry):
-            live[self.resultAddr.name] = False
+            live[self.resultAddr] = False
         if self.lhsAddr and isinstance(self.lhsAddr, SymEntry):
-            live[self.lhsAddr.name] = True
+            live[self.lhsAddr] = True
         if self.rhsAddr and isinstance(self.rhsAddr, SymEntry):
-            live[self.rhsAddr.name] = True
+            live[self.rhsAddr] = True
         self.live = live.copy()
 
     def liveStr(self):
         if not self.live:
             return ""
         if self.resultAddr and isinstance(self.resultAddr, SymEntry):
-            s1 = "L" if self.live[self.resultAddr.name] else "D"
+            s1 = "L" if self.live[self.resultAddr] else "D"
         else:
             s1="?"
         if self.lhsAddr and isinstance(self.lhsAddr, SymEntry):
-            s2 = "L" if self.live[self.lhsAddr.name] else "D"
+            s2 = "L" if self.live[self.lhsAddr] else "D"
         else:
             s2="?"
         if self.rhsAddr and isinstance(self.rhsAddr, SymEntry):
-            s3 = "L" if self.live[self.rhsAddr.name] else "D"
+            s3 = "L" if self.live[self.rhsAddr] else "D"
         else:
             s3="?"
         return s1 + s2 + s3 + " "
@@ -95,7 +95,7 @@ class IR:
             regZ = ra.isInRegister(rhsAddr)
             if regZ:
                 return regZ
-            elif self.live[self.rhsAddr.name]:
+            elif self.live[self.rhsAddr]:
                 # Use via register as will be used later (hopefully without spilling)
                 regZ = ra.getRegisterForSymbol(rhsAddr, { "b", "c", "d", "e", "h", "l" })
                 asmWriter.loadRegisterWithAddress(regZ, rhsAddr.impl)
@@ -129,13 +129,13 @@ class IR:
 
 
 class IRDefFun(IR):
-    def __init__(self, function, symbolTable):
+    def __init__(self, function, stackFrameSize):
         super().__init__()
         self.function = function
-        self.symbolTable = symbolTable
+        self.stackFrameSize = stackFrameSize
 
     def extraDescription(self):
-        return f"{self.function} symbolTable {self.symbolTable}"
+        return f"{self.function} {self.stackFrameSize=}"
 
     def genCode(self, asmWriter):
         asmWriter.write(self.function.name + ":\n");
@@ -146,9 +146,8 @@ class IRDefFun(IR):
         asmWriter.write('\tadd\tIX, SP\n')
 
         # Reserve space for local variables
-        size = stackFrameSize(self.symbolTable)
-        if size > 0:
-            negSize=65536-size
+        if self.stackFrameSize > 0:
+            negSize=65536-self.stackFrameSize
             negHexSize=f'{negSize:05x}h'
             asmWriter.write('\t; Reserve space for local variables\n')
             asmWriter.write(f'\tld\tHL, {negHexSize}\n')
@@ -381,7 +380,7 @@ class IRAssign(IR):
         # live.
         # TODO Just always assign to register for now
         # TODO could probably use loadRhs8
-        if True: # self.live[self.resultAddr.name]:
+        if True: # self.live[self.resultAddr]:
             # Stores to register
             if self.resultAddr.type == "char":
                 reg = ra.doLoadInRegister8(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" })
@@ -417,7 +416,7 @@ class IRAssign(IR):
                     asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg()}, a\n')
                     asmWriter.write(f'\tld\ta, {self.lhsAddr.impl.codeArg(+1)}\n')
                     asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg(+1)}, a\n')
-            ra.storeToName(self.resultAddr.name)
+            ra.storeToSymbol(self.resultAddr)
 
 
 class IRAssignToPointer(IR):
@@ -445,7 +444,7 @@ class IRAssignToPointer(IR):
                 asmWriter.write(f'\tld\t({regX}), {self.lhsAddr.value & 0xff}\n')
                 asmWriter.write(f'\tinc\t{regX}\n')
                 asmWriter.write(f'\tld\t({regX}), {self.lhsAddr.value >> 8 & 0xff}\n')
-                if self.live[self.resultAddr.name]:
+                if self.live[self.resultAddr]:
                     asmWriter.write(f'\tdec\t{regX}\n')
                 else:
                     ra.removeSymbolForRegister(self.resultAddr, regX)
@@ -455,7 +454,7 @@ class IRAssignToPointer(IR):
                 asmWriter.write(f'\tld\t({regX}), {regY[1]}\n')
                 asmWriter.write(f'\tinc\t{regX}\n')
                 asmWriter.write(f'\tld\t({regX}), {regY[0]}\n')
-                if self.live[self.resultAddr.name]:
+                if self.live[self.resultAddr]:
                     asmWriter.write(f'\tdec\t{regX}\n')
                 else:
                     ra.removeSymbolForRegister(self.resultAddr, regX)

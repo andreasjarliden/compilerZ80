@@ -3,7 +3,7 @@ import ir
 from parser import parser
 from symbolTable import SymbolTable
 from astnodes import Function, Argument
-from compiler import astToThreeCode, updateLive, genCode
+from compiler import astToThreeCode, updateLive, genCode, genDataSegment
 from asmWriter import AsmWriter
 
 if __name__ == "__main__":
@@ -32,10 +32,11 @@ char A;
 
     print("AST to 3-code")
     print("=============")
-    blocks = astToThreeCode(ast, symbolTable=symbolTable)
+    blocks, dataSegment = astToThreeCode(ast, symbolTable=symbolTable)
     updateLive(blocks)
 
     print("BASIC_BLOCKS")
     pprint(blocks)
 
     genCode(blocks, asmWriter)
+    genDataSegment(dataSegment, asmWriter)

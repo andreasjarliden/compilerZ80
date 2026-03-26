@@ -20,12 +20,18 @@ class SymbolTable:
         self.env.append({})
     def popFrame(self, ):
         self.env.pop()
-    def lookup(self, name):
+    def lookUp(self, name):
         for frame in reversed(self.env):
             try:
                 return frame[name]
             except KeyError:
                 pass
         return None
+    def allSymbols(self):
+        symbols = set()
+        for frame in self.env:
+            symbols.update(frame.values())
+        return symbols
+
     def __repr__(self):
-        return f"SymbolTable {id(self)=} {self.env}"
+        return f"SymbolTable {self.env}"
