@@ -9,14 +9,11 @@ def astToThreeCode(ast, factory = BlockFactory(), symbolTable = SymbolTable()):
     for n in ast:
         n.visit(context)
     return context.blockFactory.blocks(), context.dataSegment
-    # return context.blockFactory.blocks()
 
 def updateLive(blocks):
     for b in blocks.values():
-        print(f"updateLive {b.name} {b.symbolTable=}")
-        live = { s: not s.name.startswith("temp") for s in b.symbolTable}
+        live = { s: not s.name.startswith("temp") for s in b.exitSymbols}
         for i in reversed(b.statements):
-            # i.live = live.copy()
             i.updateLive(live)
 
 def genCode(blocks, asmWriter):

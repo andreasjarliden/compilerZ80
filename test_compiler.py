@@ -14,11 +14,11 @@ class TestLiveness(unittest.TestCase):
     def compileBlockToIR(self, code):
         ast = parser.parse(code)
         blockFactory = SingleBlockFactory()
+        block = blockFactory.block
         blocks, _ = compiler.astToThreeCode(ast, blockFactory, self.symbolTable)
-        blocks["block"].symbolTable = self.symbolTable.allSymbols()
+        block.exitSymbols = self.symbolTable.allSymbols()
         compiler.updateLive(blocks)
-        bb = blocks["block"]
-        return bb.statements
+        return block.statements
 
     def isLive(self, irs, v):
         return irs.live[self.symbolTable.lookUp(v)]

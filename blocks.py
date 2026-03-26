@@ -4,12 +4,11 @@ from symbolTable import *
 class BasicBlock:
     def __init__(self, name):
         self.statements = []
-        # TODO rename to e.g. symbols?
-        self.symbolTable = None
+        self.exitSymbols = None
         self.name = name
 
     def __repr__(self):
-        return f"Symbol table: {self.symbolTable}\nStatements:\n{pformat(self.statements)}\n\n"
+        return f"Basic block {self.name}\nStatements:\n{pformat(self.statements)}\nExit Symbols:{self.exitSymbols}\n"
 
 class BlockFactory:
     def __init__(self):
@@ -27,8 +26,8 @@ class BlockFactory:
         self.currentBlock = BasicBlock(self.currentBlockName)
         self.blockNumber+=1
 
-    def exitBlock(self, allSymbols):
-        self.currentBlock.symbolTable = allSymbols
+    def exitBlock(self, exitSymbols):
+        self.currentBlock.exitSymbols = exitSymbols
         self.basicBlocks[self.currentBlockName] = self.currentBlock
 
     def blocks(self):
