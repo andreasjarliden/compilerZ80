@@ -18,13 +18,12 @@ class TestIntegration(unittest.TestCase):
         blocks, dataSegment = astToThreeCode(ast)
         pprint(blocks)
         updateLive(blocks)
-        print(blocks)
         genCode(blocks, self.asmWriter)
         genDataSegment(dataSegment, self.asmWriter)
         self.asmWriter.seek(0)
         output = self.asmWriter.read()
-        print(output)
-        print(dataSegment)
+        self.assertRegex(output, r"ld\t., 1")
+        self.assertRegex(output, r"ld\t\(ix \+ \-1\), .")
 
     def test_globalVariable(self):
         ast = parser.parse("""
@@ -39,8 +38,6 @@ class TestIntegration(unittest.TestCase):
         genDataSegment(dataSegment, self.asmWriter)
         self.asmWriter.seek(0)
         output = self.asmWriter.read()
-        print(output)
-        print(dataSegment)
         self.assertRegex(output, r"ld\t., 1")
         self.assertRegex(output, r"ld\t\(FOO\), .")
         self.assertRegex(output, r"FOO:\t.int8\t0")

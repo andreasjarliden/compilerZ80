@@ -21,15 +21,12 @@ def genCode(blocks, asmWriter):
     asmWriter.write('\t#include "constants.asm"\n')
     asmWriter.write('\tjp\tmain\n')
     for b in blocks.values():
-        print(f"\nBasic Block {b.name}\n")
         asmWriter.write(f'; Basic Block {b.name}\n')
         registerAllocator.RA = registerAllocator.Z80RegisterAllocator(asmWriter)
         for i in b.statements:
             registerAllocator.RA.currentInstruction = i
-            print(f"In block {registerAllocator.RA.currentInstruction.live=}")
             i.genCode(asmWriter)
         # Spill everything live that is only in a register at the end of the block
-        print(f"About to spill at end of block {registerAllocator.RA.currentInstruction.live=}")
         registerAllocator.RA.spillAll()
     asmWriter.write('\n\t#include "libc.asm"\n')
 

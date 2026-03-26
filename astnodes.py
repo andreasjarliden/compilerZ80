@@ -83,7 +83,6 @@ class Function:
         Function.mapSymbols(symbolTable)
         hasStackFrame = len(symbolTable) > 0
         context.blockFactory.addIR(IRFunExit(self, hasStackFrame))
-        print(f"At end of block, {context.symbolTable.allSymbols()=}")
         context.blockFactory.exitBlock(context.symbolTable.allSymbols())
         context.symbolTable.popFrame()
         context.functionName = None
