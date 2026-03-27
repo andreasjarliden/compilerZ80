@@ -43,14 +43,14 @@ class TestAsmWriter(unittest.TestCase):
         self.output = self.writer.file.read()
 
     def test_loadRegisterWithAddress8(self):
-        v = StackAddress(42)
+        v = ValueAddress(42)
         self.writer.loadRegisterWithAddress("a", v)
 
         self.checkOutput()
         self.assertEqual(self.output, "\tld\ta, (ix + 42)\n")
 
     def test_loadRegisterWithAddress16(self):
-        v = StackAddress(42)
+        v = ValueAddress(42)
         self.writer.loadRegisterWithAddress("bc", v)
 
         self.checkOutput()

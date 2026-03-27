@@ -1,4 +1,3 @@
-from symEntry import StackAddress
 from astnodes import ASTContext
 from blocks import BlockFactory
 from symbolTable import SymbolTable

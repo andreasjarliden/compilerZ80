@@ -7,7 +7,7 @@ from asmWriter import *
 def stackFrameSize(symbolTable):
     smallestOffset = 0
     for s in symbolTable.values():
-        if isinstance(s.impl, StackAddress):
+        if isinstance(s.impl, ValueAddress):
             smallestOffset = min(s.impl.offset, smallestOffset)
     return -smallestOffset
 
@@ -87,6 +87,7 @@ class IR:
                     asmWriter.loadRegisterWithRegister("hl", otherReg)
                 else:
                     # Load pointer from memory
+                    print(rhsAddr)
                     asmWriter.loadRegisterWithAddress("hl", rhsAddr.impl.pointer.impl)
                 ra.loadSymbolInRegister(rhsAddr.impl.pointer, "hl")
             return "(hl)"

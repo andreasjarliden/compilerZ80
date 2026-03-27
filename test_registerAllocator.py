@@ -153,17 +153,17 @@ class TestRA(unittest.TestCase):
 class TestZ80RA(unittest.TestCase):
     def setUp(self):
         self.foo = SymEntry("char", "foo")
-        self.foo.impl = StackAddress(0)
+        self.foo.impl = ValueAddress(0)
         self.ptr = SymEntry("int", "ptr")
-        self.ptr.impl = StackAddress(2)
+        self.ptr.impl = ValueAddress(2)
         self.derefPtr = SymEntry("char", "deref")
         self.derefPtr.impl = PointerAddress(self.ptr)
         self.derefPtr16 = SymEntry("int", "deref16")
         self.derefPtr16.impl = PointerAddress(self.ptr)
         self.bar = SymEntry("char", "bar")
-        self.bar.impl = StackAddress(-11)
+        self.bar.impl = ValueAddress(-11)
         self.bar16 = SymEntry("char", "bar16")
-        self.bar16.impl = StackAddress(-2)
+        self.bar16.impl = ValueAddress(-2)
         self.ra = Z80RegisterAllocator(StringIO())
         self.ra.currentInstruction = IR()
         self.ra.currentInstruction.live = { self.foo: True, self.bar: True, self.ptr: True }

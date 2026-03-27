@@ -4,7 +4,7 @@ from symEntry import *
 from address import *
 from asmWriter import AsmWriter
 from ir import *
-from symEntry import StackAddress, PointerAddress
+from symEntry import ValueAddress, PointerAddress
 
 RA = None
 ALL_REGISTERS = {'a', 'b', 'c', 'd', 'e', 'h', 'l', 'bc', 'de', 'hl'}
@@ -190,7 +190,7 @@ class Z80RegisterAllocator(RegisterAllocator):
 
     def doSpillToSymbol(self, r, s):
         self.asmFile.write(f"; spill register {r} to var {s.name}\n")
-        if isinstance(s.impl, StackAddress):
+        if isinstance(s.impl, ValueAddress):
             offset = s.impl.offset
             if s.type == 'char':
                 self.asmFile.write(f"\tld\t{s.impl.codeArg()}, {r}\n")

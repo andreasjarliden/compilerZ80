@@ -27,12 +27,12 @@ class SymEntry:
     def equalByValue(self, other):
         return self.name == other.name and self.completeType == other.completeType
 
-class StackAddress:
+class ValueAddress:
     def __init__(self, offset):
         self.offset = offset
 
     def __repr__(self):
-        return f"StackAddress @{self.offset}"
+        return f"ValueAddress @{self.offset}"
 
     def codeArg(self, offset=0):
         # Use ix - 1, as "ix-1" is interpreted as identifier "ix-1"
