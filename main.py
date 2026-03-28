@@ -19,11 +19,13 @@ if __name__ == "__main__":
     print("=======")
 
     ast = parser.parse("""
+    char FOO;
     char add(char a, char b) {
-        return a + b;
+        return a + FOO + b;
     }
     char main() {
         char c;
+        FOO = 3;
         c = add(4, 2);
         printHex8(c);
         }

@@ -35,10 +35,7 @@ class RegisterAllocator:
         symbols = set()
         for s in self.symbols:
             symbols.add(s)
-        if symbolsFromRegister == symbols:
-            print("RA OK!")
-        else:
-            print(f"RA INCONSISTENT!\nfrom regs: {symbolsFromRegister}\nsymbols: {symbols}")
+        if symbolsFromRegister != symbols:
             error()
 
     def doSpillToSymbol(self, reg, s):
@@ -66,14 +63,10 @@ class RegisterAllocator:
         for s in symbols:
             self.spillRegisterToSymbol(r, s)
 
-    # TODO more testing
     def spillRegisterToSymbol(self, r, s):
         # Spill if live and not already in memory
-        print(f"SpillRegisterToSymbol {r} {s}")
         if self.currentInstruction.live[s] and not s in self.symbols[s]:
-            print("Actually spilling")
             self.doSpillToSymbol(r, s)
-            print(f"About to remove symbol {s} places {len(self.symbols[s])}")
             if len(self.symbols[s]) > 1:
                 # Add if symbol still in some other register
                 self.symbols[s].add(s)
@@ -226,12 +219,20 @@ class Z80RegisterAllocator(RegisterAllocator):
 
     def doSpillToSymbol(self, r, s):
         self.asmFile.write(f"; spill register {r} to var {s.name}\n")
-        if isinstance(s.impl, ValueAddress):
+        if isinstance(s.impl, StackAddress):
             if s.type == 'char':
                 self.asmFile.write(f"\tld\t{s.impl.codeArg()}, {r}\n")
             if s.type == 'int':
                 self.asmFile.write(f"\tld\t{s.impl.codeArg(+1)}, {r[0]}\n")
                 self.asmFile.write(f"\tld\t{s.impl.codeArg()}, {r[1]}\n")
+        if isinstance(s.impl, GlobalAddress):
+            if s.type == 'char':
+                if r != "a":
+                    self.spillRegister("a")
+                    self.asmWriter.loadRegisterWithRegister("a", r)
+                self.asmFile.write(f"\tld\t{s.impl.codeArg()}, a\n")
+            else:
+                self.asmFile.write(f"\tld\t{s.impl.codeArg()}, {r}\n")
         elif isinstance(s.impl, PointerAddress):
             pointer = s.impl.pointer
             if s.type == 'char':
@@ -297,13 +298,21 @@ class Z80RegisterAllocator(RegisterAllocator):
             regY = self.isInRegister(address, possibleRegisters)
             if regY:
                 return regY
-            regX = self.getRegisterForSymbol(address, possibleRegisters)
             regY = self.isInRegister(address, allRegisters )
             if regY:
+                regX = self.getRegisterForSymbol(address, possibleRegisters)
                 self.asmWriter.loadRegisterWithRegister(regX, regY)
                 self.copiedRegisterToRegister(regY, regX)
             else:
-                self.asmWriter.loadRegisterWithAddress(regX, address.impl)
-                self.loadSymbolInRegister(address, regX)
+                if isinstance(address.impl, GlobalAddress):
+                    # We can only use reg A, for ld a, (nnnn)
+                    assert("a" in possibleRegisters)
+                    regX = self.getRegisterForSymbol(address, { "a" })
+                    self.asmWriter.loadRegisterWithAddress(regX, address.impl)
+                    self.loadSymbolInRegister(address, regX)
+                else:
+                    regX = self.getRegisterForSymbol(address, possibleRegisters)
+                    self.asmWriter.loadRegisterWithAddress(regX, address.impl)
+                    self.loadSymbolInRegister(address, regX)
             return regX
 

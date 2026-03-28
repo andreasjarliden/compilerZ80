@@ -96,15 +96,29 @@ class IR:
             regZ = ra.isInRegister(rhsAddr)
             if regZ:
                 return regZ
-            elif self.live[self.rhsAddr]:
-                # Use via register as will be used later (hopefully without spilling)
-                regZ = ra.getRegisterForSymbol(rhsAddr, { "b", "c", "d", "e", "h", "l" })
-                asmWriter.loadRegisterWithAddress(regZ, rhsAddr.impl)
-                ra.loadSymbolInRegister(rhsAddr, regZ)
-                return regZ
             else:
-                # Use directly from memory, e.g. add a, (ix + 42)
-                return rhsAddr.impl.codeArg()
+                if isinstance(rhsAddr.impl, StackAddress):
+                    if self.live[self.rhsAddr]:
+                        # Use via register as will be used later (hopefully without spilling)
+                        regZ = ra.getRegisterForSymbol(rhsAddr, { "b", "c", "d", "e", "h", "l" })
+                        asmWriter.loadRegisterWithAddress(regZ, rhsAddr.impl)
+                        ra.loadSymbolInRegister(rhsAddr, regZ)
+                        return regZ
+                    else:
+                        # Use directly from memory, e.g. add a, (ix + 42)
+                        return rhsAddr.impl.codeArg()
+                elif isinstance(rhsAddr.impl, GlobalAddress):
+                    # We can only do ld a, (nnnn) so have to use a and then copy it to a different register
+                    # Use via register as will be used later (hopefully without spilling)
+                    ra.spillRegister("a")
+                    asmWriter.loadRegisterWithAddress("a", rhsAddr.impl)
+                    ra.loadSymbolInRegister(rhsAddr, "a")
+                    regZ = ra.getRegisterForSymbol(rhsAddr, { "b", "c", "d", "e", "h", "l" })
+                    asmWriter.loadRegisterWithRegister(regZ, "a")
+                    ra.copiedRegisterToRegister("a", regZ)
+                    return regZ
+                else:
+                    error()
 
     def load8bitLhsAndRhs(self, asmWriter, transitive=False):
         ra = registerAllocator.RA
@@ -114,8 +128,12 @@ class IR:
             if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr) == "a":
                 self.lhsAddr, self.rhsAddr = self.rhsAddr, self.lhsAddr
 
+        # Load the rhs, first because we might have to temporarily use a, e.g.
+        # ld a, (nnnn)
+        # ld b, a    as there is no ld b, (nnnn)
+        r = self.loadRhs8(self.rhsAddr, asmWriter)
         ra.loadInA(self.lhsAddr)
-        return self.loadRhs8(self.rhsAddr, asmWriter)
+        return r
 
     def load16bitLhsAndRhs(self, transitive=False):
         ra = registerAllocator.RA
@@ -317,6 +335,8 @@ class IRFunCall(IR):
         return self.name
 
     def genCode(self, asmWriter):
+        ra = registerAllocator.RA
+        ra.spillAll()
         asmWriter.write(f'\tcall\t{self.name}\n')
         for i in range(self.numArgs):
             asmWriter.write('\tpop\tbc\n') # Use a register we don't care about (yet)
@@ -325,7 +345,6 @@ class IRFunCall(IR):
             # asmWriter.write(f'\tadd\thl, sp\n')
             # asmWriter.write(f'\tld\tsp, hl\n')
         if self.resultAddr:
-            ra = registerAllocator.RA
             returnRegisterForType = { "char": "a",
                                       "int": "hl" }
             if self.type == "char":
@@ -475,9 +494,7 @@ class IRAdd(IR):
             ra.verify()
             regZ = self.load8bitLhsAndRhs(asmWriter, transitive=True)
             ra.verify()
-            print(f"IRAdd before spilling a {ra}")
             ra.spillRegister("a")
-            print(f"IRAdd after spilling a {ra}")
             ra.verify()
             asmWriter.write(f"\tadd\ta, {regZ}\n")
             ra.loadSymbolInRegister(self.resultAddr, "a")

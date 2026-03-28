@@ -207,6 +207,31 @@ class TestIR(unittest.TestCase):
         self.assertEqual(registerAllocator.RA.isInRegister(self.foo), "a")
         self.assertEqual(registerAllocator.RA.symbols[self.ptr], {self.ptr, "hl"})
 
+    # Load rhs via global address
+    def test_IRAdd_rhsIsGlobalVariable(self):
+        GLOBAL = SymEntry("char", "global")
+        GLOBAL.impl = GlobalAddress("global")
+        registerAllocator.RA.loadSymbolInRegister(self.bar, "a")
+
+        # foo = bar + GLOBAL
+        ira = ir.IRAdd(self.foo, self.bar, GLOBAL)
+        ira.live[self.foo] = True
+        ira.live[self.bar] = True # Not necessary to spill bar
+        ira.live[GLOBAL] = True 
+        registerAllocator.RA.currentInstruction = ira
+        ira.genCode(self.asmWriter)
+
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
+        print(output)
+        # ld a, (global) # Must load (global) to A and transfer it
+        # ld <reg>, a
+        # add a, <reg>
+        self.assertIn("\tld\ta, (global)", output)
+        self.assertRegex(output, r"\tld\t., a")
+        self.assertIn("\tld\ta, (ix + 2)", output)
+        self.assertRegex(output, r"\tadd\ta, .")
+
 
 
 

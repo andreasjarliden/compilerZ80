@@ -241,25 +241,6 @@ class TestZ80RA(unittest.TestCase):
         self.ra.currentInstruction = IR()
         self.ra.currentInstruction.live = { self.foo: True, self.bar: True, self.ptr: True }
 
-    def test_loadInA_alreadyLoaded(self):
-        self.ra.loadSymbolInRegister(self.foo, "a")
-        r = self.ra.loadInA(self.foo) 
-        self.assertEqual(r, "a")
-        self.ra.asmFile.seek(0)
-        self.assertEqual(self.ra.asmFile.read(), "")
-
-    def test_loadInA_freeButNotLoaded(self):
-        r = self.ra.loadInA(self.foo)
-        self.assertEqual(r, "a")
-        self.ra.asmFile.seek(0)
-        self.assertEqual(self.ra.asmFile.read(), "\tld\ta, (ix + 0)\n")
-
-    def test_loadInA_loadedInOtherRegister(self):
-        self.ra.loadSymbolInRegister(self.foo, "b")
-        r = self.ra.loadInA(self.foo)
-        self.assertEqual(r, "a")
-        self.ra.asmFile.seek(0)
-        self.assertEqual(self.ra.asmFile.read(), "\tld\ta, b\n")
 
     def test_spill(self):
         self.ra.assignToSymbolWithRegister(self.foo, "a")
@@ -284,8 +265,60 @@ class TestZ80RA(unittest.TestCase):
         self.assertIn("\tld\t(ix + 0), b\n", self.ra.asmFile.read())
         self.assertEqual(self.ra.registers["b"], set())
 
-    # loadInA
+    # More complicated as we might have to use a to spill a different register
+    def test_spillGlobalChar(self):
+        self.ra.assignToSymbolWithRegister(self.foo, "a")
+        GLOBAL = SymEntry("char", "GLOBAL")
+        GLOBAL.impl = GlobalAddress("GLOBAL")
+        self.ra.currentInstruction.live[GLOBAL] = True
+        self.ra.assignToSymbolWithRegister(GLOBAL, "b")
 
+        self.ra.spillRegister("b")
+
+        self.ra.asmFile.seek(0)
+        output = self.ra.asmFile.read()
+        self.assertIn("ld\t(ix + 0), a", output) # spilling A
+        self.assertIn("ld\ta, b", output) # copying b to A
+        self.assertIn("ld\t(GLOBAL), a", output) # spilling B via A
+        self.assertTrue(output.find("ld\t(ix + 0)") < output.find("ld\ta, b"))
+        self.assertTrue(output.find("ld\ta, b") < output.find("ld\t(GLOBAL), a"))
+
+    # Check the special case where we are spilling reg a directly
+    def test_spillGlobalChar_regA(self):
+        GLOBAL = SymEntry("char", "GLOBAL")
+        GLOBAL.impl = GlobalAddress("GLOBAL")
+        self.ra.currentInstruction.live[GLOBAL] = True
+        self.ra.assignToSymbolWithRegister(GLOBAL, "a")
+
+        self.ra.spillRegister("a")
+
+        self.ra.asmFile.seek(0)
+        output = self.ra.asmFile.read()
+        self.assertIn("ld\t(GLOBAL), a", output) # spilling B via A
+
+    #
+    # loadInA
+    #
+
+    def test_loadInA_alreadyLoaded(self):
+        self.ra.loadSymbolInRegister(self.foo, "a")
+        r = self.ra.loadInA(self.foo) 
+        self.assertEqual(r, "a")
+        self.ra.asmFile.seek(0)
+        self.assertEqual(self.ra.asmFile.read(), "")
+
+    def test_loadInA_freeButNotLoaded(self):
+        r = self.ra.loadInA(self.foo)
+        self.assertEqual(r, "a")
+        self.ra.asmFile.seek(0)
+        self.assertEqual(self.ra.asmFile.read(), "\tld\ta, (ix + 0)\n")
+
+    def test_loadInA_loadedInOtherRegister(self):
+        self.ra.loadSymbolInRegister(self.foo, "b")
+        r = self.ra.loadInA(self.foo)
+        self.assertEqual(r, "a")
+        self.ra.asmFile.seek(0)
+        self.assertEqual(self.ra.asmFile.read(), "\tld\ta, b\n")
     def test_loadInA_fromConstant(self):
         self.ra.loadInA(Constant("char", 42));
 
