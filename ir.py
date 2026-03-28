@@ -469,10 +469,16 @@ class IRAdd(IR):
 
     def genCode(self, asmWriter):
         ra = registerAllocator.RA
+        ra.verify()
         ra.removeSymbol(self.resultAddr)
         if self.lhsAddr.type == "char":
+            ra.verify()
             regZ = self.load8bitLhsAndRhs(asmWriter, transitive=True)
+            ra.verify()
+            print(f"IRAdd before spilling a {ra}")
             ra.spillRegister("a")
+            print(f"IRAdd after spilling a {ra}")
+            ra.verify()
             asmWriter.write(f"\tadd\ta, {regZ}\n")
             ra.loadSymbolInRegister(self.resultAddr, "a")
         elif self.lhsAddr.type == "int":

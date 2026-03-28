@@ -4,7 +4,7 @@ from symEntry import *
 from address import *
 from asmWriter import AsmWriter
 from ir import *
-from symEntry import ValueAddress, PointerAddress
+from symEntry import StackAddress, PointerAddress
 
 RA = None
 ALL_REGISTERS = {'a', 'b', 'c', 'd', 'e', 'h', 'l', 'bc', 'de', 'hl'}
@@ -26,6 +26,20 @@ class RegisterAllocator:
 
     def __repr__(self):
         return f"registers: {self.registers}\nfree registers: {self.freeRegisters}\nsymbols: {self.symbols}"
+
+    def verify(self):
+        symbolsFromRegister = set()
+        for r in self.registers:
+            for s in self.registers[r]:
+                symbolsFromRegister.add(s)
+        symbols = set()
+        for s in self.symbols:
+            symbols.add(s)
+        if symbolsFromRegister == symbols:
+            print("RA OK!")
+        else:
+            print(f"RA INCONSISTENT!\nfrom regs: {symbolsFromRegister}\nsymbols: {symbols}")
+            error()
 
     def doSpillToSymbol(self, reg, s):
         pass
@@ -52,12 +66,22 @@ class RegisterAllocator:
         for s in symbols:
             self.spillRegisterToSymbol(r, s)
 
+    # TODO more testing
     def spillRegisterToSymbol(self, r, s):
-        self.symbols[s].add(s)
-        self.symbols[s].remove(r)
-        if self.currentInstruction.live[s]:
+        # Spill if live and not already in memory
+        print(f"SpillRegisterToSymbol {r} {s}")
+        if self.currentInstruction.live[s] and not s in self.symbols[s]:
+            print("Actually spilling")
             self.doSpillToSymbol(r, s)
+            print(f"About to remove symbol {s} places {len(self.symbols[s])}")
+            if len(self.symbols[s]) > 1:
+                # Add if symbol still in some other register
+                self.symbols[s].add(s)
+        self.symbols[s].remove(r)
         self.registers[r].remove(s)
+        if len(self.symbols[s]) <= 1:
+            # Remove if no longer used
+            del self.symbols[s]
 
     def removeSymbolForRegister(self, s, r):
         self.registers[r].remove(s)
@@ -65,10 +89,10 @@ class RegisterAllocator:
 
     # TODO test
     def removeSymbol(self, s):
-        registers = self.symbols.get(s, set()) & ALL_REGISTERS;
+        registers = self.symbols.get(s, set()) & ALL_REGISTERS
         for r in registers:
             self.registers[r].remove(s)
-        self.symbols[s] = set()
+        self.symbols.pop(s, None)
 
     def _spillScore(self, r):
         score = 0
@@ -89,21 +113,21 @@ class RegisterAllocator:
             score += 1
         return score
 
-    def spillSymbol(self, s):
-        # Already stored in memory?
-        if s not in self.symbols[s]:
-            # pick one of register contining n
-            r = next(iter(self.symbols[s]))
-            self.spillRegisterToSymbol(r, s)
+    def _spillSymbol(self, s):
+        # pick one of register contining n
+        r = next(iter(self.symbols[s] & ALL_REGISTERS))
+        self.spillRegisterToSymbol(r, s)
 
     def spillAll(self):
-        for s in self.symbols:
-            self.spillSymbol(s)
+        symbols = self.symbols.copy()
+        for s in symbols:
+            self._spillSymbol(s)
 
     def spillAllMatchingType(self, t):
-        for s in self.symbols.keys():
+        symbols = self.symbols.copy()
+        for s in symbols:
             if s.completeType == t:
-                self.spillSymbol(s)
+                self._spillSymbol(s)
             
     def _bestRegisterToSpill(self, possibleRegisters):
         return min(possibleRegisters, key=self._spillScore)
@@ -164,6 +188,7 @@ class RegisterAllocator:
         else:
             return None
 
+    # TODO rename to eg. loadedSymbolInRegister
     def loadSymbolInRegister(self, s, r):
         self.symbols.setdefault(s, set())
         self.symbols[s].add(r)
@@ -171,15 +196,26 @@ class RegisterAllocator:
         self.registers[r].add(s)
 
     # Example: LD (ix+n), a
+    # TODO rename to eg. storedToSymbol
     def storeToSymbol(self, s):
         self.symbols.setdefault(s, set())
         self.symbols[s].add(s)
 
     # Assigning to a name means that it is only the register that holds the
     # name, it has not been spilled to memory yet.
+    # TODO rename to eg. assignedToSymbolWithRegister
     def assignToSymbolWithRegister(self, s, r):
+        self.symbols.setdefault(s, set())
         self.symbols[s] = { r }
         self.registers[r].add(s)
+
+    def copiedRegisterToRegister(self, fromR, toR):
+        self.registers[toR] = self.registers[fromR].copy()
+        for s in self.registers[fromR]:
+            self.symbols[s].add(toR)
+        self.verify()
+
+
 
 
 class Z80RegisterAllocator(RegisterAllocator):
@@ -191,7 +227,6 @@ class Z80RegisterAllocator(RegisterAllocator):
     def doSpillToSymbol(self, r, s):
         self.asmFile.write(f"; spill register {r} to var {s.name}\n")
         if isinstance(s.impl, ValueAddress):
-            offset = s.impl.offset
             if s.type == 'char':
                 self.asmFile.write(f"\tld\t{s.impl.codeArg()}, {r}\n")
             if s.type == 'int':
@@ -266,9 +301,9 @@ class Z80RegisterAllocator(RegisterAllocator):
             regY = self.isInRegister(address, allRegisters )
             if regY:
                 self.asmWriter.loadRegisterWithRegister(regX, regY)
+                self.copiedRegisterToRegister(regY, regX)
             else:
                 self.asmWriter.loadRegisterWithAddress(regX, address.impl)
-            # self.loadSymEntryInRegister(address, regX)
-            self.loadSymbolInRegister(address, regX)
+                self.loadSymbolInRegister(address, regX)
             return regX
 

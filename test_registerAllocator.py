@@ -14,6 +14,11 @@ class TestRA(unittest.TestCase):
         self.ra = RegisterAllocator()
         self.ra.currentInstruction = IR()
         self.ra.currentInstruction.live = { self.foo: True, self.bar: True }
+        self.performedSpills = []
+        self.ra.doSpillToSymbol = self.doSpillToSymbol
+
+    def doSpillToSymbol(self, reg, s):
+        self.performedSpills.append( (reg, s) )
 
     # loadRegister
 
@@ -58,14 +63,17 @@ class TestRA(unittest.TestCase):
         self.assertEqual(self.ra.symbols[self.bar], {"a"}) # Note: b no longer holds updated bar and it is not stored yet to bar
         self.assertEqual(self.ra.registers["a"], {self.foo, self.bar}) # Now a holds both foo and bar
 
+    #
     # Spilling
+    #
 
     def test_spillRegister(self):
         self.ra.loadSymbolInRegister(self.foo, "a")
         self.ra.spillRegister("a")
-        self.assertEqual(self.ra.symbols[self.foo], {self.foo})
+        self.assertFalse(self.foo in self.ra.symbols)
         self.assertEqual(self.ra.registers["a"], set())
         self.assertTrue("a" in self.ra.freeRegisters)
+        self.assertEqual(self.performedSpills, []) # Already in memory
 
     # If already in a register, use that register
     def test_alreadyInRegister(self):
@@ -83,18 +91,83 @@ class TestRA(unittest.TestCase):
         # Must spill register a
         self.assertEqual(self.ra.getRegisterForSymbol(self.bar, {"a"}), "a")
         # Check register a is no longer listed for foo
-        self.assertEqual(self.ra.symbols[self.foo], {self.foo})
+        self.assertFalse(self.foo in self.ra.symbols)
         # Check register a is now free
         self.assertTrue("a" in self.ra.freeRegisters)
 
-    def test_spillRegister_dead(self):
-        self.ra.loadSymbolInRegister(self.foo, "a")
-        self.ra.currentInstruction.live["foo"] = False
+    def test_spillRegister_live(self):
+        self.ra.assignToSymbolWithRegister(self.foo, "a")
+        self.ra.currentInstruction.live[self.foo] = True
 
         self.ra.spillRegister("a")
 
         self.assertEqual(self.ra.registers["a"], set())
-        self.assertEqual(self.ra.symbols[self.foo], {self.foo})
+        self.assertFalse(self.foo in self.ra.symbols)
+        self.assertEqual(self.performedSpills, [("a", self.foo)]) 
+
+    def test_spillRegister_dead(self):
+        self.ra.assignToSymbolWithRegister(self.foo, "a")
+        self.ra.currentInstruction.live[self.foo] = False
+
+        self.ra.spillRegister("a")
+
+        self.assertEqual(self.ra.registers["a"], set())
+        self.assertFalse(self.foo in self.ra.symbols)
+        self.assertEqual(self.performedSpills, []) # Not needed, is dead
+
+    # spillRegisterToSymbol
+    def test_spillRegisterToSymbol_1(self):
+        # foo = 123 # in A
+        # bar = foo # both foo and bar in A
+        self.ra.assignToSymbolWithRegister(self.foo, "a")
+        self.ra.assignToSymbolWithRegister(self.bar, "a")
+
+        self.ra.spillRegisterToSymbol("a", self.foo)
+
+        self.assertEqual(self.ra.registers["a"], { self.bar })
+        self.assertFalse(self.foo in self.ra.symbols)
+        self.assertEqual(self.ra.symbols[self.bar], { "a" })
+        self.assertEqual(self.performedSpills, [("a", self.foo)])
+
+    # already in register b
+    def test_spillRegisterToSymbol_2(self):
+        self.ra.loadSymbolInRegister(self.foo, "a")
+        self.ra.loadSymbolInRegister(self.foo, "b")
+
+        self.ra.spillRegisterToSymbol("a", self.foo)
+
+        self.assertEqual(self.ra.symbols[self.foo], { self.foo, "b" })
+        self.assertEqual(self.ra.registers["b"], { self.foo })
+
+    # already in register b, not in memory
+    def test_spillRegisterToSymbol_3(self):
+        self.ra.loadSymbolInRegister(self.foo, "a")
+        self.ra.copiedRegisterToRegister("a", "b")
+
+        self.ra.spillRegister("a")
+
+        self.assertEqual(self.ra.symbols[self.foo], { self.foo, "b" })
+        self.assertEqual(self.ra.registers["b"], { self.foo })
+
+    # _spillSymbol
+    def test_spillSymbols_inMemory(self):
+        self.ra.loadSymbolInRegister(self.foo, "a")
+
+        self.ra._spillSymbol(self.foo)
+
+        self.assertEqual(self.ra.registers["a"], set())
+        self.assertFalse(self.foo in self.ra.symbols)
+        self.assertEqual(self.performedSpills, []) # Not needed, already in memory
+
+    def test_spillSymbols(self):
+        self.ra.assignToSymbolWithRegister(self.foo, "a")
+
+        self.ra._spillSymbol(self.foo)
+
+        self.assertEqual(self.ra.registers["a"], set())
+        self.assertFalse(self.foo in self.ra.symbols)
+        self.assertEqual(self.performedSpills, [("a", self.foo)])
+
 
     # spillAll
     def test_spillAll(self):
@@ -128,7 +201,7 @@ class TestRA(unittest.TestCase):
         self.assertEqual(self.ra.registers["a"], {foo})
         self.assertEqual(self.ra.registers["b"], {foo2})
         self.assertEqual(self.ra.registers["c"], set())
-        self.assertEqual(self.ra.symbols[baz], {baz})
+        self.assertFalse(baz in self.ra.symbols)
 
     def test_spillAllMatchingType_char(self):
         foo = SymEntry("char", "foo")
@@ -144,26 +217,26 @@ class TestRA(unittest.TestCase):
         self.ra.spillAllMatchingType("char")
 
         self.assertEqual(self.ra.registers["a"], set())
-        self.assertEqual(self.ra.symbols[foo], {foo})
+        self.assertFalse(foo in self.ra.symbols)
         self.assertEqual(self.ra.registers["b"], set())
-        self.assertEqual(self.ra.symbols[foo2], {foo2})
+        self.assertFalse(foo2 in self.ra.symbols)
         self.assertEqual(self.ra.registers["c"], {baz})
 
 
 class TestZ80RA(unittest.TestCase):
     def setUp(self):
         self.foo = SymEntry("char", "foo")
-        self.foo.impl = ValueAddress(0)
+        self.foo.impl = StackAddress(0)
         self.ptr = SymEntry("int", "ptr")
-        self.ptr.impl = ValueAddress(2)
+        self.ptr.impl = StackAddress(2)
         self.derefPtr = SymEntry("char", "deref")
         self.derefPtr.impl = PointerAddress(self.ptr)
         self.derefPtr16 = SymEntry("int", "deref16")
         self.derefPtr16.impl = PointerAddress(self.ptr)
         self.bar = SymEntry("char", "bar")
-        self.bar.impl = ValueAddress(-11)
+        self.bar.impl = StackAddress(-11)
         self.bar16 = SymEntry("char", "bar16")
-        self.bar16.impl = ValueAddress(-2)
+        self.bar16.impl = StackAddress(-2)
         self.ra = Z80RegisterAllocator(StringIO())
         self.ra.currentInstruction = IR()
         self.ra.currentInstruction.live = { self.foo: True, self.bar: True, self.ptr: True }
@@ -189,14 +262,14 @@ class TestZ80RA(unittest.TestCase):
         self.assertEqual(self.ra.asmFile.read(), "\tld\ta, b\n")
 
     def test_spill(self):
-        self.ra.loadSymbolInRegister(self.foo, "a")
+        self.ra.assignToSymbolWithRegister(self.foo, "a")
         r = self.ra.getRegisterForSymbol(self.bar, { "a" })
         self.assertEqual(r, "a")
         self.ra.asmFile.seek(0)
         self.assertIn("\tld\t(ix + 0), a\n", self.ra.asmFile.read())
 
     def test_spillRegisterPair(self):
-        self.ra.loadSymbolInRegister(self.foo, "b")
+        self.ra.assignToSymbolWithRegister(self.foo, "b")
         r = self.ra.getRegisterForSymbol(self.bar16, { "bc" })
         self.assertEqual(r, "bc")
         self.ra.asmFile.seek(0)
@@ -204,7 +277,7 @@ class TestZ80RA(unittest.TestCase):
         self.assertEqual(self.ra.registers["b"], set())
 
     def test_spillRegisterPair2(self):
-        self.ra.loadSymbolInRegister(self.foo, "b")
+        self.ra.assignToSymbolWithRegister(self.foo, "b")
         r = self.ra.getRegisterForSymbol(self.bar16, { "bc" })
         self.assertEqual(r, "bc")
         self.ra.asmFile.seek(0)
@@ -233,6 +306,21 @@ class TestZ80RA(unittest.TestCase):
 
         self.ra.asmFile.seek(0)
         self.assertIn("\tld\ta, b\n", self.ra.asmFile.read())
+        self.assertEqual(self.ra.symbols[self.foo], { self.foo, "a", "b" })
+        self.assertEqual(self.ra.registers["a"], { self.foo })
+        self.assertEqual(self.ra.registers["b"], { self.foo })
+
+    # already in register b
+    def test_loadInA_alreadyInRegisterButNotInMemory(self):
+        self.ra.assignToSymbolWithRegister(self.foo, "b")
+
+        self.ra.loadInA(self.foo);
+
+        self.ra.asmFile.seek(0)
+        self.assertIn("\tld\ta, b\n", self.ra.asmFile.read())
+        self.assertEqual(self.ra.symbols[self.foo], { "a", "b" })
+        self.assertEqual(self.ra.registers["a"], { self.foo })
+        self.assertEqual(self.ra.registers["b"], { self.foo })
 
     # already in register a
     def test_loadInA_alreadyInRegisterA(self):
@@ -301,7 +389,7 @@ class TestZ80RA(unittest.TestCase):
     def test_loadInHL_fromPointerInHL(self):
         # Just to force de to be used
         self.ra.loadSymbolInRegister(self.foo, "bc")
-        self.ra.loadSymbolInRegister(self.ptr, "hl")
+        self.ra.assignToSymbolWithRegister(self.ptr, "hl")
         self.ra.loadInHL(self.derefPtr16);
 
         self.ra.asmFile.seek(0)

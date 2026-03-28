@@ -25,7 +25,9 @@ def genCode(blocks, asmWriter):
         for i in b.statements:
             registerAllocator.RA.currentInstruction = i
             i.genCode(asmWriter)
+            registerAllocator.RA.verify()
         # Spill everything live that is only in a register at the end of the block
+        print(f"Spilling all at end. {registerAllocator.RA}")
         registerAllocator.RA.spillAll()
     asmWriter.write('\n\t#include "libc.asm"\n')
 

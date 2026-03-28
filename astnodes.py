@@ -52,7 +52,7 @@ class Function:
         for symbol in symbolTable.values():
             if not symbol.impl:
                 offset -= symbol.size
-                symbol.impl = ValueAddress(offset)
+                symbol.impl = StackAddress(offset)
 
     def visit(self, context):
         context.symbolTable.addSymbolEntry(self.name, self)
@@ -67,10 +67,10 @@ class Function:
         for a in reversed(self.arguments):
             symEntry = SymEntry(a.completeType, a.name)
             if a.type == "int":
-                symEntry.impl = ValueAddress(offset)
+                symEntry.impl = StackAddress(offset)
             elif a.type == "char":
                 # 8 bit values are sent in the high byte
-                symEntry.impl = ValueAddress(offset+1)
+                symEntry.impl = StackAddress(offset+1)
             else:
                 error()
             context.symbolTable.addSymbolEntry(a.name, symEntry)
@@ -128,8 +128,7 @@ class VariableDefinition:
         symbol = SymEntry(self.completeType, self.name)
         context.symbolTable.addSymbolEntry(self.name, symbol)
         if not context.functionName:
-            # Handle global variables as PointerAddresses
-            symbol.impl = PointerAddress(None)
+            symbol.impl = GlobalAddress(self.name)
             context.dataSegment.append(symbol)
 
 

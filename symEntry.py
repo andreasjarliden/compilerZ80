@@ -28,6 +28,9 @@ class SymEntry:
         return self.name == other.name and self.completeType == other.completeType
 
 class ValueAddress:
+    pass
+
+class StackAddress(ValueAddress):
     def __init__(self, offset):
         self.offset = offset
 
@@ -42,6 +45,18 @@ class ValueAddress:
         else:
             return f"(ix - {-self.offset-offset})"
 
+class GlobalAddress(ValueAddress):
+    def __init__(self, name):
+        self.name = name
+
+    def __repr__(self):
+        return f"GlobaAddress {self.name}"
+
+    def codeArg(self, offset=0):
+        if offset == 0:
+            return f"({self.name})"
+        else:
+            return f"({self.name} + {offset})"
 
 class PointerAddress:
     def __init__(self, p):
