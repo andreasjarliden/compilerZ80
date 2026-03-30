@@ -1,6 +1,7 @@
 from astnodes import ASTContext
 from blocks import BlockFactory
 from symbolTable import SymbolTable
+from astnodes import String
 import registerAllocator
 
 def astToThreeCode(ast, factory = BlockFactory(), symbolTable = SymbolTable()):
@@ -35,6 +36,9 @@ C_TO_ASM_MAPPING = { "char": "int8",
 
 def genDataSegment(dataSegment, asmWriter):
     asmWriter.write("\n\n")
-    for s in dataSegment:
-        asmWriter.write(f"{s.name}:\t.{C_TO_ASM_MAPPING[s.completeType]}\t0\n")
+    for s, v in dataSegment.items():
+        if isinstance(v, String):
+            asmWriter.write(f'{s.name}:\t.string\t"{v.string}\\0"\n')
+        else:
+            asmWriter.write(f"{s.name}:\t.{C_TO_ASM_MAPPING[s.completeType]}\t{v}\n")
 

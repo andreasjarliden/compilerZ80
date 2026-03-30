@@ -9,11 +9,15 @@ class ASTContext:
     blockFactory : Any 
     symbolTable : SymbolTable = SymbolTable()
     functionName : str = None
-    dataSegment : list[SymEntry] = field(default_factory=list)
+    dataSegment : dict[SymEntry, Any] = field(default_factory=dict)
 
 def createLabel(context):
     context.functionLabels += 1
     return f"{context.functionName}_l{context.functionLabels}"
+
+@dataclass(frozen=True)
+class String:
+    string : str
 
 @dataclass(frozen=True)
 class Variable:
@@ -115,6 +119,7 @@ class If:
 class VariableDefinition:
     completeType : Any
     name : str
+    value : Any = None
 
     @property
     def type(self):
@@ -129,7 +134,8 @@ class VariableDefinition:
         context.symbolTable.addSymbolEntry(self.name, symbol)
         if not context.functionName:
             symbol.impl = GlobalAddress(self.name)
-            context.dataSegment.append(symbol)
+            value = self.value if self.value else 0
+            context.dataSegment[symbol] = value
 
 
 @dataclass(frozen=True)

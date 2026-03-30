@@ -9,6 +9,7 @@ reserved = {
 
 tokens = [
         'NUMBER',
+        'STRING',
         'ID',
         'LPARA',
         'RPARA',
@@ -29,6 +30,7 @@ tokens = [
         ] + list(reserved.values())
 
 t_NUMBER = r'[0-9]+'
+t_STRING = r'"[^"]*"'
 t_LPARA = r'\('
 t_RPARA = r'\)'
 t_LCURL = r'\{'

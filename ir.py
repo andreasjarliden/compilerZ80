@@ -87,7 +87,6 @@ class IR:
                     asmWriter.loadRegisterWithRegister("hl", otherReg)
                 else:
                     # Load pointer from memory
-                    print(rhsAddr)
                     asmWriter.loadRegisterWithAddress("hl", rhsAddr.impl.pointer.impl)
                 ra.loadSymbolInRegister(rhsAddr.impl.pointer, "hl")
             return "(hl)"
@@ -336,6 +335,7 @@ class IRFunCall(IR):
 
     def genCode(self, asmWriter):
         ra = registerAllocator.RA
+        # TODO only spill what might be accessed by the called function
         ra.spillAll()
         asmWriter.write(f'\tcall\t{self.name}\n')
         for i in range(self.numArgs):

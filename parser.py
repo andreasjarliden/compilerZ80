@@ -4,6 +4,7 @@ from address import Constant
 from astnodes import *
 import sys
 
+# Start symbol at the top
 def p_statement_list(p):
     '''
     statement_list : statement_list statement
@@ -108,6 +109,10 @@ def p_variable_definition_expression(p):
     'var_def_expression : type ID'
     p[0] = VariableDefinition(p[1], p[2])
 
+def p_variable_definition_expression_value(p):
+    'var_def_expression : type ID ASSIGN constant'
+    p[0] = VariableDefinition(p[1], p[2], p[4])
+
 def p_type(p):
     '''type : base_type pointers
     '''
@@ -200,9 +205,21 @@ def p_arg(p):
 
 def p_error(p):
     if p:
-        print("Parse error: " + p.value + str(p));
+        print(f"Parse error: {p.value} {p}")
     else:
         print("Unexpected end of file");
     sys.exit(1);
+
+def p_constant_number(p):
+    '''
+    constant : NUMBER
+    '''
+    p[0] = p[1]
+
+def p_constant_string(p):
+    '''
+    constant : STRING
+    '''
+    p[0] = String(p[1][1:-1])
 
 parser = yacc.yacc()
