@@ -20,11 +20,8 @@ if __name__ == "__main__":
     print("=======")
 
     ast = parser.parse("""
-    char* str = "Hello World!!!!\n\n";
     char main() {
-        char* p;
-        p = str;
-        puts(p);
+        puts("Hello World!\n");
         }
     """) 
 

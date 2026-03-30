@@ -99,6 +99,7 @@ class TestIntegration(unittest.TestCase):
                 FOO = 42;
                 foo();
             }""")
+        print(output)
         self.assertIn("ld\t(FOO),", output)
         self.assertTrue(output.find("ld\t(FOO),") < output.find("call\tfoo"))
 

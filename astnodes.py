@@ -185,14 +185,13 @@ class Dereference:
         deref.resultAddr.impl = PointerAddress(pointer)
         return deref.resultAddr
 
+@dataclass
 class FunctionCall:
-    def __init__(self, name, arguments=[]):
-        self.name = name
-        self.arguments = arguments
-        self.storeResult = False
+    name : str
+    arguments : list[Argument] = field(default_factory=list)
 
-    def __repr__(self):
-        return f"call {self.name} with args {self.arguments}"
+    def __post_init__(self):
+        self.storeResult = False
 
     def visit(self, context):
         self.type = context.symbolTable.lookUp(self.name).type

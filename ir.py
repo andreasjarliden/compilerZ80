@@ -67,7 +67,7 @@ class IR:
         if self.rhsAddr:
             o2 = " OP " + str(self.rhsAddr) 
         xtra = self.extraDescription()
-        return "".join([live, name,r,o1,o2,xtra, str(self.live)])
+        return " ".join([live, name,r,o1,o2,xtra, str(self.live)])
 
     # Similar to doLoadInRegister8 but only prepares the rhs for an assembler
     # instruction. Not loading to a register.
