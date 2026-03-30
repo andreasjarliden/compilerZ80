@@ -446,10 +446,10 @@ class IRAssignToPointer(IR):
     def genCode(self, asmWriter):
         ra = registerAllocator.RA
 
-        t = self.resultAddr.completeType[1:]
+        t = self.resultAddr.completeType[:-1]
         ra.spillAllMatchingType(t)
 
-        if self.resultAddr.completeType == "*char":
+        if self.resultAddr.completeType == "char*":
             if isinstance(self.lhsAddr, Constant):
                 regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } ) 
                 asmWriter.write(f'\tld\t({regX}), {self.lhsAddr.value}\n')
@@ -458,7 +458,7 @@ class IRAssignToPointer(IR):
                 # Carefull not to trigger a spill of regX by using a coupled register
                 regY = ra.doLoadInRegister8(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" } - ra.coupledRegisters[regX])
                 asmWriter.write(f'\tld\t({regX}), {regY}\n')
-        elif self.resultAddr.completeType == "*int":
+        elif self.resultAddr.completeType == "int*":
             if isinstance(self.lhsAddr, Constant):
                 regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } ) 
                 asmWriter.write(f'\tld\t({regX}), {self.lhsAddr.value & 0xff}\n')

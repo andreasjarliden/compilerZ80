@@ -116,7 +116,7 @@ def p_variable_definition_expression_value(p):
 def p_type(p):
     '''type : base_type pointers
     '''
-    p[0] = "*"*p[2] + p[1]
+    p[0] = p[1] + "*"*p[2]
 
 def p_base_type(p):
     '''base_type : CHAR

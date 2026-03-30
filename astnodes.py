@@ -33,7 +33,7 @@ class Argument:
 
     @property
     def type(self):
-        if self.completeType[0] == "*":
+        if self.completeType[-1] == "*":
             # Pointers are handled as int
             return "int"
         else:
@@ -123,7 +123,7 @@ class VariableDefinition:
 
     @property
     def type(self):
-        if self.completeType[0] == "*":
+        if self.completeType[-1] == "*":
             # Pointers are handled as int
             return "int"
         else:
@@ -165,7 +165,7 @@ class AddressOf:
 
     def visit(self, context):
         exprAddr = self.expr.visit(context)
-        irAddressOf = IRAddressOf(exprAddr, context.symbolTable.addTemporary("*" + exprAddr.completeType))
+        irAddressOf = IRAddressOf(exprAddr, context.symbolTable.addTemporary(exprAddr.completeType + "*"))
         context.blockFactory.addIR(irAddressOf)
         return irAddressOf.resultAddr
 
@@ -175,7 +175,7 @@ class Dereference:
 
     def visit(self, context):
         pointer = self.expr.visit(context)
-        ct = pointer.completeType[1:] # remove leading *
+        ct = pointer.completeType[:-1] # remove trailing *
         if pointer.completeType.startswith("*"):
             t = "int"
         else:

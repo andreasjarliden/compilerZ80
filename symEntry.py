@@ -15,7 +15,7 @@ class SymEntry:
 
     @property
     def type(self):
-        if self.completeType.startswith("*"):
+        if self.completeType.endswith("*"):
             return "int"
         else:
             return self.completeType

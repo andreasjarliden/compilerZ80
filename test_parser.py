@@ -22,8 +22,8 @@ class TestParser(unittest.TestCase):
 
     def test_variableDefinition_pointer(self):
         ast = parser.parse("char* foo;")
-        self.assertEqual(ast[0], VariableDefinition("*char", "foo"))
-        self.assertEqual(ast[0].completeType, "*char")
+        self.assertEqual(ast[0], VariableDefinition("char*", "foo"))
+        self.assertEqual(ast[0].completeType, "char*")
         self.assertEqual(ast[0].type, "int")
 
     #
