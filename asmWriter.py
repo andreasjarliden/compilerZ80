@@ -15,6 +15,12 @@ class AsmWriter:
     def read(self):
         return self.file.read()
 
+    def loadRegisterWithPointer(self, r, v):
+        if isinstance(v, GlobalAddress):
+            self.file.write(f'\tld\t{r}, {v.pointerArg()}\n')
+        else:
+            error()
+
     def loadRegisterWithAddress(self, r, v):
         if len(r) == 2:
             if isinstance(v, StackAddress):

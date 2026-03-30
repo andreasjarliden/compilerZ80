@@ -38,7 +38,7 @@ def genDataSegment(dataSegment, asmWriter):
     asmWriter.write("\n\n")
     for s, v in dataSegment.items():
         if isinstance(v, String):
-            asmWriter.write(f'{s.name}:\t.string\t"{v.string}\\0"\n')
+            asmWriter.write(f'{s.name}:\t.string\t"{v.string.encode("unicode_escape").decode()}\\0"\n')
         else:
             asmWriter.write(f"{s.name}:\t.{C_TO_ASM_MAPPING[s.completeType]}\t{v}\n")
 

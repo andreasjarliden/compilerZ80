@@ -15,10 +15,14 @@ class SymEntry:
 
     @property
     def type(self):
-        if self.completeType.endswith("*"):
+        if self.isPointer:
             return "int"
         else:
             return self.completeType
+
+    @property
+    def isPointer(self):
+        return self.completeType.endswith("*")
 
     @property
     def size(self):
@@ -57,6 +61,9 @@ class GlobalAddress(ValueAddress):
             return f"({self.name})"
         else:
             return f"({self.name} + {offset})"
+
+    def pointerArg(self):
+        return f"{self.name}"
 
 class PointerAddress:
     def __init__(self, p):
