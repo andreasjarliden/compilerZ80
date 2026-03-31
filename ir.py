@@ -283,6 +283,7 @@ class IRArgument(IR):
         ra = registerAllocator.RA
         if self.exprAddr.type == "char":
             if isinstance(self.lhsAddr, Constant):
+                print(f"Arg {self.lhsAddr=}")
                 ra.loadInA(self.lhsAddr)
                 asmWriter.write(f'\tpush\taf\n')
             else:
@@ -308,6 +309,7 @@ class IRArgument(IR):
                 asmWriter.write(f'\tpush\taf\n')
         elif self.exprAddr.type == "int":
             if isinstance(self.lhsAddr, Constant):
+                print(f"Arg {self.lhsAddr=}")
                 ra.loadInHL(self.lhsAddr)
                 asmWriter.write(f'\tpush\thl\n')
             else:

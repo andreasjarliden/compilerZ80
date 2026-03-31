@@ -90,7 +90,7 @@ def p_primary_constant(p):
     '''
     # TODO all as char for now
     if isinstance(p[1], String):
-        p[0] = Constant("char*", p[1])
+        p[0] = StringConstant("char*", p[1])
     else:
         p[0] = Constant("char", p[1])
 

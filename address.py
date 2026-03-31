@@ -1,9 +1,10 @@
-# 3 types of addresses. Rename to e.g ConstantAddress?
+from symEntry import SymEntry
+# TODO move tyo symEntry?
 
 class Constant:
-    def __init__(self, t, value):
-        self.type = t
-        self.value = value
+    def __init__(self, completeType, value):
+        self.completeType = completeType
+        self._value = value
 
     def __eq__(self, other):
         if not isinstance(other, Constant):
@@ -11,14 +12,43 @@ class Constant:
         return self.type == other.type and self.value == other.value
 
     @property
-    def completeType(self):
-        return self.type
+    def value(self):
+        return self._value
+
+    @property
+    def type(self):
+        if self.isPointer:
+            return "int"
+        else:
+            return self.completeType
+
+    @property
+    def isPointer(self):
+        return self.completeType.endswith("*")
 
     def __repr__(self):
-        return f"Constant {self.type} {self.value}"
+        return f"Constant {self.completeType} {self.value}"
 
     # Because it doubles an AST Node
     def visit(self, context):
+        return self
+
+
+class StringConstant(Constant):
+    numStrings = 0;
+
+    def __init__(self, completeType, value):
+        super().__init__(completeType, value)
+        self._name = f"__str{StringConstant.numStrings}"
+        StringConstant.numStrings += 1
+
+    @property
+    def value(self):
+        return self._name
+
+    def visit(self, context):
+        symbol = SymEntry("char*", self._name)
+        context.dataSegment[symbol] = self._value
         return self
 
 

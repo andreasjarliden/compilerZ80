@@ -196,6 +196,7 @@ class FunctionCall:
     def visit(self, context):
         self.type = context.symbolTable.lookUp(self.name).type
         for a in reversed(self.arguments):
+            print(f"FunctionCall visiting argument {a}")
             exprAddress = a.visit(context)
             context.blockFactory.addIR(IRArgument(exprAddress))
         if self.storeResult:
