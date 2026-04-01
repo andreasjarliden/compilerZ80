@@ -90,7 +90,7 @@ def p_primary_constant(p):
     '''
     # TODO all as char for now
     if isinstance(p[1], String):
-        p[0] = StringConstant("char*", p[1])
+        p[0] = StringConstant(p[1])
     else:
         p[0] = Constant("char", p[1])
 
@@ -113,7 +113,8 @@ def p_variable_definition_expression(p):
     p[0] = VariableDefinition(p[1], p[2])
 
 def p_variable_definition_expression_value(p):
-    'var_def_expression : type ID ASSIGN constant'
+    'var_def_expression : type ID ASSIGN value_expression'
+    # 'var_def_expression : type ID ASSIGN constant'
     p[0] = VariableDefinition(p[1], p[2], p[4])
 
 def p_type(p):

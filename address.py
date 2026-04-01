@@ -1,4 +1,4 @@
-from symEntry import SymEntry
+from symEntry import SymEntry, GlobalAddress
 # TODO move tyo symEntry?
 
 class Constant:
@@ -35,21 +35,27 @@ class Constant:
 
 
 class StringConstant(Constant):
-    numStrings = 0;
 
-    def __init__(self, completeType, value):
-        super().__init__(completeType, value)
-        self._name = f"__str{StringConstant.numStrings}"
-        StringConstant.numStrings += 1
+    def __init__(self, value):
+        super().__init__("char*", value)
 
-    @property
-    def value(self):
-        return self._name
+    # @property
+    # def value(self):
+    #     return self._name
+
+    def __repr__(self):
+        return f"StringConstant {self.completeType} {self.value}"
 
     def visit(self, context):
-        symbol = SymEntry("char*", self._name)
-        context.dataSegment[symbol] = self._value
-        return self
+        name = context.stringTable.addString(self._value)
+        symbol = context.symbolTable.lookUp(name)
+        if not symbol:
+            symbol = SymEntry("char*", name)
+            symbol.impl = GlobalAddress(name)
+            context.symbolTable.addSymbolEntry(name, symbol)
+            context.dataSegment[symbol] = self._value
+        print(f"Adding string {symbol.name} equal to {self._value} in dataSegment")
+        return symbol
 
 
 class Temporary:

@@ -2,14 +2,29 @@ from dataclasses import dataclass, field
 from typing import Any
 from ir import *
 from symbolTable import *
+from blocks import BlockFactory
 import symbolTable
+
+class StringTable:
+    def __init__(self):
+        # String -> name
+        self._table = {}
+        self._count = 0
+
+    def addString(self, s):
+        if not s in self._table:
+            self._table[s] = f"__str{self._count}"
+            self._count += 1
+        return self._table[s]
+
 
 @dataclass
 class ASTContext:
-    blockFactory : Any 
+    blockFactory : Any  = BlockFactory()
     symbolTable : SymbolTable = SymbolTable()
     functionName : str = None
     dataSegment : dict[SymEntry, Any] = field(default_factory=dict)
+    stringTable : StringTable = StringTable()
 
 def createLabel(context):
     context.functionLabels += 1
@@ -119,7 +134,7 @@ class If:
 class VariableDefinition:
     completeType : Any
     name : str
-    value : Any = None
+    value : Any = None # TODO rename to rhs?
 
     @property
     def type(self):
@@ -134,8 +149,25 @@ class VariableDefinition:
         context.symbolTable.addSymbolEntry(self.name, symbol)
         if not context.functionName:
             symbol.impl = GlobalAddress(self.name)
-            value = self.value if self.value else 0
+            if self.value:
+                print(f"VarDef with global value {self.value=}")
+                if self.completeType == "char*":
+                    value = self.value.value
+                else:
+                    value = self.value.value
+            else:
+                if self.completeType == "char*":
+                    value = String("")
+                else:
+                    value = 0
+            # value = self.value.visit(context) if self.value else Constant(self.completeType, 0)
+            print(f"VarDef adding value {value} to dataSegment")
             context.dataSegment[symbol] = value
+        else:
+            if self.value:
+                rhsAddr = self.value.visit(context)
+                print(f"VariableDefinition visited rhs returned {rhsAddr}")
+                context.blockFactory.addIR(IRAssign(symbol, rhsAddr))
 
 
 @dataclass(frozen=True)
@@ -146,6 +178,7 @@ class VariableAssignment:
     def visit(self, context):
         lvalue = self.lvalue.visit(context)
         rhsAddr = self.rhs.visit(context)
+        print(f"VariableAssignment visited rhs returned {rhsAddr}")
         context.blockFactory.addIR(IRAssign(lvalue, rhsAddr))
 
 @dataclass(frozen=True)
@@ -198,6 +231,7 @@ class FunctionCall:
         for a in reversed(self.arguments):
             print(f"FunctionCall visiting argument {a}")
             exprAddress = a.visit(context)
+            print(f"Returning {exprAddress}")
             context.blockFactory.addIR(IRArgument(exprAddress))
         if self.storeResult:
             irfuncall = IRFunCall(self.type, self.name, len(self.arguments), addr=context.symbolTable.addTemporary(self.type))

@@ -1,6 +1,42 @@
 import unittest
 from symbolTable import *
 from symEntry import *
+from address import StringConstant
+from astnodes import ASTContext, StringTable
+
+class TestStringTable(unittest.TestCase):
+    def test(self):
+        st = StringTable()
+        name1 = st.addString("foo")
+        self.assertEqual(name1, "__str0")
+        name2 = st.addString("bar")
+        self.assertEqual(name2, "__str1")
+        name3 = st.addString("foo")
+        self.assertEqual(name3, "__str0")
+
+class TestStringConstant(unittest.TestCase):
+    def test_stringConstant(self):
+        c = StringConstant("foo")
+        self.assertEqual(c.completeType, "char*")
+        self.assertEqual(c._value, "foo")
+
+    def test_stringConstant_visitAddsToDataSegment(self):
+        c = StringConstant("foo")
+        context = ASTContext()
+        c.visit(context)
+        print(context.dataSegment)
+        self.assertEqual(len(context.dataSegment), 1)
+        self.assertEqual(list(context.dataSegment.values()), ["foo"])
+
+    def test_stringConstant_identicalStringsAddedOnce(self):
+        c1 = StringConstant("foo")
+        c2 = StringConstant("foo")
+        context = ASTContext()
+        c1.visit(context)
+        c2.visit(context)
+        print(context.dataSegment)
+        self.assertEqual(len(context.dataSegment), 1)
+        self.assertEqual(list(context.dataSegment.values()), ["foo"])
 
 
 class TestSymEntry(unittest.TestCase):

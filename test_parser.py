@@ -14,11 +14,12 @@ class TestParser(unittest.TestCase):
 
     def test_variableDefinition_value(self):
         ast = parser.parse("char foo = 42;")
-        self.assertEqual(ast[0], VariableDefinition("char", "foo", 42))
+        self.assertEqual(ast[0], VariableDefinition("char", "foo", Constant("char", 42)))
 
     def test_variableDefinition_string(self):
-        ast = parser.parse('char foo = "foo";')
-        self.assertEqual(ast[0], VariableDefinition("char", "foo", String("foo")))
+        ast = parser.parse('char* foo = "foo";')
+        self.assertEqual(ast[0].value, StringConstant(String("foo")))
+        self.assertEqual(ast[0], VariableDefinition("char*", "foo", StringConstant(String("foo"))))
 
     def test_variableDefinition_pointer(self):
         ast = parser.parse("char* foo;")
@@ -80,7 +81,7 @@ class TestParser(unittest.TestCase):
         ast = parser.parse("""foo("hello");""")
         self.assertEqual(ast[0],
                          FunctionCall("foo",
-                                      [ Constant("char*", String("hello"))]))
+                                      [ StringConstant(String("hello"))]))
 
 
     #
