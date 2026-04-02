@@ -5,6 +5,7 @@ from symbolTable import SymbolTable
 from astnodes import Function, Argument
 from compiler import astToThreeCode, updateLive, genCode, genDataSegment
 from asmWriter import AsmWriter
+from astnodes import ASTContext
 
 if __name__ == "__main__":
     asmFile = open("a.asm", "w")
@@ -20,9 +21,10 @@ if __name__ == "__main__":
     print("=======")
 
     ast = parser.parse("""
+    char* FOO = "hello";
     char main() {
-        char* str = "hello";
-        puts(str);
+        FOO = "bar";
+        puts(FOO);
         }
     """) 
 
@@ -33,7 +35,8 @@ if __name__ == "__main__":
 
     print("AST to 3-code")
     print("=============")
-    blocks, dataSegment = astToThreeCode(ast, symbolTable=symbolTable)
+    astContext = ASTContext(symbolTable = symbolTable)
+    blocks, dataSegment = astToThreeCode(ast, astContext)
     updateLive(blocks)
 
     print("BASIC_BLOCKS")

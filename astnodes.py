@@ -151,15 +151,17 @@ class VariableDefinition:
             symbol.impl = GlobalAddress(self.name)
             if self.value:
                 print(f"VarDef with global value {self.value=}")
-                if self.completeType == "char*":
-                    value = self.value.value
-                else:
-                    value = self.value.value
+                address = self.value.visit(context)
+                if isinstance(address, SymEntry):
+                    value = address.name
+                elif isinstance(address, Constant):
+                    value = address.value
+                # if self.completeType == "char*":
+                #     value = self.value.value
+                # else:
+                #     value = self.value.value
             else:
-                if self.completeType == "char*":
-                    value = String("")
-                else:
-                    value = 0
+                value = 0
             # value = self.value.visit(context) if self.value else Constant(self.completeType, 0)
             print(f"VarDef adding value {value} to dataSegment")
             context.dataSegment[symbol] = value

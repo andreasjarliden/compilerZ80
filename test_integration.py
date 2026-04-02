@@ -4,11 +4,13 @@ from compiler import astToThreeCode, updateLive, genCode, genDataSegment
 from asmWriter import AsmWriter
 from io import StringIO
 from pprint import *
+from astnodes import ASTContext
 
 def compile(code):
     asmWriter = AsmWriter(StringIO())
     ast = parser.parse(code)
-    blocks, dataSegment = astToThreeCode(ast)
+    astContext = ASTContext()
+    blocks, dataSegment = astToThreeCode(ast, astContext)
     updateLive(blocks)
     genCode(blocks, asmWriter)
     genDataSegment(dataSegment, asmWriter)
@@ -88,14 +90,13 @@ class TestIntegration(unittest.TestCase):
     def test_globalStringVariables(self):
         output = compile('char* FOO;')
         print(output)
-        self.assertRegex(output, r'FOO:\t.string\t"\\0"')
+        self.assertIn('FOO:\t.int16\t0', output)
 
-    # TODO: This is a char* CONST FOO; it should be possible to change FOO to a different pointer value!
-    # FOO: .int16 __str123
     def test_globalVariablesWithString(self):
         output = compile('char* FOO = "foo";')
         print(output)
-        self.assertRegex(output, r'FOO:\t.string\t"foo\\0"')
+        self.assertIn('__str0:\t.string\t"foo\\0"', output)
+        self.assertIn('FOO:\t.int16\t__str0', output)
 
     def test_spillBeforeFunCall(self):
         output = compile("""
