@@ -3,6 +3,7 @@ from dataclasses import dataclass
 SIZE_FOR_TYPES = { "char": 1,
                    "int": 2 }
 
+# Object semantics but with custom equalByValue function
 class SymEntry:
     def __init__(self, t, n):
         self.completeType = t
@@ -65,8 +66,8 @@ class GlobalAddress(ValueAddress):
     def pointerArg(self):
         return f"{self.name}"
 
-class PointerAddress:
-    def __init__(self, p):
+class PointerAddress(ValueAddress):
+    def __init__(self, p : ValueAddress):
         self.pointer = p
         pass
 

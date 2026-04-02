@@ -90,7 +90,7 @@ class TestIntegration(unittest.TestCase):
         print(output)
         self.assertRegex(output, r'FOO:\t.string\t"\\0"')
 
-    # TODO: This is a CONST char* FOO; it should be possible to change FOO to a different pointer value!
+    # TODO: This is a char* CONST FOO; it should be possible to change FOO to a different pointer value!
     # FOO: .int16 __str123
     def test_globalVariablesWithString(self):
         output = compile('char* FOO = "foo";')

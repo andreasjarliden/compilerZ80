@@ -20,11 +20,11 @@ class StringTable:
 
 @dataclass
 class ASTContext:
-    blockFactory : Any  = BlockFactory()
-    symbolTable : SymbolTable = SymbolTable()
+    blockFactory : Any = field(default_factory=BlockFactory)
+    symbolTable : SymbolTable = field(default_factory=SymbolTable)
     functionName : str = None
     dataSegment : dict[SymEntry, Any] = field(default_factory=dict)
-    stringTable : StringTable = StringTable()
+    stringTable : StringTable = field(default_factory=StringTable)
 
 def createLabel(context):
     context.functionLabels += 1

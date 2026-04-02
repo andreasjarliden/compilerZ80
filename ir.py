@@ -7,7 +7,7 @@ from asmWriter import *
 def stackFrameSize(symbolTable):
     smallestOffset = 0
     for s in symbolTable.values():
-        if isinstance(s.impl, ValueAddress):
+        if isinstance(s.impl, StackAddress):
             smallestOffset = min(s.impl.offset, smallestOffset)
     return -smallestOffset
 
