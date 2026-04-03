@@ -305,11 +305,21 @@ class Z80RegisterAllocator(RegisterAllocator):
                 self.copiedRegisterToRegister(regY, regX)
             else:
                 if isinstance(address.impl, GlobalAddress):
-                    # We can only use reg A, for ld a, (nnnn)
-                    assert("a" in possibleRegisters)
-                    regX = self.getRegisterForSymbol(address, { "a" })
-                    self.asmWriter.loadRegisterWithAddress(regX, address.impl)
-                    self.loadSymbolInRegister(address, regX)
+                    if address.type == "char":
+                        # We can only use reg A, for ld a, (nnnn)
+                        assert("a" in possibleRegisters)
+                        regX = self.getRegisterForSymbol(address, { "a" })
+                        self.asmWriter.loadRegisterWithAddress(regX, address.impl)
+                        self.loadSymbolInRegister(address, regX)
+                    elif address.type == "int":
+                        regX = self.getRegisterForSymbol(address, possibleRegisters)
+                        if address.isPointer:
+                            self.asmWriter.loadRegisterWithPointer(regX, address.impl)
+                        else:
+                            self.asmWriter.loadRegisterWithAddress(regX, address.impl)
+                        self.loadSymbolInRegister(address, regX)
+                    else:
+                        error()
                 else:
                     regX = self.getRegisterForSymbol(address, possibleRegisters)
                     self.asmWriter.loadRegisterWithAddress(regX, address.impl)

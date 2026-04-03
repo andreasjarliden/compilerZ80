@@ -7,7 +7,7 @@ from asmWriter import *
 def stackFrameSize(symbolTable):
     smallestOffset = 0
     for s in symbolTable.values():
-        if isinstance(s.impl, ValueAddress):
+        if isinstance(s.impl, StackAddress):
             smallestOffset = min(s.impl.offset, smallestOffset)
     return -smallestOffset
 
@@ -67,7 +67,7 @@ class IR:
         if self.rhsAddr:
             o2 = " OP " + str(self.rhsAddr) 
         xtra = self.extraDescription()
-        return "".join([live, name,r,o1,o2,xtra, str(self.live)])
+        return " ".join([live, name,r,o1,o2,xtra, str(self.live)])
 
     # Similar to doLoadInRegister8 but only prepares the rhs for an assembler
     # instruction. Not loading to a register.
@@ -87,7 +87,6 @@ class IR:
                     asmWriter.loadRegisterWithRegister("hl", otherReg)
                 else:
                     # Load pointer from memory
-                    print(rhsAddr)
                     asmWriter.loadRegisterWithAddress("hl", rhsAddr.impl.pointer.impl)
                 ra.loadSymbolInRegister(rhsAddr.impl.pointer, "hl")
             return "(hl)"
@@ -284,6 +283,7 @@ class IRArgument(IR):
         ra = registerAllocator.RA
         if self.exprAddr.type == "char":
             if isinstance(self.lhsAddr, Constant):
+                print(f"Arg {self.lhsAddr=}")
                 ra.loadInA(self.lhsAddr)
                 asmWriter.write(f'\tpush\taf\n')
             else:
@@ -309,6 +309,7 @@ class IRArgument(IR):
                 asmWriter.write(f'\tpush\taf\n')
         elif self.exprAddr.type == "int":
             if isinstance(self.lhsAddr, Constant):
+                print(f"Arg {self.lhsAddr=}")
                 ra.loadInHL(self.lhsAddr)
                 asmWriter.write(f'\tpush\thl\n')
             else:
@@ -336,6 +337,7 @@ class IRFunCall(IR):
 
     def genCode(self, asmWriter):
         ra = registerAllocator.RA
+        # TODO only spill what might be accessed by the called function
         ra.spillAll()
         asmWriter.write(f'\tcall\t{self.name}\n')
         for i in range(self.numArgs):
@@ -446,10 +448,10 @@ class IRAssignToPointer(IR):
     def genCode(self, asmWriter):
         ra = registerAllocator.RA
 
-        t = self.resultAddr.completeType[1:]
+        t = self.resultAddr.completeType[:-1]
         ra.spillAllMatchingType(t)
 
-        if self.resultAddr.completeType == "*char":
+        if self.resultAddr.completeType == "char*":
             if isinstance(self.lhsAddr, Constant):
                 regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } ) 
                 asmWriter.write(f'\tld\t({regX}), {self.lhsAddr.value}\n')
@@ -458,7 +460,7 @@ class IRAssignToPointer(IR):
                 # Carefull not to trigger a spill of regX by using a coupled register
                 regY = ra.doLoadInRegister8(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" } - ra.coupledRegisters[regX])
                 asmWriter.write(f'\tld\t({regX}), {regY}\n')
-        elif self.resultAddr.completeType == "*int":
+        elif self.resultAddr.completeType == "int*":
             if isinstance(self.lhsAddr, Constant):
                 regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } ) 
                 asmWriter.write(f'\tld\t({regX}), {self.lhsAddr.value & 0xff}\n')

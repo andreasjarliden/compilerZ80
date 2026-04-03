@@ -12,10 +12,19 @@ class TestParser(unittest.TestCase):
         ast = parser.parse("char foo;")
         self.assertEqual(ast[0], VariableDefinition("char", "foo"))
 
+    def test_variableDefinition_value(self):
+        ast = parser.parse("char foo = 42;")
+        self.assertEqual(ast[0], VariableDefinition("char", "foo", Constant("char", 42)))
+
+    def test_variableDefinition_string(self):
+        ast = parser.parse('char* foo = "foo";')
+        self.assertEqual(ast[0].value, StringConstant(String("foo")))
+        self.assertEqual(ast[0], VariableDefinition("char*", "foo", StringConstant(String("foo"))))
+
     def test_variableDefinition_pointer(self):
         ast = parser.parse("char* foo;")
-        self.assertEqual(ast[0], VariableDefinition("*char", "foo"))
-        self.assertEqual(ast[0].completeType, "*char")
+        self.assertEqual(ast[0], VariableDefinition("char*", "foo"))
+        self.assertEqual(ast[0].completeType, "char*")
         self.assertEqual(ast[0].type, "int")
 
     #
@@ -57,6 +66,23 @@ class TestParser(unittest.TestCase):
                          Relation("==",
                                   Add(Constant("char", 1), Constant("char", 2)),
                                   Add(Constant("char", 3), Constant("char", 4))))
+
+    #
+    # Function call
+    #
+
+    def test_funCall(self):
+        ast = parser.parse("""foo(1, 2);""")
+        self.assertEqual(ast[0],
+                         FunctionCall("foo",
+                                      [ Constant("char", 1), Constant("char", 2)]))
+
+    def test_funCallString(self):
+        ast = parser.parse("""foo("hello");""")
+        self.assertEqual(ast[0],
+                         FunctionCall("foo",
+                                      [ StringConstant(String("hello"))]))
+
 
     #
     # Function

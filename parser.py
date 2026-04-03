@@ -4,6 +4,7 @@ from address import Constant
 from astnodes import *
 import sys
 
+# Start symbol at the top
 def p_statement_list(p):
     '''
     statement_list : statement_list statement
@@ -85,10 +86,13 @@ def p_unary_primary(p):
 
 def p_primary_constant(p):
     '''
-    primary : NUMBER
+    primary : constant
     '''
     # TODO all as char for now
-    p[0] = Constant("char", int(p[1]))
+    if isinstance(p[1], String):
+        p[0] = StringConstant(p[1])
+    else:
+        p[0] = Constant("char", p[1])
 
 def p_primary_variable(p):
     '''
@@ -108,10 +112,15 @@ def p_variable_definition_expression(p):
     'var_def_expression : type ID'
     p[0] = VariableDefinition(p[1], p[2])
 
+def p_variable_definition_expression_value(p):
+    'var_def_expression : type ID ASSIGN value_expression'
+    # 'var_def_expression : type ID ASSIGN constant'
+    p[0] = VariableDefinition(p[1], p[2], p[4])
+
 def p_type(p):
     '''type : base_type pointers
     '''
-    p[0] = "*"*p[2] + p[1]
+    p[0] = p[1] + "*"*p[2]
 
 def p_base_type(p):
     '''base_type : CHAR
@@ -148,6 +157,9 @@ def p_function_expression_no_args(p):
 
 def p_function_expression_args(p):
     'function_expression : ID LPARA expr_list RPARA'
+    print(p[1])
+    print(p[3])
+    print(FunctionCall)
     p[0] = FunctionCall(p[1], p[3])
 
 def p_function_definition_no_args(p):
@@ -200,9 +212,21 @@ def p_arg(p):
 
 def p_error(p):
     if p:
-        print("Parse error: " + p.value + str(p));
+        print(f"Parse error: {p.value} {p}")
     else:
         print("Unexpected end of file");
     sys.exit(1);
+
+def p_constant_number(p):
+    '''
+    constant : NUMBER
+    '''
+    p[0] = int(p[1])
+
+def p_constant_string(p):
+    '''
+    constant : STRING
+    '''
+    p[0] = String(p[1][1:-1])
 
 parser = yacc.yacc()

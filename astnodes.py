@@ -2,18 +2,37 @@ from dataclasses import dataclass, field
 from typing import Any
 from ir import *
 from symbolTable import *
+from blocks import BlockFactory
 import symbolTable
+
+class StringTable:
+    def __init__(self):
+        # String -> name
+        self._table = {}
+        self._count = 0
+
+    def addString(self, s):
+        if not s in self._table:
+            self._table[s] = f"__str{self._count}"
+            self._count += 1
+        return self._table[s]
+
 
 @dataclass
 class ASTContext:
-    blockFactory : Any 
-    symbolTable : SymbolTable = SymbolTable()
+    blockFactory : Any = field(default_factory=BlockFactory)
+    symbolTable : SymbolTable = field(default_factory=SymbolTable)
     functionName : str = None
-    dataSegment : list[SymEntry] = field(default_factory=list)
+    dataSegment : dict[SymEntry, Any] = field(default_factory=dict)
+    stringTable : StringTable = field(default_factory=StringTable)
 
 def createLabel(context):
     context.functionLabels += 1
     return f"{context.functionName}_l{context.functionLabels}"
+
+@dataclass(frozen=True)
+class String:
+    string : str
 
 @dataclass(frozen=True)
 class Variable:
@@ -29,7 +48,7 @@ class Argument:
 
     @property
     def type(self):
-        if self.completeType[0] == "*":
+        if self.completeType[-1] == "*":
             # Pointers are handled as int
             return "int"
         else:
@@ -115,10 +134,11 @@ class If:
 class VariableDefinition:
     completeType : Any
     name : str
+    value : Any = None # TODO rename to rhs?
 
     @property
     def type(self):
-        if self.completeType[0] == "*":
+        if self.completeType[-1] == "*":
             # Pointers are handled as int
             return "int"
         else:
@@ -129,7 +149,24 @@ class VariableDefinition:
         context.symbolTable.addSymbolEntry(self.name, symbol)
         if not context.functionName:
             symbol.impl = GlobalAddress(self.name)
-            context.dataSegment.append(symbol)
+            if self.value:
+                address = self.value.visit(context)
+                if isinstance(address, SymEntry):
+                    value = address.name
+                elif isinstance(address, Constant):
+                    value = address.value
+                # if self.completeType == "char*":
+                #     value = self.value.value
+                # else:
+                #     value = self.value.value
+            else:
+                value = 0
+            # value = self.value.visit(context) if self.value else Constant(self.completeType, 0)
+            context.dataSegment[symbol] = value
+        else:
+            if self.value:
+                rhsAddr = self.value.visit(context)
+                context.blockFactory.addIR(IRAssign(symbol, rhsAddr))
 
 
 @dataclass(frozen=True)
@@ -159,7 +196,7 @@ class AddressOf:
 
     def visit(self, context):
         exprAddr = self.expr.visit(context)
-        irAddressOf = IRAddressOf(exprAddr, context.symbolTable.addTemporary("*" + exprAddr.completeType))
+        irAddressOf = IRAddressOf(exprAddr, context.symbolTable.addTemporary(exprAddr.completeType + "*"))
         context.blockFactory.addIR(irAddressOf)
         return irAddressOf.resultAddr
 
@@ -169,7 +206,7 @@ class Dereference:
 
     def visit(self, context):
         pointer = self.expr.visit(context)
-        ct = pointer.completeType[1:] # remove leading *
+        ct = pointer.completeType[:-1] # remove trailing *
         if pointer.completeType.startswith("*"):
             t = "int"
         else:
@@ -179,14 +216,13 @@ class Dereference:
         deref.resultAddr.impl = PointerAddress(pointer)
         return deref.resultAddr
 
+@dataclass
 class FunctionCall:
-    def __init__(self, name, arguments=[]):
-        self.name = name
-        self.arguments = arguments
-        self.storeResult = False
+    name : str
+    arguments : list[Argument] = field(default_factory=list)
 
-    def __repr__(self):
-        return f"call {self.name} with args {self.arguments}"
+    def __post_init__(self):
+        self.storeResult = False
 
     def visit(self, context):
         self.type = context.symbolTable.lookUp(self.name).type

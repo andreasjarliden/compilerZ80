@@ -283,6 +283,18 @@ class TestZ80RA(unittest.TestCase):
         self.assertTrue(output.find("ld\t(ix + 0)") < output.find("ld\ta, b"))
         self.assertTrue(output.find("ld\ta, b") < output.find("ld\t(GLOBAL), a"))
 
+    def test_spillGlobalInt(self):
+        GLOBAL = SymEntry("int", "GLOBAL")
+        GLOBAL.impl = GlobalAddress("GLOBAL")
+        self.ra.currentInstruction.live[GLOBAL] = True
+        self.ra.assignToSymbolWithRegister(GLOBAL, "bc")
+
+        self.ra.spillRegister("bc")
+
+        self.ra.asmFile.seek(0)
+        output = self.ra.asmFile.read()
+        self.assertIn("ld\t(GLOBAL), bc", output)
+
     # Check the special case where we are spilling reg a directly
     def test_spillGlobalChar_regA(self):
         GLOBAL = SymEntry("char", "GLOBAL")

@@ -15,7 +15,8 @@ class TestLiveness(unittest.TestCase):
         ast = parser.parse(code)
         blockFactory = SingleBlockFactory()
         block = blockFactory.block
-        blocks, _ = compiler.astToThreeCode(ast, blockFactory, self.symbolTable)
+        astContext = ASTContext(blockFactory = blockFactory, symbolTable = self.symbolTable)
+        blocks, _ = compiler.astToThreeCode(ast, astContext)
         block.exitSymbols = self.symbolTable.allSymbols()
         compiler.updateLive(blocks)
         return block.statements

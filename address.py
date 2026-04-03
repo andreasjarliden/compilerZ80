@@ -1,9 +1,10 @@
-# 3 types of addresses. Rename to e.g ConstantAddress?
+from symEntry import SymEntry, GlobalAddress
+# TODO move tyo symEntry?
 
 class Constant:
-    def __init__(self, t, value):
-        self.type = t
-        self.value = value
+    def __init__(self, completeType, value):
+        self.completeType = completeType
+        self._value = value
 
     def __eq__(self, other):
         if not isinstance(other, Constant):
@@ -11,24 +12,50 @@ class Constant:
         return self.type == other.type and self.value == other.value
 
     @property
-    def completeType(self):
-        return self.type
+    def value(self):
+        return self._value
+
+    @property
+    def type(self):
+        if self.isPointer:
+            return "int"
+        else:
+            return self.completeType
+
+    @property
+    def isPointer(self):
+        return self.completeType.endswith("*")
 
     def __repr__(self):
-        return f"Constant {self.type} {self.value}"
+        return f"Constant {self.completeType} {self.value}"
 
     # Because it doubles an AST Node
     def visit(self, context):
         return self
 
 
-class Symbol:
-    def __init__(self, t, name):
-        self.type = t
-        self.name = name
+class StringConstant(Constant):
+
+    def __init__(self, value):
+        super().__init__("char*", value)
+
+    # @property
+    # def value(self):
+    #     return self._name
 
     def __repr__(self):
-        return f"Symbol {self.type} {self.name}"
+        return f"StringConstant {self.completeType} {self.value}"
+
+    def visit(self, context):
+        name = context.stringTable.addString(self._value)
+        symbol = context.symbolTable.lookUp(name)
+        if not symbol:
+            symbol = SymEntry("char*", name)
+            symbol.impl = GlobalAddress(name)
+            context.symbolTable.addSymbolEntry(name, symbol)
+            context.dataSegment[symbol] = self._value
+        print(f"Adding string {symbol.name} equal to {self._value} in dataSegment")
+        return symbol
 
 
 class Temporary:
