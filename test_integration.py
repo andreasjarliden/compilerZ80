@@ -3,7 +3,6 @@ from parser import parser
 from compiler import astToThreeCode, updateLive, genCode, genDataSegment
 from asmWriter import AsmWriter
 from io import StringIO
-from pprint import *
 from astnodes import ASTContext
 
 def compile(code):
@@ -37,7 +36,6 @@ class TestIntegration(unittest.TestCase):
             char main() {
                 FOO=1;
             }""")
-        print(output)
         self.assertRegex(output, r"ld\t., 1")
         self.assertRegex(output, r"ld\t\(FOO\), .")
         self.assertRegex(output, r"FOO:\t.int8\t0")
@@ -48,7 +46,6 @@ class TestIntegration(unittest.TestCase):
             char main() {
                 FOO=1;
             }""")
-        print(output)
         self.assertRegex(output, r"ld\t(bc|de|hl), 1")
         self.assertRegex(output, r"ld\t\(FOO\), (bc|de|hl)")
         self.assertRegex(output, r"FOO:\t.int16\t0")
@@ -84,17 +81,14 @@ class TestIntegration(unittest.TestCase):
 
     def test_globalVariablesWithValue(self):
         output = compile("int FOO = 42;")
-        print(output)
         self.assertRegex(output, r"FOO:\t.int16\t42")
         
     def test_globalStringVariables(self):
         output = compile('char* FOO;')
-        print(output)
         self.assertIn('FOO:\t.int16\t0', output)
 
     def test_globalVariablesWithString(self):
         output = compile('char* FOO = "foo";')
-        print(output)
         self.assertIn('__str0:\t.string\t"foo\\0"', output)
         self.assertIn('FOO:\t.int16\t__str0', output)
 
@@ -108,7 +102,6 @@ class TestIntegration(unittest.TestCase):
                 FOO = 42;
                 foo();
             }""")
-        print(output)
         self.assertIn("ld\t(FOO),", output)
         self.assertTrue(output.find("ld\t(FOO),") < output.find("call\tfoo"))
 
@@ -117,16 +110,31 @@ class TestIntegration(unittest.TestCase):
             char main(char* str) {
                 main("foo");
             }""")
-        print(output)
         self.assertIn("ld\thl, __str0\n\tpush\thl", output)
         self.assertIn('__str0:\t.string\t"foo\\0"', output)
+
+    def test_globalStringAssignment(self):
+        output = compile("""
+            char* FOO = "foo";
+            char main(char* str) {
+                main(FOO);
+                FOO = "bar";
+            }""")
+        print(output)
+        # Loading original FOO
+        self.assertRegex(output, r"ld\t(bc|de|hl), FOO\n\tpush\t(bc|de|hl)")
+        # Loading new value
+        self.assertRegex(output, r"ld\t(bc|de|hl), __str1")
+        # Spilling new value
+        self.assertRegex(output, r"ld\t\(FOO\), (bc|de|hl)")
+        self.assertIn('__str0:\t.string\t"foo\\0"', output)
+        self.assertIn('__str1:\t.string\t"bar\\0"', output)
 
     def test_identicalStringsReused(self):
         output = compile("""
             char main(char* str, char* str2) {
                 main("foo", "foo");
             }""")
-        print(output)
         self.assertIn("ld\thl, __str0\n\tpush\thl\n\tpush\thl", output)
         self.assertIn('__str0:\t.string\t"foo\\0"', output)
 
@@ -146,7 +154,6 @@ class TestIntegration(unittest.TestCase):
                 char* str = "foo";
                 main(str);
             }""")
-        print(output)
         self.assertRegex(output, r"ld\t(bc|de|hl), __str0\n\tpush\t(bc|de|hl)", output)
         self.assertIn('__str0:\t.string\t"foo\\0"', output)
 

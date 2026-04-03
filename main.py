@@ -21,10 +21,10 @@ if __name__ == "__main__":
     print("=======")
 
     ast = parser.parse("""
-    char* FOO = "hello";
+    int FOO;
     char main() {
-        FOO = "bar";
-        puts(FOO);
+        FOO = 42;
+        printHex16(FOO);
         }
     """) 
 

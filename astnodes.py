@@ -150,7 +150,6 @@ class VariableDefinition:
         if not context.functionName:
             symbol.impl = GlobalAddress(self.name)
             if self.value:
-                print(f"VarDef with global value {self.value=}")
                 address = self.value.visit(context)
                 if isinstance(address, SymEntry):
                     value = address.name
@@ -163,12 +162,10 @@ class VariableDefinition:
             else:
                 value = 0
             # value = self.value.visit(context) if self.value else Constant(self.completeType, 0)
-            print(f"VarDef adding value {value} to dataSegment")
             context.dataSegment[symbol] = value
         else:
             if self.value:
                 rhsAddr = self.value.visit(context)
-                print(f"VariableDefinition visited rhs returned {rhsAddr}")
                 context.blockFactory.addIR(IRAssign(symbol, rhsAddr))
 
 
@@ -180,7 +177,6 @@ class VariableAssignment:
     def visit(self, context):
         lvalue = self.lvalue.visit(context)
         rhsAddr = self.rhs.visit(context)
-        print(f"VariableAssignment visited rhs returned {rhsAddr}")
         context.blockFactory.addIR(IRAssign(lvalue, rhsAddr))
 
 @dataclass(frozen=True)
@@ -231,9 +227,7 @@ class FunctionCall:
     def visit(self, context):
         self.type = context.symbolTable.lookUp(self.name).type
         for a in reversed(self.arguments):
-            print(f"FunctionCall visiting argument {a}")
             exprAddress = a.visit(context)
-            print(f"Returning {exprAddress}")
             context.blockFactory.addIR(IRArgument(exprAddress))
         if self.storeResult:
             irfuncall = IRFunCall(self.type, self.name, len(self.arguments), addr=context.symbolTable.addTemporary(self.type))
