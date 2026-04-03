@@ -181,23 +181,20 @@ class RegisterAllocator:
         else:
             return None
 
-    # TODO rename to eg. loadedSymbolInRegister
-    def loadSymbolInRegister(self, s, r):
+    def loadedSymbolInRegister(self, s, r):
         self.symbols.setdefault(s, set())
         self.symbols[s].add(r)
         self.symbols[s].add(s)
         self.registers[r].add(s)
 
     # Example: LD (ix+n), a
-    # TODO rename to eg. storedToSymbol
-    def storeToSymbol(self, s):
+    def storedToSymbol(self, s):
         self.symbols.setdefault(s, set())
         self.symbols[s].add(s)
 
     # Assigning to a name means that it is only the register that holds the
     # name, it has not been spilled to memory yet.
-    # TODO rename to eg. assignedToSymbolWithRegister
-    def assignToSymbolWithRegister(self, s, r):
+    def assignedToSymbolWithRegister(self, s, r):
         self.symbols.setdefault(s, set())
         self.symbols[s] = { r }
         self.registers[r].add(s)
@@ -207,8 +204,6 @@ class RegisterAllocator:
         for s in self.registers[fromR]:
             self.symbols[s].add(toR)
         self.verify()
-
-
 
 
 class Z80RegisterAllocator(RegisterAllocator):
@@ -279,20 +274,20 @@ class Z80RegisterAllocator(RegisterAllocator):
                 # Don't use the register we will load to
                 regY = self.getRegisterForSymbol(address.impl.pointer, allPointerRegisters - { regX })
                 self.asmWriter.loadRegisterWithAddress(regY, address.impl.pointer.impl)
-                self.loadSymbolInRegister(address.impl.pointer, regY)
+                self.loadedSymbolInRegister(address.impl.pointer, regY)
             # Are we loading from the same register that we're loading from?
             # Copy the pointer to a different register
             # (It is common that the pointer is already in HL and that we must load into HL)
             elif regX == regY:
                 regY2 = self.getRegisterForSymbol(address.impl.pointer, allPointerRegisters - { regX } )
                 self.asmWriter.loadRegisterWithRegister(regY2, regY)
-                self.loadSymbolInRegister(address, regY2)
+                self.loadedSymbolInRegister(address, regY2)
                 regY = regY2
             # We decided on regX above, now get it for real, spilling if needed
             regX = self.getRegisterForSymbol(address, { regX } )
             # ld regX, (regY)
             self.writeAsmLoadRegisterFromPointer(regX, regY, address.impl.pointer)
-            self.loadSymbolInRegister(address, regX)
+            self.loadedSymbolInRegister(address, regX)
             return regX
         else:
             regY = self.isInRegister(address, possibleRegisters)
@@ -310,19 +305,19 @@ class Z80RegisterAllocator(RegisterAllocator):
                         assert("a" in possibleRegisters)
                         regX = self.getRegisterForSymbol(address, { "a" })
                         self.asmWriter.loadRegisterWithAddress(regX, address.impl)
-                        self.loadSymbolInRegister(address, regX)
+                        self.loadedSymbolInRegister(address, regX)
                     elif address.type == "int":
                         regX = self.getRegisterForSymbol(address, possibleRegisters)
                         if address.isPointer:
                             self.asmWriter.loadRegisterWithPointer(regX, address.impl)
                         else:
                             self.asmWriter.loadRegisterWithAddress(regX, address.impl)
-                        self.loadSymbolInRegister(address, regX)
+                        self.loadedSymbolInRegister(address, regX)
                     else:
                         error()
                 else:
                     regX = self.getRegisterForSymbol(address, possibleRegisters)
                     self.asmWriter.loadRegisterWithAddress(regX, address.impl)
-                    self.loadSymbolInRegister(address, regX)
+                    self.loadedSymbolInRegister(address, regX)
             return regX
 

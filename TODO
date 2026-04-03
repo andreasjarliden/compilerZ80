@@ -1,4 +1,3 @@
-- Global int16 values
 - Rename address.py
 - Store live in IR again and update a complete list when traversing the IRs
   during generation.

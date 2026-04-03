@@ -57,8 +57,8 @@ class TestIR(unittest.TestCase):
     # IRAdd
 
     def test_IRAdd_bothAlreadyInRegisters(self):
-        registerAllocator.RA.loadSymbolInRegister(self.bar, "a")
-        registerAllocator.RA.loadSymbolInRegister(self.baz, "b")
+        registerAllocator.RA.loadedSymbolInRegister(self.bar, "a")
+        registerAllocator.RA.loadedSymbolInRegister(self.baz, "b")
 
         # foo = bar + baz
         ira = ir.IRAdd(self.foo, self.bar, self.baz)
@@ -77,8 +77,8 @@ class TestIR(unittest.TestCase):
         self.assertEqual(registerAllocator.RA.isInRegister(self.baz), "b")
 
     def test_IRAdd_swapsIfRhsInA(self):
-        registerAllocator.RA.loadSymbolInRegister(self.bar, "b")
-        registerAllocator.RA.loadSymbolInRegister(self.baz, "a")
+        registerAllocator.RA.loadedSymbolInRegister(self.bar, "b")
+        registerAllocator.RA.loadedSymbolInRegister(self.baz, "a")
 
         # foo = bar + baz
         ira = ir.IRAdd(self.foo, self.bar, self.baz)
@@ -132,7 +132,7 @@ class TestIR(unittest.TestCase):
 
     # lhs is in another register, rhs is a constant
     def test_IRAdd_rhsIsConstant(self):
-        registerAllocator.RA.loadSymbolInRegister(self.bar, "b")
+        registerAllocator.RA.loadedSymbolInRegister(self.bar, "b")
 
         # foo = bar + 42
         ira = ir.IRAdd(self.foo, self.bar, Constant("char", 42))
@@ -149,8 +149,8 @@ class TestIR(unittest.TestCase):
 
     # Load rhs via pointer already in hl register
     def test_IRAdd_rhsIsPointerInHL(self):
-        registerAllocator.RA.loadSymbolInRegister(self.bar, "a")
-        registerAllocator.RA.loadSymbolInRegister(self.ptr, "hl")
+        registerAllocator.RA.loadedSymbolInRegister(self.bar, "a")
+        registerAllocator.RA.loadedSymbolInRegister(self.ptr, "hl")
 
         # foo = bar + 42
         ira = ir.IRAdd(self.foo, self.bar, self.derefPtr)
@@ -168,8 +168,8 @@ class TestIR(unittest.TestCase):
 
     # Load rhs via pointer already in other register
     def test_IRAdd_rhsIsPointerInOtherRegister(self):
-        registerAllocator.RA.loadSymbolInRegister(self.bar, "a")
-        registerAllocator.RA.loadSymbolInRegister(self.ptr, "de")
+        registerAllocator.RA.loadedSymbolInRegister(self.bar, "a")
+        registerAllocator.RA.loadedSymbolInRegister(self.ptr, "de")
 
         # foo = bar + 42
         ira = ir.IRAdd(self.foo, self.bar, self.derefPtr)
@@ -189,7 +189,7 @@ class TestIR(unittest.TestCase):
 
     # Load rhs via pointer that must be loaded from memory
     def test_IRAdd_rhsIsPointerFromMemory(self):
-        registerAllocator.RA.loadSymbolInRegister(self.bar, "a")
+        registerAllocator.RA.loadedSymbolInRegister(self.bar, "a")
 
         # foo = bar + 42
         ira = ir.IRAdd(self.foo, self.bar, self.derefPtr)
@@ -211,7 +211,7 @@ class TestIR(unittest.TestCase):
     def test_IRAdd_rhsIsGlobalVariable(self):
         GLOBAL = SymEntry("char", "global")
         GLOBAL.impl = GlobalAddress("global")
-        registerAllocator.RA.loadSymbolInRegister(self.bar, "a")
+        registerAllocator.RA.loadedSymbolInRegister(self.bar, "a")
 
         # foo = bar + GLOBAL
         ira = ir.IRAdd(self.foo, self.bar, GLOBAL)

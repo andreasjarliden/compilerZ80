@@ -88,7 +88,7 @@ class IR:
                 else:
                     # Load pointer from memory
                     asmWriter.loadRegisterWithAddress("hl", rhsAddr.impl.pointer.impl)
-                ra.loadSymbolInRegister(rhsAddr.impl.pointer, "hl")
+                ra.loadedSymbolInRegister(rhsAddr.impl.pointer, "hl")
             return "(hl)"
         # TODO this should check nextUse and not liveness
         else:
@@ -101,7 +101,7 @@ class IR:
                         # Use via register as will be used later (hopefully without spilling)
                         regZ = ra.getRegisterForSymbol(rhsAddr, { "b", "c", "d", "e", "h", "l" })
                         asmWriter.loadRegisterWithAddress(regZ, rhsAddr.impl)
-                        ra.loadSymbolInRegister(rhsAddr, regZ)
+                        ra.loadedSymbolInRegister(rhsAddr, regZ)
                         return regZ
                     else:
                         # Use directly from memory, e.g. add a, (ix + 42)
@@ -111,7 +111,7 @@ class IR:
                     # Use via register as will be used later (hopefully without spilling)
                     ra.spillRegister("a")
                     asmWriter.loadRegisterWithAddress("a", rhsAddr.impl)
-                    ra.loadSymbolInRegister(rhsAddr, "a")
+                    ra.loadedSymbolInRegister(rhsAddr, "a")
                     regZ = ra.getRegisterForSymbol(rhsAddr, { "b", "c", "d", "e", "h", "l" })
                     asmWriter.loadRegisterWithRegister(regZ, "a")
                     ra.copiedRegisterToRegister("a", regZ)
@@ -355,7 +355,7 @@ class IRFunCall(IR):
                 reg = "hl"
             else:
                 error()
-            ra.assignToSymbolWithRegister(self.resultAddr, returnRegisterForType[self.type])
+            ra.assignedToSymbolWithRegister(self.resultAddr, returnRegisterForType[self.type])
 
 class IRAddressOf(IR):
     def __init__(self, symEntry, resAddr):
@@ -378,7 +378,7 @@ class IRAddressOf(IR):
         # TODO Optimize for small values with INC / DEC
         asmWriter.write(f'\tld\t{regT}, {negHexOffset}\n')
         asmWriter.write(f'\tadd\t{regX}, {regT}\n')
-        ra.loadSymbolInRegister(self.resultAddr, regX)
+        ra.loadedSymbolInRegister(self.resultAddr, regX)
 
 class IRDereference(IR):
     def __init__(self, symEntry, resAddr):
@@ -408,7 +408,7 @@ class IRAssign(IR):
                 reg = ra.doLoadInRegister8(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" })
             elif self.resultAddr.type == "int":
                 reg = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" })
-            ra.assignToSymbolWithRegister(self.resultAddr, reg)
+            ra.assignedToSymbolWithRegister(self.resultAddr, reg)
         else:
             # Stores directly to memory
             if self.resultAddr.type == "char":
@@ -423,7 +423,7 @@ class IRAssign(IR):
                         ra.getRegisterForSymbol(self.lhsAddr, { "a" })
                         asmWriter.write(f'\tld\ta, {self.lhsAddr.impl.codeArg()}\n')
                         asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg()}, a\n')
-                        ra.loadSymbolInRegister(self.lhsAddr, "a")
+                        ra.loadedSymbolInRegister(self.lhsAddr, "a")
             elif self.resultAddr.type == "int":
                 # TODO handle constants
                 regY = ra.isInRegister(self.lhsAddr, { "bc", "de", "hl" })
@@ -438,7 +438,7 @@ class IRAssign(IR):
                     asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg()}, a\n')
                     asmWriter.write(f'\tld\ta, {self.lhsAddr.impl.codeArg(+1)}\n')
                     asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg(+1)}, a\n')
-            ra.storeToSymbol(self.resultAddr)
+            ra.storedToSymbol(self.resultAddr)
 
 
 class IRAssignToPointer(IR):
@@ -499,12 +499,12 @@ class IRAdd(IR):
             ra.spillRegister("a")
             ra.verify()
             asmWriter.write(f"\tadd\ta, {regZ}\n")
-            ra.loadSymbolInRegister(self.resultAddr, "a")
+            ra.loadedSymbolInRegister(self.resultAddr, "a")
         elif self.lhsAddr.type == "int":
             regZ = self.load16bitLhsAndRhs(transitive=True)
             ra.spillRegister("hl")
             asmWriter.write(f"\tadd\thl, {regZ}\n")
-            ra.loadSymbolInRegister(self.resultAddr, "hl")
+            ra.loadedSymbolInRegister(self.resultAddr, "hl")
         else:
             error()
 
