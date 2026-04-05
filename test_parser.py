@@ -110,3 +110,25 @@ class TestParser(unittest.TestCase):
         self.assertTrue(isinstance(block.statements[1], IRFunExit))
         self.assertEqual(block.statements[1].hasStackFrame, True)
 
+    #
+    # while
+    #
+    def test_while(self):
+        ast = parser.parse("""char main() {
+                                  char a=0;
+                                  while (a<5) {
+                                      a = a + 1;
+                                  }
+                              }
+                            """)
+        iast = ast[0].statements
+        self.assertTrue(isinstance(iast[1], While))
+        self.assertTrue(isinstance(iast[1].expr, Relation))
+        context = ASTContext()
+        ast[0].visit(context)
+        blocks = context.blockFactory.blocks()
+        block = blocks["main_0000"]
+        print(block)
+        # self.assertTrue(False)
+
+

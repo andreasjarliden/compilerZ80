@@ -209,6 +209,15 @@ class IRIfVariable(IR):
         asmWriter.write(f'\tor\ta\n')
         asmWriter.write(f'\tjr\tz, {self.skipLabel}\n') 
 
+class IRSpillAll(IR):
+    def __init__(self):
+        super().__init__()
+
+    def genCode(self, asmWriter):
+        ra = registerAllocator.RA
+        ra.spillAll()
+
+
 class IRIfRelation(IR):
     # operation : flag, transitive, flip lhs/rhs
     operations = {'==': ("nz", True, False),
@@ -234,7 +243,7 @@ class IRIfRelation(IR):
         if flip:
             (self.lhsAddr, self.rhsAddr) = (self.rhsAddr, self.lhsAddr)
         if self.lhsAddr.type == "char":
-            regZ = self.load8bitLhsAndRhs(transitive, asmWriter)
+            regZ = self.load8bitLhsAndRhs(asmWriter, transitive)
             asmWriter.write(f"\tcp\t{regZ}\n")
         elif self.lhsAddr.type == "int":
             regZ = self.load16bitLhsAndRhs(transitive)
@@ -251,6 +260,17 @@ class IRLabel(IR):
 
     def genCode(self, asmWriter):
         asmWriter.write(self.label + ":\n")
+
+class IRJump(IR):
+    def __init__(self, label):
+        super().__init__()
+        self.label = label
+
+    def extraDescription(self):
+        return f"{self.label}"
+
+    def genCode(self, asmWriter):
+        asmWriter.write(f"\tjp\t{self.label}\n")
 
 class IRReturn(IR):
     def __init__(self, t, exprAddr, functionName):

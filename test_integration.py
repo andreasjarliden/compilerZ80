@@ -157,3 +157,28 @@ class TestIntegration(unittest.TestCase):
         self.assertRegex(output, r"ld\t(bc|de|hl), __str0\n\tpush\t(bc|de|hl)", output)
         self.assertIn('__str0:\t.string\t"foo\\0"', output)
 
+    def test_if(self):
+        output = compile("""
+            char main(char n) {
+                if (n==0)
+                    return 1;
+                return 0;
+            }""")
+
+    def test_while(self):
+        output = compile("""char main() {
+                              char a=0;
+                              while (a<5) {
+                                  a = a + 1;
+                              }
+                          }
+                            """)
+        print(output);
+        # Test spill before first label
+        self.assertRegex(output, r"\tld\t\(ix \- 1\), .\nmain_l1:")
+        # Test conditional jump to skip label
+        self.assertRegex(output, r"\tjr\t., main_l2")
+        # jump to loop label
+        self.assertRegex(output, r"\tjp\tmain_l1\n")
+
+

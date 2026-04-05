@@ -4,6 +4,7 @@ from ir import *
 from symbolTable import *
 from blocks import BlockFactory
 import symbolTable
+import registerAllocator
 
 class StringTable:
     def __init__(self):
@@ -25,6 +26,10 @@ class ASTContext:
     functionName : str = None
     dataSegment : dict[SymEntry, Any] = field(default_factory=dict)
     stringTable : StringTable = field(default_factory=StringTable)
+
+    def exitBlock(self):
+        self.blockFactory.exitBlock(self.symbolTable.allSymbols())
+
 
 def createLabel(context):
     context.functionLabels += 1
@@ -102,7 +107,7 @@ class Function:
         Function.mapSymbols(symbolTable)
         hasStackFrame = len(symbolTable) > 0
         context.blockFactory.addIR(IRFunExit(self, hasStackFrame))
-        context.blockFactory.exitBlock(context.symbolTable.allSymbols())
+        context.exitBlock()
         context.symbolTable.popFrame()
         context.functionName = None
 
@@ -122,12 +127,43 @@ class If:
         else:
             error()
         context.blockFactory.addIR(ir)
-        context.blockFactory.exitBlock()
-        context.blockFactory.enterSubBlock(context.symbolTable.currentSymbolTable())
+        context.exitBlock()
+        context.blockFactory.enterSubBlock()
         for s in self.statements:
             s.visit(context)
-        context.blockFactory.exitBlock()
-        context.blockFactory.enterSubBlock(context.symbolTable.currentSymbolTable())
+        context.exitBlock()
+        context.blockFactory.enterSubBlock()
+        context.blockFactory.addIR(IRLabel(skipLabel))
+
+@dataclass(frozen=True)
+class While:
+    expr : Any
+    statements : list
+
+    def visit(self, context):
+        ra = registerAllocator.RA
+        # TODO should spill all be part of exitBlock?
+        context.blockFactory.addIR(IRSpillAll())
+        context.exitBlock()
+        loopLabel = createLabel(context)
+        context.blockFactory.addIR(IRLabel(loopLabel))
+        skipLabel = createLabel(context)
+        if isinstance(self.expr, Variable):
+            exprAddr = self.expr.visit(context)
+            ir = IRIfVariable(exprAddr, skipLabel)
+        elif isinstance(self.expr, Relation):
+            (lhsAddr, rhsAddr) = self.expr.visit(context)
+            ir = IRIfRelation(self.expr.operation, lhsAddr, rhsAddr, skipLabel)
+        else:
+            error()
+        context.blockFactory.addIR(ir)
+        context.blockFactory.enterSubBlock()
+        for s in self.statements:
+            s.visit(context)
+        context.blockFactory.addIR(IRSpillAll())
+        context.exitBlock()
+        context.blockFactory.addIR(IRJump(loopLabel))
+        context.blockFactory.enterSubBlock()
         context.blockFactory.addIR(IRLabel(skipLabel))
 
 @dataclass(frozen=True)

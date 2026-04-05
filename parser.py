@@ -20,6 +20,7 @@ def p_statement(p):
     statement : expression SEMI
               | function_definition
               | if_expression
+              | while_expression
     '''
     p[0] = p[1]
 
@@ -177,6 +178,12 @@ def p_if_expression(p):
     if_expression : IF LPARA value_expression RPARA block
     '''
     p[0] = If(p[3], p[5])
+
+def p_while_expression(p):
+    '''
+    while_expression : WHILE LPARA value_expression RPARA block
+    '''
+    p[0] = While(p[3], p[5])
 
 def p_block(p):
     'block : LCURL statement_list RCURL'

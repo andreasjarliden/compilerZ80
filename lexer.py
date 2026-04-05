@@ -4,7 +4,8 @@ reserved = {
         'return': 'RETURN',
         'char': 'CHAR',
         'int': 'INT',
-        'if': 'IF'
+        'if': 'IF',
+        'while': 'WHILE'
         }
 
 tokens = [
