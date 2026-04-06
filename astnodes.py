@@ -60,6 +60,17 @@ class Argument:
             return self.completeType
 
 
+@dataclass(frozen=True)
+class FunctionDeclaration:
+    type : str
+    name : str
+    arguments : tuple[Argument] = field(default_factory=list)
+
+    def visit(self, context):
+        # TODO, don't add self but a Function but without any statements
+        context.symbolTable.addSymbolEntry(self.name, self)
+
+
 class Function:
     def __init__(self, t, name, statements, arguments=[]):
         self.type = t

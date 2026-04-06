@@ -83,9 +83,20 @@ class TestParser(unittest.TestCase):
                          FunctionCall("foo",
                                       [ StringConstant(String("hello"))]))
 
+    #
+    # Function declaration
+    #
+    def test_functionDeclaration(self):
+        ast = parser.parse("char foo(char a, int b);")
+        blockFactory = BlockFactory()
+        context = ASTContext(blockFactory)
+        ast[0].visit(context)
+        foo = context.symbolTable.lookUp("foo")
+        self.assertEqual(foo, FunctionDeclaration("char", "foo", (Argument("char", "a"),
+                                                                  Argument("int", "b"))))
 
     #
-    # Function
+    # Function definition
     #
     def test_function_noStackFrame(self):
         ast = parser.parse("char foo() { return 0; }")

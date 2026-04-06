@@ -18,6 +18,7 @@ def p_statement_list(p):
 def p_statement(p):
     ''' 
     statement : expression SEMI
+              | function_declaration
               | function_definition
               | if_expression
               | while_expression
@@ -163,6 +164,16 @@ def p_function_expression_args(p):
     print(FunctionCall)
     p[0] = FunctionCall(p[1], p[3])
 
+def p_function_declaration_no_args(p):
+    'function_declaration : type ID LPARA RPARA SEMI'
+    node = FunctionDeclaration(p[1], p[2])
+    p[0] = node
+
+def p_function_declaration_args(p):
+    'function_declaration : type ID LPARA arg_list RPARA SEMI'
+    node = FunctionDeclaration(p[1], p[2], p[4])
+    p[0] = node
+
 def p_function_definition_no_args(p):
     'function_definition : type ID LPARA RPARA LCURL statement_list RCURL'
     node = Function(p[1], p[2], p[6])
@@ -207,11 +218,11 @@ def p_expr_list_multiple(p):
 
 def p_arg_list_single(p):
     'arg_list : arg'
-    p[0] = [p[1]]
+    p[0] = (p[1],)
 
 def p_arg_list_multiple(p):
     'arg_list : arg_list COMMA arg'
-    p[0] = p[1] + [p[3]]
+    p[0] = p[1] + (p[3],)
 
 def p_arg(p):
     'arg : type ID'

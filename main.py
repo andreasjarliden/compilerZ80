@@ -12,15 +12,14 @@ if __name__ == "__main__":
     asmWriter= AsmWriter(asmFile)
 
     symbolTable = SymbolTable()
-    # Add external functions
-    symbolTable.addSymbolEntry("printHex16", Function("void", "printHex16", [], [Argument("int", None)]))
-    symbolTable.addSymbolEntry("printHex8", Function("void", "printHex8", [], [Argument("char", None)]))
-    symbolTable.addSymbolEntry("puts", Function("void", "puts", [], [Argument("char*", None)]))
 
     print("Parsing")
     print("=======")
 
     ast = parser.parse("""
+    char printHex16(int n);
+    char printHex8(char n);
+    char puts(char c);
     int FOO;
     char main() {
         FOO = 42;
