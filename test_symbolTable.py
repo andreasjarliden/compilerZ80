@@ -84,3 +84,22 @@ class TestSymbolTable(unittest.TestCase):
         self.symbolTable.addSymbolEntry("a", aInner)
         self.assertEqual(self.symbolTable.allSymbols(), { aOuter, aInner })
 
+    def test_stackFrameSize(self):
+        self.assertEqual(stackFrameSize(self.symbolTable.currentSymbolTable()), 0)
+        s1 = SymEntry("char", "charValue");
+        s1.impl = StackAddress(-1)
+        self.symbolTable.addSymbolEntry("charValue", s1)
+        print(self.symbolTable.currentSymbolTable())
+        self.assertEqual(stackFrameSize(self.symbolTable.currentSymbolTable()), 1)
+        s2 = SymEntry("int", "intValue");
+        s2.impl = StackAddress(-3)
+        self.symbolTable.addSymbolEntry("intValue", s2)
+        self.assertEqual(stackFrameSize(self.symbolTable.currentSymbolTable()), 3)
+        # Function argument have positive offsets and shouldn't count
+        s3 = SymEntry("int", "funArgument");
+        s3.impl = StackAddress(8)
+        self.symbolTable.addSymbolEntry("funArgument", s3)
+        print()
+        self.assertEqual(stackFrameSize(self.symbolTable.currentSymbolTable()), 3)
+
+

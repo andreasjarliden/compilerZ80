@@ -2,14 +2,7 @@ from address import *
 from symEntry import *
 import registerAllocator
 from asmWriter import *
-
-# Size of all local stack variables
-def stackFrameSize(symbolTable):
-    smallestOffset = 0
-    for s in symbolTable.values():
-        if isinstance(s.impl, StackAddress):
-            smallestOffset = min(s.impl.offset, smallestOffset)
-    return -smallestOffset
+from symbolTable import stackFrameSize
 
 
 # members:
@@ -147,13 +140,12 @@ class IR:
 
 
 class IRDefFun(IR):
-    def __init__(self, function, stackFrameSize):
+    def __init__(self, function):
         super().__init__()
         self.function = function
-        self.stackFrameSize = stackFrameSize
 
     def extraDescription(self):
-        return f"{self.function} {self.stackFrameSize=}"
+        return f"{self.function}"
 
     def genCode(self, asmWriter):
         asmWriter.write(self.function.name + ":\n");
@@ -164,8 +156,8 @@ class IRDefFun(IR):
         asmWriter.write('\tadd\tIX, SP\n')
 
         # Reserve space for local variables
-        if self.stackFrameSize > 0:
-            negSize=65536-self.stackFrameSize
+        if self.function.frameSize > 0:
+            negSize=65536-self.function.frameSize
             negHexSize=f'{negSize:05x}h'
             asmWriter.write('\t; Reserve space for local variables\n')
             asmWriter.write(f'\tld\tHL, {negHexSize}\n')
@@ -175,16 +167,15 @@ class IRDefFun(IR):
         asmWriter.write('\t; Function content\n')
 
 class IRFunExit(IR):
-    def __init__(self, function, hasStackFrame):
+    def __init__(self, function):
         super().__init__()
         self.function = function
-        self.hasStackFrame = hasStackFrame
 
     def genCode(self, asmWriter):
         ra = registerAllocator.RA
         ra.spillAll()
         asmWriter.write(f"{self.function.name}_exit:\n")
-        if self.hasStackFrame:
+        if self.function.frameSize > 0:
             asmWriter.write('\t;Restore stack pointer (free local variables)\n')
             asmWriter.write(f'\tld\tSP, IX\n')
         asmWriter.write('\t;Restore previous frame pointer IX and return\n')
@@ -303,7 +294,6 @@ class IRArgument(IR):
         ra = registerAllocator.RA
         if self.exprAddr.type == "char":
             if isinstance(self.lhsAddr, Constant):
-                print(f"Arg {self.lhsAddr=}")
                 ra.loadInA(self.lhsAddr)
                 asmWriter.write(f'\tpush\taf\n')
             else:
@@ -329,7 +319,6 @@ class IRArgument(IR):
                 asmWriter.write(f'\tpush\taf\n')
         elif self.exprAddr.type == "int":
             if isinstance(self.lhsAddr, Constant):
-                print(f"Arg {self.lhsAddr=}")
                 ra.loadInHL(self.lhsAddr)
                 asmWriter.write(f'\tpush\thl\n')
             else:

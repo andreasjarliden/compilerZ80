@@ -173,12 +173,37 @@ class TestIntegration(unittest.TestCase):
                               }
                           }
                             """)
-        print(output);
         # Test spill before first label
         self.assertRegex(output, r"\tld\t\(ix \- 1\), .\nmain_l1:")
         # Test conditional jump to skip label
         self.assertRegex(output, r"\tjr\t., main_l2")
         # jump to loop label
         self.assertRegex(output, r"\tjp\tmain_l1\n")
+
+    def test_function_preamble_postamble(self):
+        output = compile("""char main() {
+                              char a=0;
+                          }
+                            """)
+        # ; Let IX be frame-pointer
+        # push    IX
+        # ld      IX, 0
+        # add     IX, SP
+        self.assertRegex(output, r"""push[ \t]+IX\n[ \t]+ld[ \t]+IX, 0\n[ \t]add[ \t]+IX, SP""")
+        # ; Reserve space for local variables
+        # ld      HL, 0ffffh
+        # add     HL, SP
+        # ld      SP, HL
+        self.assertRegex(output, r"ld[ \t]+HL, 0ffffh\n[ \t]+add[ \t]+HL, SP\n[ \t]ld[ \t]+SP, HL")
+        self.assertRegex(output, r"ld[ \t]+HL, 0ffffh\n[ \t]+add[ \t]+HL, SP\n[ \t]ld[ \t]+SP, HL")
+        # ;Restore stack pointer (free local variables)
+        # ld      SP, IX
+        self.assertRegex(output, r"ld[ \t]+SP, IX")
+        # ;Restore previous frame pointer IX and return
+        # pop     IX
+        # ret
+        self.assertRegex(output, r"pop\tIX\n\tret")
+
+
 
 

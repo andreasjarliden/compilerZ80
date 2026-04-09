@@ -19,11 +19,16 @@ if __name__ == "__main__":
     ast = parser.parse("""
     char printHex16(int n);
     char printHex8(char n);
-    char puts(char c);
-    int FOO;
+    char puts(char* s);
+    char foo(char arg1, int arg2) {
+        puts("First arg is ");
+        printHex8(arg1);
+        puts(" Second arg is ");
+        printHex16(arg2);
+        return arg1;
+    }
     char main() {
-        FOO = 42;
-        printHex16(FOO);
+        foo(1, 2);
         }
     """) 
 

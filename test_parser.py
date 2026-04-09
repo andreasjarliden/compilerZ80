@@ -105,21 +105,42 @@ class TestParser(unittest.TestCase):
         ast[0].visit(context)
         blocks = blockFactory.blocks()
         block = blocks["foo_0000"]
+        self.assertIsInstance(ast[0], Function)
+        self.assertEqual(ast[0].frameSize, 0)
         self.assertTrue(isinstance(block.statements[0], IRDefFun))
         self.assertEqual(block.statements[1], IRReturn("char", Constant("char", 0), "foo"))
         self.assertTrue(isinstance(block.statements[2], IRFunExit))
-        self.assertEqual(block.statements[2].hasStackFrame, False)
 
     def test_function_stackFrame(self):
-        ast = parser.parse("char foo() { int a; }")
+        ast = parser.parse("char foo(char arg) { int i; }")
         blockFactory = BlockFactory()
         context = ASTContext(blockFactory)
         ast[0].visit(context)
         blocks = blockFactory.blocks()
         block = blocks["foo_0000"]
+        self.assertEqual(ast[0].frameSize, 2)
         self.assertTrue(isinstance(block.statements[0], IRDefFun))
         self.assertTrue(isinstance(block.statements[1], IRFunExit))
-        self.assertEqual(block.statements[1].hasStackFrame, True)
+
+    def test_function_mapSymbols_byteArgs(self):
+        ast = parser.parse("char foo(char arg1, char arg2) { int iVar; char cVar; }")
+        blockFactory = BlockFactory()
+        context = ASTContext(blockFactory)
+        symbolTable = ast[0].visit(context)
+        self.assertEqual(symbolTable["arg1"].impl.offset, +5) # byte args are pushed as ints in the UPPER byte
+        self.assertEqual(symbolTable["arg2"].impl.offset, +7)
+        self.assertEqual(symbolTable["iVar"].impl.offset, -2) # (ix-2, ix-1)
+        self.assertEqual(symbolTable["cVar"].impl.offset, -3) # (ix-3)
+
+    def test_function_mapSymbols_mixedArgs(self):
+        ast = parser.parse("char foo(int arg1, char arg2) { char cVar; int iVar; }")
+        blockFactory = BlockFactory()
+        context = ASTContext(blockFactory)
+        symbolTable = ast[0].visit(context)
+        self.assertEqual(symbolTable["arg1"].impl.offset, +4) # First int arg at ix+4, ix+5
+        self.assertEqual(symbolTable["arg2"].impl.offset, +7) # second arg sent as ix+6, ix+7 with the value in IX+7
+        self.assertEqual(symbolTable["cVar"].impl.offset, -1) # (ix-1)
+        self.assertEqual(symbolTable["iVar"].impl.offset, -3) # (ix-3, ix-2)
 
     #
     # while
@@ -139,7 +160,6 @@ class TestParser(unittest.TestCase):
         ast[0].visit(context)
         blocks = context.blockFactory.blocks()
         block = blocks["main_0000"]
-        print(block)
         # self.assertTrue(False)
 
 

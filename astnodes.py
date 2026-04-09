@@ -94,12 +94,11 @@ class Function:
         context.symbolTable.pushFrame()
         context.functionName = self.name
         context.functionLabels = 0
-        # context.blockFactory.enterBlock(self.name, context.symbolTable.allSymbols())
         context.blockFactory.enterBlock(self.name)
         # return address is at ix+2, ix+3. Rightmost argument (16-bit) is at ix+5, ix+4
         # If pushing AF, then A is at ix+5
         offset = 4
-        for a in reversed(self.arguments):
+        for a in self.arguments:
             symEntry = SymEntry(a.completeType, a.name)
             if a.type == "int":
                 symEntry.impl = StackAddress(offset)
@@ -111,16 +110,16 @@ class Function:
             context.symbolTable.addSymbolEntry(a.name, symEntry)
             offset+=2
         symbolTable = context.symbolTable.currentSymbolTable()
-        frameSize = stackFrameSize(symbolTable)
-        context.blockFactory.addIR(IRDefFun(self, frameSize))
+        context.blockFactory.addIR(IRDefFun(self))
         for s in self.statements:
             s.visit(context)
         Function.mapSymbols(symbolTable)
-        hasStackFrame = len(symbolTable) > 0
-        context.blockFactory.addIR(IRFunExit(self, hasStackFrame))
+        self.frameSize = stackFrameSize(symbolTable)
+        context.blockFactory.addIR(IRFunExit(self))
         context.exitBlock()
         context.symbolTable.popFrame()
         context.functionName = None
+        return symbolTable # for testing
 
 @dataclass(frozen=True)
 class If:
