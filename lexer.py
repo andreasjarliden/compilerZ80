@@ -2,6 +2,7 @@ import ply.lex as lex
 
 reserved = {
         'return': 'RETURN',
+        'void': 'VOID',
         'char': 'CHAR',
         'int': 'INT',
         'if': 'IF',

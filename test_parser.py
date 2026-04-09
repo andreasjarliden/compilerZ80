@@ -87,12 +87,12 @@ class TestParser(unittest.TestCase):
     # Function declaration
     #
     def test_functionDeclaration(self):
-        ast = parser.parse("char foo(char a, int b);")
+        ast = parser.parse("void foo(char a, int b);")
         blockFactory = BlockFactory()
         context = ASTContext(blockFactory)
         ast[0].visit(context)
         foo = context.symbolTable.lookUp("foo")
-        self.assertEqual(foo, FunctionDeclaration("char", "foo", (Argument("char", "a"),
+        self.assertEqual(foo, FunctionDeclaration("void", "foo", (Argument("char", "a"),
                                                                   Argument("int", "b"))))
 
     #
@@ -161,5 +161,3 @@ class TestParser(unittest.TestCase):
         blocks = context.blockFactory.blocks()
         block = blocks["main_0000"]
         # self.assertTrue(False)
-
-

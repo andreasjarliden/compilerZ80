@@ -127,6 +127,7 @@ def p_type(p):
 def p_base_type(p):
     '''base_type : CHAR
                  | INT
+                 | VOID
     '''
     p[0] = p[1]
 
