@@ -4,6 +4,12 @@ from address import Constant
 from astnodes import *
 import sys
 
+def loc(p, i=1):
+    return Location(
+        file=p.lexer.file,
+        line=p.lineno(i),
+    )
+
 # Start symbol at the top
 def p_statement_list(p):
     '''
@@ -156,14 +162,12 @@ def p_return_expression(p):
 
 def p_function_expression_no_args(p):
     'function_expression : ID LPARA RPARA'
-    p[0] = FunctionCall(p[1])
+    p[0] = FunctionCall(p[1], location=loc(p))
 
 def p_function_expression_args(p):
     'function_expression : ID LPARA expr_list RPARA'
-    print(p[1])
-    print(p[3])
-    print(FunctionCall)
-    p[0] = FunctionCall(p[1], p[3])
+    loc(p, 1)
+    p[0] = FunctionCall(p[1], p[3], location=loc(p))
 
 def p_function_declaration_no_args(p):
     'function_declaration : type ID LPARA RPARA SEMI'
@@ -177,12 +181,12 @@ def p_function_declaration_args(p):
 
 def p_function_definition_no_args(p):
     'function_definition : type ID LPARA RPARA LCURL statement_list RCURL'
-    node = Function(p[1], p[2], p[6])
+    node = Function(p[1], p[2], p[6], loc(p))
     p[0] = node
 
 def p_function_definition_args(p):
     'function_definition : type ID LPARA arg_list RPARA LCURL statement_list RCURL'
-    node = Function(p[1], p[2], p[7], p[4])
+    node = Function(p[1], p[2], p[7], loc(p), p[4])
     p[0] = node
 
 def p_if_expression(p):
@@ -195,7 +199,7 @@ def p_while_expression(p):
     '''
     while_expression : WHILE LPARA value_expression RPARA block
     '''
-    p[0] = While(p[3], p[5])
+    p[0] = While(p[3], p[5], loc(p))
 
 def p_block(p):
     'block : LCURL statement_list RCURL'
@@ -231,9 +235,11 @@ def p_arg(p):
 
 def p_error(p):
     if p:
-        print(f"Parse error: {p.value} {p}")
+        file = p.lexer.file
+        line = p.lineno
+        print(f"{file}:{line} error: Syntax error {p}")
     else:
-        print("Unexpected end of file");
+        print(f"{file}:{line} error: Unexpected end of file")
     sys.exit(1);
 
 def p_constant_number(p):
@@ -246,6 +252,6 @@ def p_constant_string(p):
     '''
     constant : STRING
     '''
-    p[0] = String(p[1][1:-1])
+    p[0] = String(p[1][1:-1], loc(p, 1))
 
 parser = yacc.yacc()

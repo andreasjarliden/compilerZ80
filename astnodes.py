@@ -36,8 +36,14 @@ def createLabel(context):
     return f"{context.functionName}_l{context.functionLabels}"
 
 @dataclass(frozen=True)
+class Location:
+    file : str = None
+    line : int = 1
+
+@dataclass(frozen=True)
 class String:
     string : str
+    location : Location = field(default_factory=Location, compare=False)
 
 @dataclass(frozen=True)
 class Variable:
@@ -72,10 +78,11 @@ class FunctionDeclaration:
 
 
 class Function:
-    def __init__(self, t, name, statements, arguments=[]):
+    def __init__(self, t, name, statements, location, arguments=[]):
         self.type = t
         self.name = name
         self.statements = statements
+        self.location = location
         self.arguments = arguments
 
     def __repr__(self):
@@ -149,6 +156,7 @@ class If:
 class While:
     expr : Any
     statements : list
+    location : Location
 
     def visit(self, context):
         ra = registerAllocator.RA
@@ -266,22 +274,27 @@ class Dereference:
 class FunctionCall:
     name : str
     arguments : list[Argument] = field(default_factory=list)
+    location : Location = field(default_factory=Location, compare=False)
 
     def __post_init__(self):
         self.storeResult = False
 
     def visit(self, context):
-        self.type = context.symbolTable.lookUp(self.name).type
-        for a in reversed(self.arguments):
-            exprAddress = a.visit(context)
-            context.blockFactory.addIR(IRArgument(exprAddress))
-        if self.storeResult:
-            irfuncall = IRFunCall(self.type, self.name, len(self.arguments), addr=context.symbolTable.addTemporary(self.type))
-            context.blockFactory.addIR(irfuncall)
-            return irfuncall.resultAddr
-        else:
-            irfuncall = IRFunCall(self.type, self.name, len(self.arguments))
-            context.blockFactory.addIR(irfuncall)
+        try:
+            self.type = context.symbolTable.lookUp(self.name).type
+            for a in reversed(self.arguments):
+                exprAddress = a.visit(context)
+                context.blockFactory.addIR(IRArgument(exprAddress))
+            if self.storeResult:
+                irfuncall = IRFunCall(self.type, self.name, len(self.arguments), addr=context.symbolTable.addTemporary(self.type))
+                context.blockFactory.addIR(irfuncall)
+                return irfuncall.resultAddr
+            else:
+                irfuncall = IRFunCall(self.type, self.name, len(self.arguments))
+                context.blockFactory.addIR(irfuncall)
+        except Exception as e:
+            print(f"Error in function call {self} line {self.location.file}:{self.location.line}")
+
 
 @dataclass(frozen=True)
 class Return:

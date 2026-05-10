@@ -1,3 +1,6 @@
+- Proper handling of char and int types, including constants.
+- Add structs
+- Add c library for rom functions.
 - Rename address.py
 - Store live in IR again and update a complete list when traversing the IRs
   during generation.

@@ -1,7 +1,4 @@
 #!/usr/bin/env bash
-
 SCRIPT_DIR="$(dirname "$0")"
-echo SCRIPT_DIR $SCRIPT_DIR
-
 exec "$SCRIPT_DIR/venv/bin/python3" "$SCRIPT_DIR/ccz80.py" "$@"
 
