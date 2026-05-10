@@ -40,10 +40,7 @@ class SymbolTable:
 def stackFrameSize(frame):
     smallestOffset = 0
     for s in frame.values():
-        print(f"stackFrameSize checking {s=}")
         if isinstance(s.impl, StackAddress):
-            print(f"stackFrameSize checking {s.impl.offset=} {smallestOffset=}")
             smallestOffset = min(s.impl.offset, smallestOffset)
-            print(f"stackFrameSize {smallestOffset=}")
     return -smallestOffset
 

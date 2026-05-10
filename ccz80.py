@@ -10,7 +10,6 @@ argParser = argparse.ArgumentParser()
 
 argParser.add_argument('filename')
 
-print(__name__)
 if __name__ == '__main__':
     args = argParser.parse_args()
     inputPath = pathlib.Path(args.filename)

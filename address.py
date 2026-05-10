@@ -54,7 +54,6 @@ class StringConstant(Constant):
             symbol.impl = GlobalAddress(name)
             context.symbolTable.addSymbolEntry(name, symbol)
             context.dataSegment[symbol] = self._value
-        print(f"Adding string {symbol.name} equal to {self._value} in dataSegment")
         return symbol
 
 
