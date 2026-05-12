@@ -4,6 +4,7 @@ from compiler import astToThreeCode, updateLive, genCode, genDataSegment
 from asmWriter import AsmWriter
 from io import StringIO
 from astnodes import ASTContext
+from error import CompileError
 
 def compile(code):
     asmWriter = AsmWriter(StringIO())
@@ -203,6 +204,16 @@ class TestIntegration(unittest.TestCase):
         # pop     IX
         # ret
         self.assertRegex(output, r"pop\tIX\n\tret")
+
+    def test_error_missingFunction(self):
+        with self.assertRaises(CompileError) as ctx:
+            output = compile("""char main() {
+                                foo();
+                                return 0;
+                              }""")
+        self.assertEqual(ctx.exception.location.line, 2) 
+        self.assertEqual(ctx.exception.message, "Error in function call") 
+
 
 
 

@@ -2,6 +2,7 @@ from lexer import tokens
 import ply.yacc as yacc
 from address import Constant
 from astnodes import *
+from error import Location
 import sys
 
 def loc(p, i=1):

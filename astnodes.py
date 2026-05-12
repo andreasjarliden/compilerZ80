@@ -3,6 +3,7 @@ from typing import Any
 from ir import *
 from symbolTable import *
 from blocks import BlockFactory
+from error import Location, CompileError
 import symbolTable
 import registerAllocator
 
@@ -34,11 +35,6 @@ class ASTContext:
 def createLabel(context):
     context.functionLabels += 1
     return f"{context.functionName}_l{context.functionLabels}"
-
-@dataclass(frozen=True)
-class Location:
-    file : str = None
-    line : int = 1
 
 @dataclass(frozen=True)
 class String:
@@ -293,7 +289,7 @@ class FunctionCall:
                 irfuncall = IRFunCall(self.type, self.name, len(self.arguments))
                 context.blockFactory.addIR(irfuncall)
         except Exception as e:
-            print(f"Error in function call {self} line {self.location.file}:{self.location.line}")
+            raise CompileError("Error in function call", self.location) from e
 
 
 @dataclass(frozen=True)
