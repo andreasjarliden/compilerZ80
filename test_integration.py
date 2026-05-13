@@ -1,5 +1,6 @@
 import unittest
 from parser import parser
+from lexer import lexer
 from compiler import astToThreeCode, updateLive, genCode, genDataSegment
 from asmWriter import AsmWriter
 from io import StringIO
@@ -7,6 +8,7 @@ from astnodes import ASTContext
 from error import CompileError
 
 def compile(code):
+    lexer.lineno = 1
     asmWriter = AsmWriter(StringIO())
     ast = parser.parse(code)
     astContext = ASTContext()
