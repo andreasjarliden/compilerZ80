@@ -304,21 +304,24 @@ class FunctionCall(MutableASTNode):
         self.storeResult = True
 
     def visit(self, context):
-        try:
-            # TODO mutates!
-            self.type = context.symbolTable.lookUp(self.name).type
-            for a in reversed(self.arguments):
-                exprAddress = a.visit(context)
-                context.blockFactory.addIR(IRArgument(exprAddress))
-            if self.storeResult:
-                irfuncall = IRFunCall(self.type, self.name, len(self.arguments), addr=context.symbolTable.addTemporary(self.type))
-                context.blockFactory.addIR(irfuncall)
-                return irfuncall.resultAddr
-            else:
-                irfuncall = IRFunCall(self.type, self.name, len(self.arguments))
-                context.blockFactory.addIR(irfuncall)
-        except Exception as e:
-            raise CompileError("Error in function call", self.location) from e
+        # TODO mutates! Probably needless as the type is handled by resultAddr
+        print(f"lookup of {self.name} {context.symbolTable.lookUp(self.name)}")
+        fun = context.symbolTable.lookUp(self.name)
+        if not fun:
+            raise CompileError(f"Attempting to call unknown {self.name}", self.location)
+        if not isinstance(fun, Function):
+            raise CompileError(f"Attempting to call non-function {self.name}", self.location)
+        self.type = context.symbolTable.lookUp(self.name).type
+        for a in reversed(self.arguments):
+            exprAddress = a.visit(context)
+            context.blockFactory.addIR(IRArgument(exprAddress))
+        if self.storeResult:
+            irfuncall = IRFunCall(self.type, self.name, len(self.arguments), addr=context.symbolTable.addTemporary(self.type))
+            context.blockFactory.addIR(irfuncall)
+            return irfuncall.resultAddr
+        else:
+            irfuncall = IRFunCall(self.type, self.name, len(self.arguments))
+            context.blockFactory.addIR(irfuncall)
 
 
 @dataclass(frozen=True)

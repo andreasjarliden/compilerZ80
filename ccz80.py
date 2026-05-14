@@ -41,6 +41,6 @@ if __name__ == '__main__':
         genCode(blocks, asmWriter)
         genDataSegment(dataSegment, asmWriter)
     except CompileError as e:
-        print(f"{e.location.file}:{e.location.line}:{e.message}", file=sys.stderr)
+        print(f"{e.location.file}:{e.location.line}: error: {e.message}", file=sys.stderr)
         outputPath.unlink(missing_ok=True)
         sys.exit(1)
