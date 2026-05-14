@@ -181,12 +181,12 @@ def p_function_declaration_args(p):
 
 def p_function_definition_no_args(p):
     'function_definition : type ID LPARA RPARA LCURL statement_list RCURL'
-    node = Function(p[1], p[2], p[6], location=loc(p))
+    node = FunctionDefinition(p[1], p[2], p[6], location=loc(p))
     p[0] = node
 
 def p_function_definition_args(p):
     'function_definition : type ID LPARA arg_list RPARA LCURL statement_list RCURL'
-    node = Function(p[1], p[2], p[7], p[4], location=loc(p))
+    node = FunctionDefinition(p[1], p[2], p[7], p[4], location=loc(p))
     p[0] = node
 
 def p_if_expression(p):

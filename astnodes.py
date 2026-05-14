@@ -75,7 +75,12 @@ class Argument(ASTNode):
 
 
 @dataclass(frozen=True)
-class FunctionDeclaration(ASTNode):
+class Function(ASTNode):
+    pass
+
+
+@dataclass(frozen=True)
+class FunctionDeclaration(Function):
     type : str
     name : str
     arguments : tuple[Argument] = field(default_factory=list)
@@ -85,7 +90,7 @@ class FunctionDeclaration(ASTNode):
         context.symbolTable.addSymbolEntry(self.name, self)
 
 
-class Function(ASTNode):
+class FunctionDefinition(Function):
     def __init__(self, t, name, statements, arguments=[], *, location):
         super().__init__(location=location)
         self.type = t
@@ -94,7 +99,7 @@ class Function(ASTNode):
         self.arguments = arguments
 
     def __repr__(self):
-        return "Function " + self.name + " with statements " + str(self.statements)
+        return "FunctionDefinition " + self.name + " with statements " + str(self.statements)
 
     def mapSymbols(symbolTable):
         # stack pointer points to last byte written, so first variable starts at one byte below SP
@@ -128,7 +133,8 @@ class Function(ASTNode):
         context.blockFactory.addIR(IRDefFun(self))
         for s in self.statements:
             s.visit(context)
-        Function.mapSymbols(symbolTable)
+        FunctionDefinition.mapSymbols(symbolTable)
+        # TODO mutable state
         self.frameSize = stackFrameSize(symbolTable)
         context.blockFactory.addIR(IRFunExit(self))
         context.exitBlock()
@@ -309,6 +315,8 @@ class FunctionCall(MutableASTNode):
             raise CompileError(f"Attempting to call unknown {self.name}", self.location)
         if not isinstance(fun, Function):
             raise CompileError(f"Attempting to call non-function {self.name}", self.location)
+        if len(fun.arguments) != len(self.arguments):
+            raise CompileError(f"Attempting to call function {self.name} with {len(self.arguments)} arguments but expected {len(fun.arguments)}", self.location)
         for a in reversed(self.arguments):
             exprAddress = a.visit(context)
             context.blockFactory.addIR(IRArgument(exprAddress))

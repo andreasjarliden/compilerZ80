@@ -105,7 +105,7 @@ class TestParser(unittest.TestCase):
         ast[0].visit(context)
         blocks = blockFactory.blocks()
         block = blocks["foo_0000"]
-        self.assertIsInstance(ast[0], Function)
+        self.assertIsInstance(ast[0], FunctionDefinition)
         self.assertEqual(ast[0].frameSize, 0)
         self.assertTrue(isinstance(block.statements[0], IRDefFun))
         self.assertEqual(block.statements[1], IRReturn("char", Constant("char", 0), "foo"))
