@@ -101,7 +101,6 @@ class TestIntegration(unittest.TestCase):
                 main(FOO);
                 FOO = "bar";
             }""")
-        print(output)
         # Loading original FOO
         self.assertRegex(output, r"ld\t(bc|de|hl), FOO\n\tpush\t(bc|de|hl)")
         # Loading new value
@@ -184,6 +183,7 @@ class TestIntegration(unittest.TestCase):
         # pop     IX
         # ret
         self.assertRegex(output, r"pop\tIX\n\tret")
+
 
 
 

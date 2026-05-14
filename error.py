@@ -8,4 +8,4 @@ class Location:
 @dataclass(frozen=True)
 class CompileError(Exception):
     message : str
-    location : Location = field(default=Location)
+    location : Location

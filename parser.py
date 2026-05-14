@@ -1,8 +1,8 @@
-from lexer import tokens
+from lexer import tokens, lexer
 import ply.yacc as yacc
 from address import Constant
 from astnodes import *
-from error import Location
+from error import Location, CompileError
 import sys
 
 def loc(p, i=1):
@@ -114,7 +114,7 @@ def p_primary_fun_call(p):
     primary : function_expression
     '''
     f = p[1]
-    f.storeResult = True
+    f.setStoreResult()
     p[0] = p[1]
 
 def p_variable_definition_expression(p):
@@ -151,7 +151,7 @@ def p_pointers_more(p):
 
 def p_variable_assignment_expression(p):
     'var_assign_expression : lvalue ASSIGN value_expression'
-    p[0] = VariableAssignment(p[1], p[3])
+    p[0] = VariableAssignment(p[1], p[3], location=loc(p, 2))
 
 def p_ptr_assignment_expression(p):
     'ptr_assign_expression : ptrlvalue ASSIGN value_expression'
@@ -167,7 +167,6 @@ def p_function_expression_no_args(p):
 
 def p_function_expression_args(p):
     'function_expression : ID LPARA expr_list RPARA'
-    loc(p, 1)
     p[0] = FunctionCall(p[1], p[3], location=loc(p))
 
 def p_function_declaration_no_args(p):
@@ -182,12 +181,12 @@ def p_function_declaration_args(p):
 
 def p_function_definition_no_args(p):
     'function_definition : type ID LPARA RPARA LCURL statement_list RCURL'
-    node = Function(p[1], p[2], p[6], loc(p))
+    node = Function(p[1], p[2], p[6], location=loc(p))
     p[0] = node
 
 def p_function_definition_args(p):
     'function_definition : type ID LPARA arg_list RPARA LCURL statement_list RCURL'
-    node = Function(p[1], p[2], p[7], loc(p), p[4])
+    node = Function(p[1], p[2], p[7], p[4], location=loc(p))
     p[0] = node
 
 def p_if_expression(p):
@@ -200,7 +199,7 @@ def p_while_expression(p):
     '''
     while_expression : WHILE LPARA value_expression RPARA block
     '''
-    p[0] = While(p[3], p[5], loc(p))
+    p[0] = While(p[3], p[5], location=loc(p))
 
 def p_block(p):
     'block : LCURL statement_list RCURL'
@@ -238,10 +237,9 @@ def p_error(p):
     if p:
         file = p.lexer.file
         line = p.lineno
-        print(f"{file}:{line} error: Syntax error {p}")
+        raise CompileError(f"Syntax error {p}", Location(file, line))
     else:
-        print(f"{file}:{line} error: Unexpected end of file")
-    sys.exit(1);
+        raise CompileError(f"Unexpected end of file", Location(lexer.file, lexer.lineno))
 
 def p_constant_number(p):
     '''
@@ -253,6 +251,6 @@ def p_constant_string(p):
     '''
     constant : STRING
     '''
-    p[0] = String(p[1][1:-1], loc(p, 1))
+    p[0] = String(p[1][1:-1], location=loc(p, 1))
 
 parser = yacc.yacc()

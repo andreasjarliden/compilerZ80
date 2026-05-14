@@ -24,7 +24,6 @@ class TestStringConstant(unittest.TestCase):
         c = StringConstant("foo")
         context = ASTContext()
         c.visit(context)
-        print(context.dataSegment)
         self.assertEqual(len(context.dataSegment), 1)
         self.assertEqual(list(context.dataSegment.values()), ["foo"])
 
@@ -34,7 +33,6 @@ class TestStringConstant(unittest.TestCase):
         context = ASTContext()
         c1.visit(context)
         c2.visit(context)
-        print(context.dataSegment)
         self.assertEqual(len(context.dataSegment), 1)
         self.assertEqual(list(context.dataSegment.values()), ["foo"])
 
@@ -89,7 +87,6 @@ class TestSymbolTable(unittest.TestCase):
         s1 = SymEntry("char", "charValue");
         s1.impl = StackAddress(-1)
         self.symbolTable.addSymbolEntry("charValue", s1)
-        print(self.symbolTable.currentSymbolTable())
         self.assertEqual(stackFrameSize(self.symbolTable.currentSymbolTable()), 1)
         s2 = SymEntry("int", "intValue");
         s2.impl = StackAddress(-3)
@@ -99,7 +96,6 @@ class TestSymbolTable(unittest.TestCase):
         s3 = SymEntry("int", "funArgument");
         s3.impl = StackAddress(8)
         self.symbolTable.addSymbolEntry("funArgument", s3)
-        print()
         self.assertEqual(stackFrameSize(self.symbolTable.currentSymbolTable()), 3)
 
 

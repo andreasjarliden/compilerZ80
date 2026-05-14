@@ -1,8 +1,7 @@
 import unittest
-import compiler
-from blocks import BasicBlock, SingleBlockFactory
-from parser import *
-from pprint import *
+from testutilities import compileBlockToIR
+from symbolTable import SymbolTable
+from astnodes import *
 
 
 # TODO live should describe the liveness AT the instruction, so we now if it is
@@ -12,14 +11,7 @@ class TestLiveness(unittest.TestCase):
         self.symbolTable = SymbolTable()
 
     def compileBlockToIR(self, code):
-        ast = parser.parse(code)
-        blockFactory = SingleBlockFactory()
-        block = blockFactory.block
-        astContext = ASTContext(blockFactory = blockFactory, symbolTable = self.symbolTable)
-        blocks, _ = compiler.astToThreeCode(ast, astContext)
-        block.exitSymbols = self.symbolTable.allSymbols()
-        compiler.updateLive(blocks)
-        return block.statements
+        return compileBlockToIR(code, self.symbolTable)
 
     def isLive(self, irs, v):
         return irs.live[self.symbolTable.lookUp(v)]
@@ -37,7 +29,6 @@ B=A+1;""")
         self.assertEqual(type(irs[3]), IRAssign)
         self.assertFalse(self.isLive(irs[0], "A")) # A=1
         self.assertFalse(self.isLive(irs[1], "A")) # A=2
-        pprint(irs)
         self.assertTrue(self.isLive(irs[3], "A")) # B=A+1
 
     def test_2(self):
@@ -56,3 +47,29 @@ A=2;""")
         self.assertFalse(self.isLive(irs[2], "A")) # B=A+1
         self.assertFalse(self.isLive(irs[3], "A")) # A=2
         self.assertTrue(self.isLive(irs[3], "B")) # A=2
+
+class TestErrorHandling(unittest.TestCase):
+    def test_conflictingTypes(self):
+        with self.assertRaises(CompileError) as cts:
+            compileBlockToIR("""char a;
+                    int *p;
+                    p = a;""")
+        self.assertEqual(cts.exception.message, "Can't assign int* from char")
+        self.assertEqual(cts.exception.location.line, 3)
+
+    def test_syntaxError(self):
+        with self.assertRaises(CompileError) as cts:
+            compileBlockToIR("""// comment
+            =;""")
+        self.assertIn("Syntax error", cts.exception.message)
+        self.assertEqual(cts.exception.location.line, 2)
+
+    def test_UnexpectedEnd(self):
+        with self.assertRaises(CompileError) as cts:
+            compileBlockToIR("""// line 1
+            // line 2
+            void foo(""")
+        self.assertIn("Unexpected end of file", cts.exception.message)
+        self.assertEqual(cts.exception.location.line, 3)
+
+

@@ -36,20 +36,32 @@ def createLabel(context):
     context.functionLabels += 1
     return f"{context.functionName}_l{context.functionLabels}"
 
-@dataclass(frozen=True)
-class String:
-    string : str
-    location : Location = field(default_factory=Location, compare=False)
 
 @dataclass(frozen=True)
-class Variable:
+class ASTNode:
+    location : Location = field(default_factory=Location, compare=False, kw_only=True)
+
+
+@dataclass
+class MutableASTNode:
+    location : Location = field(default_factory=Location, compare=False, kw_only=True)
+
+
+@dataclass(frozen=True)
+class String(ASTNode):
+    string : str
+
+
+@dataclass(frozen=True)
+class Variable(ASTNode):
     name : str
 
     def visit(self, context):
         return context.symbolTable.lookUp(self.name)
 
+
 @dataclass(frozen=True)
-class Argument:
+class Argument(ASTNode):
     completeType : Any
     name : str
 
@@ -63,7 +75,7 @@ class Argument:
 
 
 @dataclass(frozen=True)
-class FunctionDeclaration:
+class FunctionDeclaration(ASTNode):
     type : str
     name : str
     arguments : tuple[Argument] = field(default_factory=list)
@@ -73,12 +85,12 @@ class FunctionDeclaration:
         context.symbolTable.addSymbolEntry(self.name, self)
 
 
-class Function:
-    def __init__(self, t, name, statements, location, arguments=[]):
+class Function(ASTNode):
+    def __init__(self, t, name, statements, arguments=[], *, location):
+        super().__init__(location=location)
         self.type = t
         self.name = name
         self.statements = statements
-        self.location = location
         self.arguments = arguments
 
     def __repr__(self):
@@ -124,8 +136,9 @@ class Function:
         context.functionName = None
         return symbolTable # for testing
 
+
 @dataclass(frozen=True)
-class If:
+class If(ASTNode):
     expr : Any
     statements : list
 
@@ -148,11 +161,11 @@ class If:
         context.blockFactory.enterSubBlock()
         context.blockFactory.addIR(IRLabel(skipLabel))
 
+
 @dataclass(frozen=True)
-class While:
+class While(ASTNode):
     expr : Any
     statements : list
-    location : Location
 
     def visit(self, context):
         ra = registerAllocator.RA
@@ -180,8 +193,9 @@ class While:
         context.blockFactory.enterSubBlock()
         context.blockFactory.addIR(IRLabel(skipLabel))
 
+
 @dataclass(frozen=True)
-class VariableDefinition:
+class VariableDefinition(ASTNode):
     completeType : Any
     name : str
     value : Any = None # TODO rename to rhs?
@@ -218,19 +232,29 @@ class VariableDefinition:
                 rhsAddr = self.value.visit(context)
                 context.blockFactory.addIR(IRAssign(symbol, rhsAddr))
 
+def isConvertableTo(fromType, toType):
+    if fromType == toType:
+        return True
+    if fromType == "char" and toType == "int":
+        return True
+    return False
+
 
 @dataclass(frozen=True)
-class VariableAssignment:
+class VariableAssignment(ASTNode):
     lvalue : Any
     rhs : Any
 
     def visit(self, context):
         lvalue = self.lvalue.visit(context)
         rhsAddr = self.rhs.visit(context)
+        if not isConvertableTo(rhsAddr.completeType, lvalue.completeType):
+            raise CompileError(f"Can't assign {lvalue.completeType} from {rhsAddr.completeType}", self.location)
         context.blockFactory.addIR(IRAssign(lvalue, rhsAddr))
 
+
 @dataclass(frozen=True)
-class DerefPointerAssignment:
+class DerefPointerAssignment(ASTNode):
     lvalue : Any
     rhs : Any
 
@@ -241,7 +265,7 @@ class DerefPointerAssignment:
 
 
 @dataclass(frozen=True)
-class AddressOf:
+class AddressOf(ASTNode):
     expr : Any
 
     def visit(self, context):
@@ -250,8 +274,9 @@ class AddressOf:
         context.blockFactory.addIR(irAddressOf)
         return irAddressOf.resultAddr
 
+
 @dataclass(frozen=True)
-class Dereference:
+class Dereference(ASTNode):
     expr : Any
 
     def visit(self, context):
@@ -266,17 +291,21 @@ class Dereference:
         deref.resultAddr.impl = PointerAddress(pointer)
         return deref.resultAddr
 
+
 @dataclass
-class FunctionCall:
+class FunctionCall(MutableASTNode):
     name : str
     arguments : list[Argument] = field(default_factory=list)
-    location : Location = field(default_factory=Location, compare=False)
 
     def __post_init__(self):
         self.storeResult = False
 
+    def setStoreResult(self):
+        self.storeResult = True
+
     def visit(self, context):
         try:
+            # TODO mutates!
             self.type = context.symbolTable.lookUp(self.name).type
             for a in reversed(self.arguments):
                 exprAddress = a.visit(context)
@@ -293,7 +322,7 @@ class FunctionCall:
 
 
 @dataclass(frozen=True)
-class Return:
+class Return(ASTNode):
     expr : Any
 
     def visit(self, context):
@@ -301,8 +330,9 @@ class Return:
         exprAddress = self.expr.visit(context)
         context.blockFactory.addIR(IRReturn(t, exprAddress, context.functionName))
 
+
 @dataclass(frozen=True)
-class Add:
+class Add(ASTNode):
     lhs : Any
     rhs : Any
 
@@ -314,8 +344,9 @@ class Add:
         context.blockFactory.addIR(irAdd)
         return irAdd.resultAddr
 
+
 @dataclass(frozen=True)
-class Relation:
+class Relation(ASTNode):
     operation : str
     lhs : Any
     rhs : Any

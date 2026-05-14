@@ -66,7 +66,6 @@ class TestIR(unittest.TestCase):
         ira.live[self.bar] = False # Not necessary to spill bar
         ira.live[self.baz] = True
         registerAllocator.RA.currentInstruction = ira
-        print(registerAllocator.RA)
         ira.genCode(self.asmWriter)
 
         self.asmWriter.seek(0)
@@ -223,7 +222,6 @@ class TestIR(unittest.TestCase):
 
         self.asmWriter.seek(0)
         output = self.asmWriter.read()
-        print(output)
         # ld a, (global) # Must load (global) to A and transfer it
         # ld <reg>, a
         # add a, <reg>
