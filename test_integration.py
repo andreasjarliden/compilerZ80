@@ -27,6 +27,7 @@ class TestIntegration(unittest.TestCase):
             char main() {
                 FOO=1;
             }""")
+        print(output)
         self.assertRegex(output, r"ld\t(bc|de|hl), 1")
         self.assertRegex(output, r"ld\t\(FOO\), (bc|de|hl)")
         self.assertRegex(output, r"FOO:\t.int16\t0")
@@ -183,7 +184,4 @@ class TestIntegration(unittest.TestCase):
         # pop     IX
         # ret
         self.assertRegex(output, r"pop\tIX\n\tret")
-
-
-
 

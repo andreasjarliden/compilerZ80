@@ -44,11 +44,11 @@ def p_expression(p):
 
 def p_lvalue(p):
     'lvalue : ID'
-    p[0] = Variable(p[1])
+    p[0] = Variable(p[1], location=loc(p))
 
 def p_ptrlvalue(p):
     'ptrlvalue : STAR ID'
-    p[0] = Variable(p[2])
+    p[0] = Variable(p[2], location=loc(p, 2))
 
 def p_value_expression(p):
     'value_expression : comparisson'
@@ -107,7 +107,7 @@ def p_primary_variable(p):
     '''
     primary : ID
     '''
-    p[0] = Variable(p[1])
+    p[0] = Variable(p[1], location=loc(p))
 
 def p_primary_fun_call(p):
     '''

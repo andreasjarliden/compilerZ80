@@ -14,6 +14,7 @@ class TestIR(unittest.TestCase):
         self.baz = SymEntry("char", "baz")
         self.ptr = SymEntry("int*", "ptr")
         self.derefPtr = SymEntry("char", "derefPtr")
+        self.foo.impl = StackAddress(1)
         self.bar.impl = StackAddress(2)
         self.baz.impl = StackAddress(3)
         self.ptr.impl = StackAddress(4)
@@ -229,6 +230,41 @@ class TestIR(unittest.TestCase):
         self.assertRegex(output, r"\tld\t., a")
         self.assertIn("\tld\ta, (ix + 2)", output)
         self.assertRegex(output, r"\tadd\ta, .")
+
+    def test_IRPromote_inRegister(self):
+        registerAllocator.RA.loadedSymbolInRegister(self.foo, "a")
+
+        # foo16 = (int)foo
+        ira = ir.IRPromote(self.foo16, self.foo, self.foo16.type)
+        ira.live[self.foo] = True
+        ira.live[self.foo16] = True
+        registerAllocator.RA.currentInstruction = ira
+        ira.genCode(self.asmWriter)
+
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
+        r = registerAllocator.RA.isInRegister(self.foo16)
+        r_hi = r[0]
+        r_lo = r[1]
+        self.assertIn(f"\tld\t{r_hi}, 0\n", output)
+        self.assertIn(f"\tld\t{r_lo}, a\n", output)
+
+    def test_IRPromote_inMemory(self):
+        # foo16 = (int)foo
+        ira = ir.IRPromote(self.foo16, self.foo, self.foo16.type)
+        ira.live[self.foo] = True
+        ira.live[self.foo16] = True
+        registerAllocator.RA.currentInstruction = ira
+        ira.genCode(self.asmWriter)
+
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
+        r = registerAllocator.RA.isInRegister(self.foo16)
+        r_hi = r[0]
+        r_lo = r[1]
+        self.assertIn(f"\tld\t{r_hi}, 0\n", output)
+        self.assertIn(f"\tld\t{r_lo}, (ix + 1)\n", output)
+
 
 
 

@@ -41,6 +41,17 @@ def createLabel(context):
 class ASTNode:
     location : Location = field(default_factory=Location, compare=False, kw_only=True)
 
+    def promoteIfNeededTo(self, rhsAddr, toType, context, operation):
+        if not isConvertableTo(rhsAddr.completeType, toType):
+            raise CompileError(f"Can't convert {rhsAddr.completeType} to {toType} in {operation}", self.location)
+        if rhsAddr.completeType != toType:
+            temp = context.symbolTable.addTemporary(toType)
+            context.blockFactory.addIR(IRPromote(
+                temp,
+                rhsAddr,
+                toType))
+            return temp
+        return rhsAddr
 
 @dataclass
 class MutableASTNode:
@@ -57,7 +68,10 @@ class Variable(ASTNode):
     name : str
 
     def visit(self, context):
-        return context.symbolTable.lookUp(self.name)
+        s = context.symbolTable.lookUp(self.name)
+        if not s:
+            raise CompileError(f"Attempting to reference unknown {self.name}", self.location)
+        return s
 
 
 @dataclass(frozen=True)
@@ -246,6 +260,8 @@ def isConvertableTo(fromType, toType):
     return False
 
 
+
+
 @dataclass(frozen=True)
 class VariableAssignment(ASTNode):
     lvalue : Any
@@ -253,9 +269,17 @@ class VariableAssignment(ASTNode):
 
     def visit(self, context):
         lvalue = self.lvalue.visit(context)
-        rhsAddr = self.rhs.visit(context)
-        if not isConvertableTo(rhsAddr.completeType, lvalue.completeType):
-            raise CompileError(f"Can't assign {lvalue.completeType} from {rhsAddr.completeType}", self.location)
+        rhsAddr = self.promoteIfNeededTo(self.rhs.visit(context), lvalue.completeType, context, "assignment")
+        # rhsAddr = self.rhs.visit(context)
+        # if not isConvertableTo(rhsAddr.completeType, lvalue.completeType):
+        #     raise CompileError(f"Can't assign {lvalue.completeType} from {rhsAddr.completeType}", self.location)
+        # if rhsAddr.completeType != lvalue.completeType:
+        #     temp = context.symbolTable.addTemporary(lvalue.completeType)
+        #     context.blockFactory.addIR(IRPromote(
+        #         temp,
+        #         rhsAddr,
+        #         lvalue.completeType))
+        #     rhsAddr = temp
         context.blockFactory.addIR(IRAssign(lvalue, rhsAddr))
 
 

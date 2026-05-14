@@ -18,8 +18,8 @@ class TestLiveness(unittest.TestCase):
 
     def test_1(self):
         irs = self.compileBlockToIR("""
-int A;
-int B;
+char A;
+char B;
 A=1;
 A=B; // A is dead, free to spill A
 B=A+1;""")
@@ -33,8 +33,8 @@ B=A+1;""")
 
     def test_2(self):
         irs = self.compileBlockToIR("""
-int A;
-int B;
+char A;
+char B;
 A=1;
 B=A+1; // B becomes live afterwards but no next use (within block)
 A=2;""")
@@ -49,14 +49,9 @@ A=2;""")
         self.assertTrue(self.isLive(irs[3], "B")) # A=2
 
 class TestErrorHandling(unittest.TestCase):
-    def test_conflictingTypes(self):
-        with self.assertRaises(CompileError) as cts:
-            compileBlockToIR("""char a;
-                    int *p;
-                    p = a;""")
-        self.assertEqual(cts.exception.message, "Can't assign int* from char")
-        self.assertEqual(cts.exception.location.line, 3)
-
+    #
+    # Syntax error
+    #
     def test_syntaxError(self):
         with self.assertRaises(CompileError) as cts:
             compileBlockToIR("""// comment
@@ -71,6 +66,10 @@ class TestErrorHandling(unittest.TestCase):
             void foo(""")
         self.assertIn("Unexpected end of file", cts.exception.message)
         self.assertEqual(cts.exception.location.line, 3)
+
+    #
+    # Functions
+    # 
 
     def test_missingFunction(self):
         with self.assertRaises(CompileError) as ctx:
@@ -98,6 +97,38 @@ class TestErrorHandling(unittest.TestCase):
                               }""")
         self.assertEqual(ctx.exception.location.line, 3) 
         self.assertEqual(ctx.exception.message, "Attempting to call function foo with 1 arguments but expected 2") 
+
+    #
+    # Variable reference
+    #
+    def test_undefinedVariable(self):
+        with self.assertRaises(CompileError) as cts:
+            compile("""char main() {
+                         return 1 + a;
+                       }""")
+        self.assertEqual(cts.exception.message, "Attempting to reference unknown a")
+        self.assertEqual(cts.exception.location.line, 2)
+
+
+    #
+    # Assignments
+    #
+
+    def test_conflictingTypes(self):
+        with self.assertRaises(CompileError) as cts:
+            compileBlockToIR("""char a;
+                    int *p;
+                    p = a;""")
+        self.assertEqual(cts.exception.message, "Can't convert char to int* in assignment")
+        self.assertEqual(cts.exception.location.line, 3)
+
+    def test_charToIntPromotion(self):
+        irs = compileBlockToIR("int i; char c; i = c;")
+        self.assertIsInstance(irs[0], IRPromote)
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr) 
+
+
 
 
 
