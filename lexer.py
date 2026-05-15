@@ -9,7 +9,8 @@ reserved = {
         'char': 'CHAR',
         'int': 'INT',
         'if': 'IF',
-        'while': 'WHILE'
+        'while': 'WHILE',
+        'struct': 'STRUCT'
         }
 
 tokens = [

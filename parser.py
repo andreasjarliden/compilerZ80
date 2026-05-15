@@ -36,6 +36,7 @@ def p_expression(p):
     '''
     expression : return_expression
                | function_expression
+               | struct_definition_expression
                | var_def_expression
                | var_assign_expression
                | ptr_assign_expression
@@ -116,6 +117,10 @@ def p_primary_fun_call(p):
     f = p[1]
     f.setStoreResult()
     p[0] = p[1]
+
+def p_struct_definition_expression(p):
+    'struct_definition_expression : STRUCT ID LCURL var_list RCURL'
+    p[0] = StructDefinition(p[2], p[4], location=loc(p, 2))
 
 def p_variable_definition_expression(p):
     'var_def_expression : type ID'
@@ -220,6 +225,14 @@ def p_expr_list_single(p):
 def p_expr_list_multiple(p):
     'expr_list : expr_list COMMA value_expression'
     p[0] = p[1] + [p[3]]
+
+def p_var_list_single(p):
+    'var_list : var_def_expression SEMI'
+    p[0] = (p[1],)
+
+def p_var_list_multiple(p):
+    'var_list : var_list var_def_expression SEMI'
+    p[0] = p[1] + (p[2],)
 
 def p_arg_list_single(p):
     'arg_list : arg'

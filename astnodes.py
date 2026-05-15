@@ -386,4 +386,8 @@ class Relation(ASTNode):
     def visit(self, context):
         return (self.lhs.visit(context), self.rhs.visit(context))
 
+@dataclass(frozen=True)
+class StructDefinition(ASTNode):
+    name : str
+    fields : tuple[VariableDefinition]
 
