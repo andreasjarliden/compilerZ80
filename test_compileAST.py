@@ -9,9 +9,10 @@ from astnodes import *
 class TestLiveness(unittest.TestCase):
     def setUp(self):
         self.symbolTable = SymbolTable()
+        self.typeEnv = TypeEnv()
 
     def compileBlockToIR(self, code):
-        return compileBlockToIR(code, self.symbolTable)
+        return compileBlockToIR(code, symbolTable = self.symbolTable, typeEnv = self.typeEnv)
 
     def isLive(self, irs, v):
         return irs.live[self.symbolTable.lookUp(v)]
@@ -49,6 +50,14 @@ A=2;""")
         self.assertTrue(self.isLive(irs[3], "B")) # A=2
 
 class TestErrorHandling(unittest.TestCase):
+    # TODO duplication with above
+    def setUp(self):
+        self.symbolTable = SymbolTable()
+        self.typeEnv = TypeEnv()
+
+    def compileBlockToIR(self, code):
+        return compileBlockToIR(code, symbolTable = self.symbolTable, typeEnv = self.typeEnv)
+
     #
     # Syntax error
     #
@@ -109,6 +118,42 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(cts.exception.message, "Attempting to reference unknown a")
         self.assertEqual(cts.exception.location.line, 2)
 
+    #
+    # Variable definition
+    #
+    def test_vardef_unknownType(self):
+        with self.assertRaises(CompileError) as cts:
+            compileBlockToIR("""int b;
+                            chur a;""")
+        self.assertEqual(cts.exception.message, "Unknown type chur")
+        self.assertEqual(cts.exception.location.line, 2)
+
+    #
+    # Structs
+    #
+    def test_struct_known(self):
+        self.compileBlockToIR("struct foo { char a; }; struct foo s;");
+        self.assertEqual(self.typeEnv.lookupStructName("foo"), StructType("foo", { "a": StructField("char", "a", 0)}))
+
+    def test_struct_unknown(self):
+        with self.assertRaises(CompileError) as cts:
+            compileBlockToIR("struct missing s;");
+        self.assertEqual(cts.exception.message, "Unknown struct missing")
+        self.assertEqual(cts.exception.location.line, 1)
+
+    def test_struct_redefine(self):
+        with self.assertRaises(CompileError) as cts:
+            compileBlockToIR("struct foo { char a; }; struct foo { char b; };")
+        self.assertEqual(cts.exception.message, "Redefinition of struct foo")
+        self.assertEqual(cts.exception.location.line, 1)
+
+    def test_struct_fieldReference(self):
+        irs = self.compileBlockToIR("""struct foo { char a; char b;};
+            struct foo s;
+            char c;
+            c = s.b;""")
+        print(irs)
+        self.assertTrue(False)
 
     #
     # Assignments

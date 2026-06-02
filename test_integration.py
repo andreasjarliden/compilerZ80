@@ -185,3 +185,27 @@ class TestIntegration(unittest.TestCase):
         # ret
         self.assertRegex(output, r"pop\tIX\n\tret")
 
+    def test_localVariableWithTypeDef(self):
+        output = compile("""
+            typedef char MyChar;
+            char main() {
+                MyChar FOO;
+                FOO=1;
+            }""")
+        self.assertRegex(output, r"ld\t., 1")
+        self.assertRegex(output, r"ld\t\(ix \- 1\), .")
+
+    def test_localVariableWithTypeDefStruct(self):
+        output = compile("""
+            struct myStruct{ char a; char b; };
+            char main() {
+                char a;
+                struct myStruct s;
+                char c;
+                a = 0;
+                s.a = 1;
+                s.b = 2;
+                c = 3;
+            }""")
+        print(output);
+        self.assertTrue(false)

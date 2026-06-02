@@ -84,6 +84,16 @@ class TestParser(unittest.TestCase):
                                       [ StringConstant(String("hello"))]))
 
     #
+    # typedef
+    #
+    def test_typedef(self):
+        ast = parser.parse("typedef char MyType;MyType myvar;")
+        self.assertEqual(ast[0],
+                         TypeDef("MyType", "char"))
+        self.assertEqual(ast[1],
+                         VariableDefinition("MyType", "myvar"))
+
+    #
     # struct
     #
     def test_defineStruct(self):
@@ -92,6 +102,16 @@ class TestParser(unittest.TestCase):
                          StructDefinition("mystruct",
                                           ( VariableDefinition("char", "foo"),
                                            VariableDefinition("int", "bar"))))
+
+    def test_structVariable(self):
+        self.maxDiff = None
+        ast = parser.parse("struct mystruct { char foo; }; struct mystruct s;")
+        print(ast[0])
+        self.assertEqual(ast[0],
+                         StructDefinition("mystruct",
+                                          ( VariableDefinition("char", "foo"), )))
+        self.assertEqual(ast[1],
+                         VariableDefinition(StructType("mystruct", ()), "s"))
 
 
     #

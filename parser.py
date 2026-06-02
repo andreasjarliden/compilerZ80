@@ -29,6 +29,7 @@ def p_statement(p):
               | function_definition
               | if_expression
               | while_expression
+              | typedef_statement SEMI
     '''
     p[0] = p[1]
 
@@ -46,6 +47,10 @@ def p_expression(p):
 def p_lvalue(p):
     'lvalue : ID'
     p[0] = Variable(p[1], location=loc(p))
+
+def p_lvalue_struct_field(p):
+    'lvalue : primary PERIOD ID'
+    p[0] = StructFieldReference(p[1], p[3])
 
 def p_ptrlvalue(p):
     'ptrlvalue : STAR ID'
@@ -90,6 +95,10 @@ def p_unary_addressOf(p):
     '''
     p[0] = AddressOf(p[2])
 
+def p_unary_struct_field(p):
+    'unary : primary PERIOD ID'
+    p[0] = StructFieldReference(p[1], p[3])
+
 def p_unary_primary(p):
     'unary : primary'
     p[0] = p[1]
@@ -124,24 +133,39 @@ def p_struct_definition_expression(p):
 
 def p_variable_definition_expression(p):
     'var_def_expression : type ID'
-    p[0] = VariableDefinition(p[1], p[2])
+    p[0] = VariableDefinition(p[1], p[2], location=loc(p, 2))
 
 def p_variable_definition_expression_value(p):
     'var_def_expression : type ID ASSIGN value_expression'
     # 'var_def_expression : type ID ASSIGN constant'
-    p[0] = VariableDefinition(p[1], p[2], p[4])
+    p[0] = VariableDefinition(p[1], p[2], p[4], location=loc(p, 2))
+
+def p_typedef(p):
+    'typedef_statement : TYPEDEF type ID'
+    p[0] = TypeDef(p[3], p[2], location=loc(p, 1))
 
 def p_type(p):
     '''type : base_type pointers
     '''
-    p[0] = p[1] + "*"*p[2]
+    if p[2]>0:
+        p[0] = p[1] + "*"*p[2]
+    else:
+        p[0] = p[1]
 
 def p_base_type(p):
+    # '''base_type | ID'''
     '''base_type : CHAR
                  | INT
                  | VOID
+                 | ID
     '''
     p[0] = p[1]
+
+def p_base_type_struct(p):
+    # '''base_type | ID'''
+    '''base_type : STRUCT ID
+    '''
+    p[0] = StructType(p[2], ())
 
 def p_pointers_empty(p):
     '''

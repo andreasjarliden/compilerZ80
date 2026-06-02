@@ -4,6 +4,8 @@ from ir import *
 from symbolTable import *
 from blocks import BlockFactory
 from error import Location, CompileError
+from typeEnv import TypeEnv
+from type_defs import StructType, StructField
 import symbolTable
 import registerAllocator
 
@@ -24,6 +26,7 @@ class StringTable:
 class ASTContext:
     blockFactory : Any = field(default_factory=BlockFactory)
     symbolTable : SymbolTable = field(default_factory=SymbolTable)
+    typeEnv : Any = field(default_factory=TypeEnv)
     functionName : str = None
     dataSegment : dict[SymEntry, Any] = field(default_factory=dict)
     stringTable : StringTable = field(default_factory=StringTable)
@@ -97,7 +100,7 @@ class Function(ASTNode):
 class FunctionDeclaration(Function):
     type : str
     name : str
-    arguments : tuple[Argument] = field(default_factory=list)
+    arguments : tuple[Argument] = field(default_factory=tuple)
 
     def visit(self, context):
         # TODO, don't add self but a Function but without any statements
@@ -115,13 +118,29 @@ class FunctionDefinition(Function):
     def __repr__(self):
         return "FunctionDefinition " + self.name + " with statements " + str(self.statements)
 
-    def mapSymbols(symbolTable):
+    # def mapStructField(self, structRef):
+    #     s, field = symbol.name.split(".", 1)
+    #     recursive resolve a.b.c
+
+    def mapSymbols(self, symbolTable, context):
         # stack pointer points to last byte written, so first variable starts at one byte below SP
         offset = 0
         for symbol in symbolTable.values():
             if not symbol.impl:
-                offset -= symbol.size
+                if "." in symbol.name:
+                    continue
+                offset -= context.typeEnv.sizeOfType(symbol.type)
                 symbol.impl = StackAddress(offset)
+        for symbol in symbolTable.values():
+            if not symbol.impl:
+                if "." in symbol.name:
+                    s, field = symbol.name.split(".", 1)
+                    se = symbolTable[s]
+                    structTypeName = se.completeType.name
+                    structType = context.typeEnv.lookupStructName(structTypeName)
+                    fieldOffset = structType.fields[field].offset
+                    symbol.impl = se.impl.cloneWithOffset(fieldOffset)
+        print(symbolTable)
 
     def visit(self, context):
         context.symbolTable.addSymbolEntry(self.name, self)
@@ -147,7 +166,7 @@ class FunctionDefinition(Function):
         context.blockFactory.addIR(IRDefFun(self))
         for s in self.statements:
             s.visit(context)
-        FunctionDefinition.mapSymbols(symbolTable)
+        self.mapSymbols(symbolTable, context)
         # TODO mutable state
         self.frameSize = stackFrameSize(symbolTable)
         context.blockFactory.addIR(IRFunExit(self))
@@ -213,6 +232,16 @@ class While(ASTNode):
         context.blockFactory.enterSubBlock()
         context.blockFactory.addIR(IRLabel(skipLabel))
 
+VALID_TYPES = { 'void', 'char', 'int' }
+def verifyType(t, location, typeEnv):
+    if isinstance(t, StructType):
+        if not typeEnv.lookupStructName(t.name):
+            raise CompileError(f"Unknown struct {t.name}", location)
+        return True
+    elif t[-1] == '*':
+        return verifyType(t[:-1], location, typeEnv);
+    if not t in VALID_TYPES:
+        raise CompileError(f"Unknown type {t}", location)
 
 @dataclass(frozen=True)
 class VariableDefinition(ASTNode):
@@ -229,7 +258,13 @@ class VariableDefinition(ASTNode):
             return self.completeType
 
     def visit(self, context):
-        symbol = SymEntry(self.completeType, self.name)
+        t = self.completeType
+        s = context.symbolTable.lookUp(t)
+        if s and isinstance(s.impl, TypeAddress):
+            t = s.impl.completeType
+        else:
+            verifyType(self.completeType, self.location, context.typeEnv)
+        symbol = SymEntry(t, self.name)
         context.symbolTable.addSymbolEntry(self.name, symbol)
         if not context.functionName:
             symbol.impl = GlobalAddress(self.name)
@@ -387,7 +422,52 @@ class Relation(ASTNode):
         return (self.lhs.visit(context), self.rhs.visit(context))
 
 @dataclass(frozen=True)
+class TypeDef(ASTNode):
+    name : str
+    completeType : str
+
+    def visit(self, context):
+        symbol = SymEntry(self.completeType, self.name)
+        context.symbolTable.addSymbolEntry(self.name, symbol)
+        symbol.impl = TypeAddress(completeType=self.completeType)
+
+@dataclass(frozen=True)
 class StructDefinition(ASTNode):
     name : str
     fields : tuple[VariableDefinition]
+
+    def visit(self, context):
+        if context.typeEnv.lookupStructName(self.name):
+            raise CompileError(f"Redefinition of struct {self.name}", self.location)
+        fields = {}
+        offset = 0;
+        for f in self.fields:
+            fields[f.name] = StructField(type=f.type, name=f.name, offset=offset)
+            offset += context.typeEnv.sizeOfType(f.type)
+        s = StructType(self.name, fields)
+        context.typeEnv.addStruct(s)
+        print(f"typeEnv after adding struct {context.typeEnv}")
+        return s
+
+@dataclass(frozen=True)
+class StructFieldReference(ASTNode):
+    structVar : Any
+    field : str
+
+    def visit(self, context):
+        print("StructFieldReference visit")
+        print(f"{self.structVar=}")
+        structAddr = self.structVar.visit(context);
+        print(f"{structAddr=}")
+        struct = context.typeEnv.lookupStructName(structAddr.completeType.name)
+        print(f"{struct=}")
+        print(f"StructFieldReference {self.structVar}.{self.field}")
+        offset = struct.fields[self.field].offset
+        print(f"offset for field {offset}")
+        symEntry = SymEntry(struct.fields[self.field].type, f"{self.structVar.name}.{self.field}")
+        print(f"{symEntry=}")
+        # symEntry.impl = structAddr.impl.cloneWithOffset(offset)
+        print(f"{symEntry=}")
+        context.symbolTable.addSymbolEntry(symEntry.name, symEntry)
+        return symEntry
 

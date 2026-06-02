@@ -6,6 +6,7 @@ from io import StringIO
 from astnodes import ASTContext
 from blocks import SingleBlockFactory
 from symbolTable import SymbolTable
+from typeEnv import TypeEnv
 
 def compile(code):
     lexer.lineno = 1
@@ -19,12 +20,12 @@ def compile(code):
     asmWriter.seek(0)
     return asmWriter.read()
 
-def compileBlockToIR(code, symbolTable = SymbolTable()):
+def compileBlockToIR(code, symbolTable = SymbolTable(), typeEnv = TypeEnv()):
     lexer.lineno = 1
     ast = parser.parse(code)
     blockFactory = SingleBlockFactory()
     block = blockFactory.block
-    astContext = ASTContext(blockFactory = blockFactory, symbolTable = symbolTable)
+    astContext = ASTContext(blockFactory = blockFactory, symbolTable = symbolTable, typeEnv = typeEnv)
     blocks, _ = astToThreeCode(ast, astContext)
     block.exitSymbols = symbolTable.allSymbols()
     updateLive(blocks)
