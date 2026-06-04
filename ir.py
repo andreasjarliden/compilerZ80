@@ -535,11 +535,9 @@ class IRPromote(IR):
         reg8 = ra.isInRegister(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" })
         asmWriter.write(f"\tld\t{reg16_hi}, 0\n")
         if reg8:
-            print(f"Value to promote in register {reg8}")
             if reg16_lo != reg8:
                 asmWriter.loadRegisterWithRegister(reg16_lo, reg8)
         else:
-            print(f"Value to promote in memory {reg8}")
             asmWriter.loadRegisterWithAddress(reg16_lo, self.lhsAddr.impl)
         ra.loadedSymbolInRegister(self.resultAddr, reg16)
 

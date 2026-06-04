@@ -15,7 +15,6 @@ class TypeEnv:
             sum = 0
             s = self.lookupStructName(t.name)
             for field in s.fields.values():
-                print(f"field {field}")
                 sum += self.sizeOfType(field.type)
             return sum
         return SIZE_FOR_TYPES[t]
@@ -30,3 +29,9 @@ class TypeEnv:
             except KeyError:
                 pass
         return None
+
+    def pushFrame(self):
+        self.structEnv.append({})
+
+    def popFrame(self):
+        self.structEnv.pop()

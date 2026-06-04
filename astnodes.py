@@ -118,10 +118,6 @@ class FunctionDefinition(Function):
     def __repr__(self):
         return "FunctionDefinition " + self.name + " with statements " + str(self.statements)
 
-    # def mapStructField(self, structRef):
-    #     s, field = symbol.name.split(".", 1)
-    #     recursive resolve a.b.c
-
     def mapSymbols(self, symbolTable, context):
         # stack pointer points to last byte written, so first variable starts at one byte below SP
         offset = 0
@@ -140,10 +136,10 @@ class FunctionDefinition(Function):
                     structType = context.typeEnv.lookupStructName(structTypeName)
                     fieldOffset = structType.fields[field].offset
                     symbol.impl = se.impl.cloneWithOffset(fieldOffset)
-        print(symbolTable)
 
     def visit(self, context):
         context.symbolTable.addSymbolEntry(self.name, self)
+        context.typeEnv.pushFrame()
         context.symbolTable.pushFrame()
         context.functionName = self.name
         context.functionLabels = 0
@@ -172,6 +168,7 @@ class FunctionDefinition(Function):
         context.blockFactory.addIR(IRFunExit(self))
         context.exitBlock()
         context.symbolTable.popFrame()
+        context.typeEnv.popFrame()
         context.functionName = None
         return symbolTable # for testing
 
@@ -446,7 +443,6 @@ class StructDefinition(ASTNode):
             offset += context.typeEnv.sizeOfType(f.type)
         s = StructType(self.name, fields)
         context.typeEnv.addStruct(s)
-        print(f"typeEnv after adding struct {context.typeEnv}")
         return s
 
 @dataclass(frozen=True)
@@ -455,19 +451,11 @@ class StructFieldReference(ASTNode):
     field : str
 
     def visit(self, context):
-        print("StructFieldReference visit")
-        print(f"{self.structVar=}")
         structAddr = self.structVar.visit(context);
-        print(f"{structAddr=}")
         struct = context.typeEnv.lookupStructName(structAddr.completeType.name)
-        print(f"{struct=}")
-        print(f"StructFieldReference {self.structVar}.{self.field}")
         offset = struct.fields[self.field].offset
-        print(f"offset for field {offset}")
         symEntry = SymEntry(struct.fields[self.field].type, f"{self.structVar.name}.{self.field}")
-        print(f"{symEntry=}")
         # symEntry.impl = structAddr.impl.cloneWithOffset(offset)
-        print(f"{symEntry=}")
         context.symbolTable.addSymbolEntry(symEntry.name, symEntry)
         return symEntry
 

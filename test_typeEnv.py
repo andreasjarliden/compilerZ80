@@ -9,6 +9,17 @@ class TestTypeEnv(unittest.TestCase):
         typeEnv.addStruct(StructType("myStruct", {}))
         self.assertTrue(typeEnv.lookupStructName("myStruct"))
 
+    def test_scoping(self):
+        typeEnv = TypeEnv()
+        outerStruct = StructType("myStruct", { "outer": StructField(type="char", name="a", offset=0) })
+        innerStruct = StructType("myStruct", { "inner": StructField(type="char", name="a", offset=0) })
+        typeEnv.addStruct(outerStruct)
+        typeEnv.pushFrame()
+        typeEnv.addStruct(innerStruct)
+        self.assertEqual(typeEnv.lookupStructName("myStruct"), innerStruct)
+        typeEnv.popFrame()
+        self.assertEqual(typeEnv.lookupStructName("myStruct"), outerStruct)
+
     def test_structSize(self):
         typeEnv = TypeEnv()
         s = StructType("myStruct", {"a": StructField(type="char", name="a", offset=0),

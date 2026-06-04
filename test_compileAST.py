@@ -1,5 +1,5 @@
 import unittest
-from testutilities import compileBlockToIR, compile
+from testutilities import compileBlockToIR, compileToBlocks, compile
 from symbolTable import SymbolTable
 from astnodes import *
 
@@ -147,13 +147,43 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(cts.exception.message, "Redefinition of struct foo")
         self.assertEqual(cts.exception.location.line, 1)
 
-    def test_struct_fieldReference(self):
-        irs = self.compileBlockToIR("""struct foo { char a; char b;};
-            struct foo s;
-            char c;
-            c = s.b;""")
-        print(irs)
-        self.assertTrue(False)
+    def test_struct_localToScope(self):
+        with self.assertRaises(CompileError) as cts:
+            compile("""
+                void foo() {
+                    struct foo { char a; };
+                }
+                void bar() {
+                    struct foo s;
+                }""")
+        self.assertEqual(cts.exception.message, "Unknown struct foo")
+        self.assertEqual(cts.exception.location.line, 6)
+
+    def test_struct_assignField(self):
+        blocks = compileToBlocks("""
+            struct myStruct{ char a; char b; };
+            char main() {
+                char a;
+                struct myStruct s;
+                char c;
+                a = 0;
+                s.a = 1;
+                s.b = 2;
+                c = 3;
+            }""")
+        irs = blocks["main_0000"].statements
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertEqual(irs[1].resultAddr.impl, StackAddress(-1))
+        self.assertEqual(irs[1].lhsAddr, Constant("char", 0))
+        self.assertIsInstance(irs[2], IRAssign)
+        self.assertEqual(irs[2].resultAddr.impl, StackAddress(-3))
+        self.assertEqual(irs[2].lhsAddr, Constant("char", 1))
+        self.assertIsInstance(irs[3], IRAssign)
+        self.assertEqual(irs[3].resultAddr.impl, StackAddress(-2))
+        self.assertEqual(irs[3].lhsAddr, Constant("char", 2))
+        self.assertIsInstance(irs[4], IRAssign)
+        self.assertEqual(irs[4].resultAddr.impl, StackAddress(-4))
+        self.assertEqual(irs[4].lhsAddr, Constant("char", 3))
 
     #
     # Assignments

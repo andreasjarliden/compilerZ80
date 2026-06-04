@@ -8,6 +8,15 @@ from blocks import SingleBlockFactory
 from symbolTable import SymbolTable
 from typeEnv import TypeEnv
 
+def compileToBlocks(code, symbolTable = SymbolTable(), typeEnv = TypeEnv()):
+    lexer.lineno = 1
+    ast = parser.parse(code)
+    astContext = ASTContext(symbolTable = symbolTable,
+                            typeEnv = typeEnv)
+    blocks, dataSegment = astToThreeCode(ast, astContext)
+    updateLive(blocks)
+    return blocks
+
 def compile(code):
     lexer.lineno = 1
     ast = parser.parse(code)
