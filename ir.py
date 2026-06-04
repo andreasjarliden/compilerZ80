@@ -527,7 +527,6 @@ class IRPromote(IR):
         reg16 = ra.decideRegisterForSymbol(self.resultAddr, { "bc", "de", "hl" })
         reg16_hi = reg16[0]
         reg16_lo = reg16[1]
-        print(f"Decided on register {reg16} for promoted value")
         if isinstance(self.lhsAddr, Constant):
             asmWriter.write(f"\tld\t{reg16}, {self.lhsAddr.value}\n")
             ra.loadedSymbolInRegister(self.resultAddr, reg16)

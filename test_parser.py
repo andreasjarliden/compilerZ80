@@ -106,7 +106,6 @@ class TestParser(unittest.TestCase):
     def test_structVariable(self):
         self.maxDiff = None
         ast = parser.parse("struct mystruct { char foo; }; struct mystruct s;")
-        print(ast[0])
         self.assertEqual(ast[0],
                          StructDefinition("mystruct",
                                           ( VariableDefinition("char", "foo"), )))
