@@ -197,6 +197,18 @@ class TestErrorHandling(unittest.TestCase):
         irs = blocks["main_0000"].statements
         # TODO
 
+    def test_struct_missingField(self):
+        with self.assertRaises(CompileError) as cts:
+            blocks = compileToBlocks("""
+                struct myStruct { char a; };
+                char main() {
+                    char a;
+                    struct myStruct s;
+                    s.b = 1;
+                }""")
+        self.assertEqual(cts.exception.message, "Unknown field b in struct myStruct")
+        self.assertEqual(cts.exception.location.line, 6)
+
     #
     # Assignments
     #

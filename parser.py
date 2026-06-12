@@ -50,7 +50,7 @@ def p_lvalue(p):
 
 def p_lvalue_struct_field(p):
     'lvalue : primary PERIOD ID'
-    p[0] = StructFieldReference(p[1], p[3])
+    p[0] = StructFieldReference(p[1], p[3], location=loc(p, 3))
 
 def p_ptrlvalue(p):
     'ptrlvalue : STAR ID'
@@ -97,7 +97,7 @@ def p_unary_addressOf(p):
 
 def p_unary_struct_field(p):
     'unary : primary PERIOD ID'
-    p[0] = StructFieldReference(p[1], p[3])
+    p[0] = StructFieldReference(p[1], p[3], location=loc(p, 3))
 
 def p_unary_primary(p):
     'unary : primary'

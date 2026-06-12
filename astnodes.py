@@ -453,7 +453,11 @@ class StructFieldReference(ASTNode):
     def visit(self, context):
         structAddr = self.structVar.visit(context);
         struct = context.typeEnv.lookupStructName(structAddr.completeType.name)
-        offset = struct.fields[self.field].offset
+        try:
+            offset = struct.fields[self.field].offset
+        except KeyError:
+            print(self.structVar)
+            raise CompileError(f"Unknown field {self.field} in struct {struct.name}", self.location)
         name = f"{self.structVar.name}.{self.field}"
         if not context.symbolTable.lookUp(name):
             symEntry = SymEntry(struct.fields[self.field].type, name)
