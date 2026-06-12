@@ -8,7 +8,11 @@ from blocks import SingleBlockFactory
 from symbolTable import SymbolTable
 from typeEnv import TypeEnv
 
-def compileToBlocks(code, symbolTable = SymbolTable(), typeEnv = TypeEnv()):
+def compileToBlocks(code, symbolTable = None, typeEnv = None):
+    if not symbolTable:
+        symbolTable = SymbolTable()
+    if not typeEnv:
+        typeEnv = TypeEnv()
     lexer.lineno = 1
     ast = parser.parse(code)
     astContext = ASTContext(symbolTable = symbolTable,
@@ -29,7 +33,11 @@ def compile(code):
     asmWriter.seek(0)
     return asmWriter.read()
 
-def compileBlockToIR(code, symbolTable = SymbolTable(), typeEnv = TypeEnv()):
+def compileBlockToIR(code, symbolTable = None, typeEnv = None):
+    if not symbolTable:
+        symbolTable = SymbolTable()
+    if not typeEnv:
+        typeEnv = TypeEnv()
     lexer.lineno = 1
     ast = parser.parse(code)
     blockFactory = SingleBlockFactory()

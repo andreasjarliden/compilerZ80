@@ -185,6 +185,29 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(irs[4].resultAddr.impl, StackAddress(-4))
         self.assertEqual(irs[4].lhsAddr, Constant("char", 3))
 
+    def test_struct_referenceField(self):
+        blocks = compileToBlocks("""
+            struct myStruct { char a; };
+            char main() {
+                char a;
+                struct myStruct s;
+                s.a = 1;
+                a = s.a;
+            }""")
+        irs = blocks["main_0000"].statements
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertEqual(irs[1].resultAddr.impl, StackAddress(-1))
+        self.assertEqual(irs[1].lhsAddr, Constant("char", 0))
+        self.assertIsInstance(irs[2], IRAssign)
+        self.assertEqual(irs[2].resultAddr.impl, StackAddress(-3))
+        self.assertEqual(irs[2].lhsAddr, Constant("char", 1))
+        self.assertIsInstance(irs[3], IRAssign)
+        self.assertEqual(irs[3].resultAddr.impl, StackAddress(-2))
+        self.assertEqual(irs[3].lhsAddr, Constant("char", 2))
+        self.assertIsInstance(irs[4], IRAssign)
+        self.assertEqual(irs[4].resultAddr.impl, StackAddress(-4))
+        self.assertEqual(irs[4].lhsAddr, Constant("char", 3))
+
     #
     # Assignments
     #

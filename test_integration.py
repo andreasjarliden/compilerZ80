@@ -194,3 +194,12 @@ class TestIntegration(unittest.TestCase):
         self.assertRegex(output, r"ld\t., 1")
         self.assertRegex(output, r"ld\t\(ix \- 1\), .")
 
+    def test_struct_fieldReference(self):
+        output = compile("""
+            struct myStruct { char a; };
+            char main() {
+                char a;
+                struct myStruct s;
+                s.a = 1;
+                a = s.a;
+            }""")
