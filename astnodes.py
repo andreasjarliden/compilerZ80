@@ -454,8 +454,11 @@ class StructFieldReference(ASTNode):
         structAddr = self.structVar.visit(context);
         struct = context.typeEnv.lookupStructName(structAddr.completeType.name)
         offset = struct.fields[self.field].offset
-        symEntry = SymEntry(struct.fields[self.field].type, f"{self.structVar.name}.{self.field}")
-        # symEntry.impl = structAddr.impl.cloneWithOffset(offset)
-        context.symbolTable.addSymbolEntry(symEntry.name, symEntry)
+        name = f"{self.structVar.name}.{self.field}"
+        if not context.symbolTable.lookUp(name):
+            symEntry = SymEntry(struct.fields[self.field].type, name)
+            context.symbolTable.addSymbolEntry(symEntry.name, symEntry)
+        return context.symbolTable.lookUp(name)
+        print(f"StructFieldReference {id(symEntry)} {field}")
         return symEntry
 
