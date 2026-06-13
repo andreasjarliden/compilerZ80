@@ -16,6 +16,7 @@ reserved = {
 
 tokens = [
         'NUMBER',
+        'HEX_NUMBER',
         'STRING',
         'ID',
         'LPARA',
@@ -39,6 +40,7 @@ tokens = [
         ] + list(reserved.values())
 
 t_NUMBER = r'[0-9]+'
+t_HEX_NUMBER = r'0x[0-9a-fA-F]+'
 t_STRING = r'"[^"]*"'
 t_LPARA = r'\('
 t_RPARA = r'\)'

@@ -16,6 +16,10 @@ class TestParser(unittest.TestCase):
         ast = parser.parse("char foo = 42;")
         self.assertEqual(ast[0], VariableDefinition("char", "foo", Constant("char", 42)))
 
+    def test_variableDefinition_hexValue(self):
+        ast = parser.parse("int foo = 0x12AB;")
+        self.assertEqual(ast[0], VariableDefinition("int", "foo", Constant("int", 0x12AB)))
+
     def test_variableDefinition_string(self):
         ast = parser.parse('char* foo = "foo";')
         self.assertEqual(ast[0].value, StringConstant(String("foo")))

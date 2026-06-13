@@ -115,7 +115,12 @@ def p_primary_constant(p):
     if isinstance(p[1], String):
         p[0] = StringConstant(p[1])
     else:
-        p[0] = Constant("char", p[1])
+        if p[1] < 255:
+            p[0] = Constant("char", p[1])
+        elif p[1] < 65535:
+            p[0] = Constant("int", p[1])
+        else:
+            error()
 
 def p_primary_variable(p):
     '''
@@ -287,6 +292,12 @@ def p_constant_number(p):
     constant : NUMBER
     '''
     p[0] = int(p[1])
+
+def p_constant_hex_number(p):
+    '''
+    constant : HEX_NUMBER
+    '''
+    p[0] = int(p[1], 0)
 
 def p_constant_string(p):
     '''
