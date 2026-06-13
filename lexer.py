@@ -9,7 +9,9 @@ reserved = {
         'char': 'CHAR',
         'int': 'INT',
         'if': 'IF',
-        'while': 'WHILE'
+        'while': 'WHILE',
+        'struct': 'STRUCT',
+        'typedef': 'TYPEDEF'
         }
 
 tokens = [
@@ -32,6 +34,7 @@ tokens = [
         'COMMA',
         'STAR',
         'AMPERSAND',
+        'PERIOD',
         ] + list(reserved.values())
 
 t_NUMBER = r'[0-9]+'
@@ -52,6 +55,7 @@ t_PLUS = r'\+'
 t_COMMA = r','
 t_STAR = r'\*'
 t_AMPERSAND = r'&'
+t_PERIOD = r'\.'
 
 def t_ID(t):
     r'[a-zA-Z_][0-9a-zA-Z_]*'

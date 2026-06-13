@@ -4,6 +4,8 @@ from ir import *
 from symbolTable import *
 from blocks import BlockFactory
 from error import Location, CompileError
+from typeEnv import TypeEnv
+from type_defs import StructType, StructField
 import symbolTable
 import registerAllocator
 
@@ -24,6 +26,7 @@ class StringTable:
 class ASTContext:
     blockFactory : Any = field(default_factory=BlockFactory)
     symbolTable : SymbolTable = field(default_factory=SymbolTable)
+    typeEnv : Any = field(default_factory=TypeEnv)
     functionName : str = None
     dataSegment : dict[SymEntry, Any] = field(default_factory=dict)
     stringTable : StringTable = field(default_factory=StringTable)
@@ -36,20 +39,46 @@ def createLabel(context):
     context.functionLabels += 1
     return f"{context.functionName}_l{context.functionLabels}"
 
-@dataclass(frozen=True)
-class String:
-    string : str
-    location : Location = field(default_factory=Location, compare=False)
 
 @dataclass(frozen=True)
-class Variable:
+class ASTNode:
+    location : Location = field(default_factory=Location, compare=False, kw_only=True)
+
+    def promoteIfNeededTo(self, rhsAddr, toType, context, operation):
+        if not isConvertableTo(rhsAddr.completeType, toType):
+            raise CompileError(f"Can't convert {rhsAddr.completeType} to {toType} in {operation}", self.location)
+        if rhsAddr.completeType != toType:
+            temp = context.symbolTable.addTemporary(toType)
+            context.blockFactory.addIR(IRPromote(
+                temp,
+                rhsAddr,
+                toType))
+            return temp
+        return rhsAddr
+
+@dataclass
+class MutableASTNode:
+    location : Location = field(default_factory=Location, compare=False, kw_only=True)
+
+
+@dataclass(frozen=True)
+class String(ASTNode):
+    string : str
+
+
+@dataclass(frozen=True)
+class Variable(ASTNode):
     name : str
 
     def visit(self, context):
-        return context.symbolTable.lookUp(self.name)
+        s = context.symbolTable.lookUp(self.name)
+        if not s:
+            raise CompileError(f"Attempting to reference unknown {self.name}", self.location)
+        return s
+
 
 @dataclass(frozen=True)
-class Argument:
+class Argument(ASTNode):
     completeType : Any
     name : str
 
@@ -63,37 +92,54 @@ class Argument:
 
 
 @dataclass(frozen=True)
-class FunctionDeclaration:
+class Function(ASTNode):
+    pass
+
+
+@dataclass(frozen=True)
+class FunctionDeclaration(Function):
     type : str
     name : str
-    arguments : tuple[Argument] = field(default_factory=list)
+    arguments : tuple[Argument] = field(default_factory=tuple)
 
     def visit(self, context):
         # TODO, don't add self but a Function but without any statements
         context.symbolTable.addSymbolEntry(self.name, self)
 
 
-class Function:
-    def __init__(self, t, name, statements, location, arguments=[]):
+class FunctionDefinition(Function):
+    def __init__(self, t, name, statements, arguments=[], *, location):
+        super().__init__(location=location)
         self.type = t
         self.name = name
         self.statements = statements
-        self.location = location
         self.arguments = arguments
 
     def __repr__(self):
-        return "Function " + self.name + " with statements " + str(self.statements)
+        return "FunctionDefinition " + self.name + " with statements " + str(self.statements)
 
-    def mapSymbols(symbolTable):
+    def mapSymbols(self, symbolTable, context):
         # stack pointer points to last byte written, so first variable starts at one byte below SP
         offset = 0
         for symbol in symbolTable.values():
             if not symbol.impl:
-                offset -= symbol.size
+                if "." in symbol.name:
+                    continue
+                offset -= context.typeEnv.sizeOfType(symbol.type)
                 symbol.impl = StackAddress(offset)
+        for symbol in symbolTable.values():
+            if not symbol.impl:
+                if "." in symbol.name:
+                    s, field = symbol.name.split(".", 1)
+                    se = symbolTable[s]
+                    structTypeName = se.completeType.name
+                    structType = context.typeEnv.lookupStructName(structTypeName)
+                    fieldOffset = structType.fields[field].offset
+                    symbol.impl = se.impl.cloneWithOffset(fieldOffset)
 
     def visit(self, context):
         context.symbolTable.addSymbolEntry(self.name, self)
+        context.typeEnv.pushFrame()
         context.symbolTable.pushFrame()
         context.functionName = self.name
         context.functionLabels = 0
@@ -116,16 +162,19 @@ class Function:
         context.blockFactory.addIR(IRDefFun(self))
         for s in self.statements:
             s.visit(context)
-        Function.mapSymbols(symbolTable)
+        self.mapSymbols(symbolTable, context)
+        # TODO mutable state
         self.frameSize = stackFrameSize(symbolTable)
         context.blockFactory.addIR(IRFunExit(self))
         context.exitBlock()
         context.symbolTable.popFrame()
+        context.typeEnv.popFrame()
         context.functionName = None
         return symbolTable # for testing
 
+
 @dataclass(frozen=True)
-class If:
+class If(ASTNode):
     expr : Any
     statements : list
 
@@ -148,11 +197,11 @@ class If:
         context.blockFactory.enterSubBlock()
         context.blockFactory.addIR(IRLabel(skipLabel))
 
+
 @dataclass(frozen=True)
-class While:
+class While(ASTNode):
     expr : Any
     statements : list
-    location : Location
 
     def visit(self, context):
         ra = registerAllocator.RA
@@ -180,8 +229,19 @@ class While:
         context.blockFactory.enterSubBlock()
         context.blockFactory.addIR(IRLabel(skipLabel))
 
+VALID_TYPES = { 'void', 'char', 'int' }
+def verifyType(t, location, typeEnv):
+    if isinstance(t, StructType):
+        if not typeEnv.lookupStructName(t.name):
+            raise CompileError(f"Unknown struct {t.name}", location)
+        return True
+    elif t[-1] == '*':
+        return verifyType(t[:-1], location, typeEnv);
+    if not t in VALID_TYPES:
+        raise CompileError(f"Unknown type {t}", location)
+
 @dataclass(frozen=True)
-class VariableDefinition:
+class VariableDefinition(ASTNode):
     completeType : Any
     name : str
     value : Any = None # TODO rename to rhs?
@@ -195,7 +255,13 @@ class VariableDefinition:
             return self.completeType
 
     def visit(self, context):
-        symbol = SymEntry(self.completeType, self.name)
+        t = self.completeType
+        s = context.symbolTable.lookUp(t)
+        if s and isinstance(s.impl, TypeAddress):
+            t = s.impl.completeType
+        else:
+            verifyType(self.completeType, self.location, context.typeEnv)
+        symbol = SymEntry(t, self.name)
         context.symbolTable.addSymbolEntry(self.name, symbol)
         if not context.functionName:
             symbol.impl = GlobalAddress(self.name)
@@ -218,19 +284,39 @@ class VariableDefinition:
                 rhsAddr = self.value.visit(context)
                 context.blockFactory.addIR(IRAssign(symbol, rhsAddr))
 
+def isConvertableTo(fromType, toType):
+    if fromType == toType:
+        return True
+    if fromType == "char" and toType == "int":
+        return True
+    return False
+
+
+
 
 @dataclass(frozen=True)
-class VariableAssignment:
+class VariableAssignment(ASTNode):
     lvalue : Any
     rhs : Any
 
     def visit(self, context):
         lvalue = self.lvalue.visit(context)
-        rhsAddr = self.rhs.visit(context)
+        rhsAddr = self.promoteIfNeededTo(self.rhs.visit(context), lvalue.completeType, context, "assignment")
+        # rhsAddr = self.rhs.visit(context)
+        # if not isConvertableTo(rhsAddr.completeType, lvalue.completeType):
+        #     raise CompileError(f"Can't assign {lvalue.completeType} from {rhsAddr.completeType}", self.location)
+        # if rhsAddr.completeType != lvalue.completeType:
+        #     temp = context.symbolTable.addTemporary(lvalue.completeType)
+        #     context.blockFactory.addIR(IRPromote(
+        #         temp,
+        #         rhsAddr,
+        #         lvalue.completeType))
+        #     rhsAddr = temp
         context.blockFactory.addIR(IRAssign(lvalue, rhsAddr))
 
+
 @dataclass(frozen=True)
-class DerefPointerAssignment:
+class DerefPointerAssignment(ASTNode):
     lvalue : Any
     rhs : Any
 
@@ -241,7 +327,7 @@ class DerefPointerAssignment:
 
 
 @dataclass(frozen=True)
-class AddressOf:
+class AddressOf(ASTNode):
     expr : Any
 
     def visit(self, context):
@@ -250,8 +336,9 @@ class AddressOf:
         context.blockFactory.addIR(irAddressOf)
         return irAddressOf.resultAddr
 
+
 @dataclass(frozen=True)
-class Dereference:
+class Dereference(ASTNode):
     expr : Any
 
     def visit(self, context):
@@ -266,34 +353,40 @@ class Dereference:
         deref.resultAddr.impl = PointerAddress(pointer)
         return deref.resultAddr
 
+
 @dataclass
-class FunctionCall:
+class FunctionCall(MutableASTNode):
     name : str
     arguments : list[Argument] = field(default_factory=list)
-    location : Location = field(default_factory=Location, compare=False)
 
     def __post_init__(self):
         self.storeResult = False
 
+    def setStoreResult(self):
+        self.storeResult = True
+
     def visit(self, context):
-        try:
-            self.type = context.symbolTable.lookUp(self.name).type
-            for a in reversed(self.arguments):
-                exprAddress = a.visit(context)
-                context.blockFactory.addIR(IRArgument(exprAddress))
-            if self.storeResult:
-                irfuncall = IRFunCall(self.type, self.name, len(self.arguments), addr=context.symbolTable.addTemporary(self.type))
-                context.blockFactory.addIR(irfuncall)
-                return irfuncall.resultAddr
-            else:
-                irfuncall = IRFunCall(self.type, self.name, len(self.arguments))
-                context.blockFactory.addIR(irfuncall)
-        except Exception as e:
-            raise CompileError("Error in function call", self.location) from e
+        fun = context.symbolTable.lookUp(self.name)
+        if not fun:
+            raise CompileError(f"Attempting to call unknown {self.name}", self.location)
+        if not isinstance(fun, Function):
+            raise CompileError(f"Attempting to call non-function {self.name}", self.location)
+        if len(fun.arguments) != len(self.arguments):
+            raise CompileError(f"Attempting to call function {self.name} with {len(self.arguments)} arguments but expected {len(fun.arguments)}", self.location)
+        for a in reversed(self.arguments):
+            exprAddress = a.visit(context)
+            context.blockFactory.addIR(IRArgument(exprAddress))
+        if self.storeResult:
+            irfuncall = IRFunCall(fun.type, self.name, len(self.arguments), addr=context.symbolTable.addTemporary(fun.type))
+            context.blockFactory.addIR(irfuncall)
+            return irfuncall.resultAddr
+        else:
+            irfuncall = IRFunCall(fun.type, self.name, len(self.arguments))
+            context.blockFactory.addIR(irfuncall)
 
 
 @dataclass(frozen=True)
-class Return:
+class Return(ASTNode):
     expr : Any
 
     def visit(self, context):
@@ -301,8 +394,9 @@ class Return:
         exprAddress = self.expr.visit(context)
         context.blockFactory.addIR(IRReturn(t, exprAddress, context.functionName))
 
+
 @dataclass(frozen=True)
-class Add:
+class Add(ASTNode):
     lhs : Any
     rhs : Any
 
@@ -314,8 +408,9 @@ class Add:
         context.blockFactory.addIR(irAdd)
         return irAdd.resultAddr
 
+
 @dataclass(frozen=True)
-class Relation:
+class Relation(ASTNode):
     operation : str
     lhs : Any
     rhs : Any
@@ -323,4 +418,51 @@ class Relation:
     def visit(self, context):
         return (self.lhs.visit(context), self.rhs.visit(context))
 
+@dataclass(frozen=True)
+class TypeDef(ASTNode):
+    name : str
+    completeType : str
+
+    def visit(self, context):
+        symbol = SymEntry(self.completeType, self.name)
+        context.symbolTable.addSymbolEntry(self.name, symbol)
+        symbol.impl = TypeAddress(completeType=self.completeType)
+
+@dataclass(frozen=True)
+class StructDefinition(ASTNode):
+    name : str
+    fields : tuple[VariableDefinition]
+
+    def visit(self, context):
+        if context.typeEnv.lookupStructName(self.name):
+            raise CompileError(f"Redefinition of struct {self.name}", self.location)
+        fields = {}
+        offset = 0;
+        for f in self.fields:
+            fields[f.name] = StructField(type=f.type, name=f.name, offset=offset)
+            offset += context.typeEnv.sizeOfType(f.type)
+        s = StructType(self.name, fields)
+        context.typeEnv.addStruct(s)
+        return s
+
+@dataclass(frozen=True)
+class StructFieldReference(ASTNode):
+    structVar : Any
+    field : str
+
+    def visit(self, context):
+        structAddr = self.structVar.visit(context);
+        struct = context.typeEnv.lookupStructName(structAddr.completeType.name)
+        try:
+            offset = struct.fields[self.field].offset
+        except KeyError:
+            print(self.structVar)
+            raise CompileError(f"Unknown field {self.field} in struct {struct.name}", self.location)
+        name = f"{self.structVar.name}.{self.field}"
+        if not context.symbolTable.lookUp(name):
+            symEntry = SymEntry(struct.fields[self.field].type, name)
+            context.symbolTable.addSymbolEntry(symEntry.name, symEntry)
+        return context.symbolTable.lookUp(name)
+        print(f"StructFieldReference {id(symEntry)} {field}")
+        return symEntry
 

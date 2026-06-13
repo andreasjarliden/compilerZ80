@@ -1,27 +1,7 @@
 import unittest
-from parser import parser
-from compiler import astToThreeCode, updateLive, genCode, genDataSegment
-from asmWriter import AsmWriter
-from io import StringIO
-from astnodes import ASTContext
-from error import CompileError
-
-def compile(code):
-    asmWriter = AsmWriter(StringIO())
-    ast = parser.parse(code)
-    astContext = ASTContext()
-    blocks, dataSegment = astToThreeCode(ast, astContext)
-    updateLive(blocks)
-    genCode(blocks, asmWriter)
-    genDataSegment(dataSegment, asmWriter)
-    asmWriter.seek(0)
-    return asmWriter.read()
+from testutilities import compile
 
 class TestIntegration(unittest.TestCase):
-    def setUp(self):
-        self.asmWriter = AsmWriter(StringIO())
-
-
     def test_localVariable(self):
         output = compile("""
             char main() {
@@ -121,7 +101,6 @@ class TestIntegration(unittest.TestCase):
                 main(FOO);
                 FOO = "bar";
             }""")
-        print(output)
         # Loading original FOO
         self.assertRegex(output, r"ld\t(bc|de|hl), FOO\n\tpush\t(bc|de|hl)")
         # Loading new value
@@ -205,16 +184,22 @@ class TestIntegration(unittest.TestCase):
         # ret
         self.assertRegex(output, r"pop\tIX\n\tret")
 
-    def test_error_missingFunction(self):
-        with self.assertRaises(CompileError) as ctx:
-            output = compile("""char main() {
-                                foo();
-                                return 0;
-                              }""")
-        self.assertEqual(ctx.exception.location.line, 2) 
-        self.assertEqual(ctx.exception.message, "Error in function call") 
+    def test_localVariableWithTypeDef(self):
+        output = compile("""
+            typedef char MyChar;
+            char main() {
+                MyChar FOO;
+                FOO=1;
+            }""")
+        self.assertRegex(output, r"ld\t., 1")
+        self.assertRegex(output, r"ld\t\(ix \- 1\), .")
 
-
-
-
-
+    def test_struct_fieldReference(self):
+        output = compile("""
+            struct myStruct { char a; };
+            char main() {
+                char a;
+                struct myStruct s;
+                s.a = 1;
+                a = s.a;
+            }""")

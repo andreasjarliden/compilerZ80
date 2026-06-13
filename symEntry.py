@@ -1,7 +1,6 @@
 from dataclasses import dataclass
+from type_defs import StructType
 
-SIZE_FOR_TYPES = { "char": 1,
-                   "int": 2 }
 
 # Object semantics but with custom equalByValue function
 class SymEntry:
@@ -23,11 +22,15 @@ class SymEntry:
 
     @property
     def isPointer(self):
-        return self.completeType.endswith("*")
+        # TODO create real pointer type
+        if isinstance(self.completeType, StructType):
+            return False
+        else:
+            return self.completeType.endswith("*")
 
-    @property
-    def size(self):
-        return SIZE_FOR_TYPES[self.type]
+    # @property
+    # def size(self):
+    #     return sizeForType(self.type)
 
     def equalByValue(self, other):
         return self.name == other.name and self.completeType == other.completeType
@@ -35,12 +38,15 @@ class SymEntry:
 class ValueAddress:
     pass
 
+@dataclass(frozen=True)
 class StackAddress(ValueAddress):
-    def __init__(self, offset):
-        self.offset = offset
+    offset : int
 
-    def __repr__(self):
-        return f"ValueAddress @{self.offset}"
+    # def __init__(self, offset):
+    #     self.offset = offset
+    #
+    # def __repr__(self):
+    #     return f"StackAddress @{self.offset}"
 
     def codeArg(self, offset=0):
         # Use ix - 1, as "ix-1" is interpreted as identifier "ix-1"
@@ -50,21 +56,36 @@ class StackAddress(ValueAddress):
         else:
             return f"(ix - {-self.offset-offset})"
 
+    def cloneWithOffset(self, offset):
+        return StackAddress(self.offset + offset)
+
 class GlobalAddress(ValueAddress):
-    def __init__(self, name):
+    def __init__(self, name, offset=0):
         self.name = name
+        self.offset = offset
 
     def __repr__(self):
-        return f"GlobaAddress {self.name}"
+        if self.offset:
+            return f"GlobaAddress {self.name} offset {self.offset}"
+        else:
+            return f"GlobaAddress {self.name}"
 
     def codeArg(self, offset=0):
-        if offset == 0:
+        o = self.offset + offset
+        if o== 0:
             return f"({self.name})"
         else:
-            return f"({self.name} + {offset})"
+            return f"({self.name} + {o})"
 
     def pointerArg(self):
-        return f"{self.name}"
+        if self.offset:
+            return f"{self.name}+{self.offset}"
+        else:
+            return f"{self.name}"
+
+    def cloneWithOffset(self, offset):
+        return GlobalAddress(self.name, self.offset + offset)
+
 
 class PointerAddress(ValueAddress):
     def __init__(self, p : ValueAddress):
@@ -73,3 +94,7 @@ class PointerAddress(ValueAddress):
 
     def __repr__(self):
         return f"PointerAddress {self.pointer}"
+
+class TypeAddress:
+    def __init__(self, completeType):
+        self.completeType = completeType

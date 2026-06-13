@@ -517,6 +517,28 @@ class IRAdd(IR):
         else:
             error()
 
+class IRPromote(IR):
+    def __init__(self, addr, exprAddr, toType):
+        super().__init__(resultAddr=addr, lhsAddr=exprAddr)
+        self.toType = toType
+
+    def genCode(self, asmWriter):
+        ra = registerAllocator.RA
+        reg16 = ra.decideRegisterForSymbol(self.resultAddr, { "bc", "de", "hl" })
+        reg16_hi = reg16[0]
+        reg16_lo = reg16[1]
+        if isinstance(self.lhsAddr, Constant):
+            asmWriter.write(f"\tld\t{reg16}, {self.lhsAddr.value}\n")
+            ra.loadedSymbolInRegister(self.resultAddr, reg16)
+            return
+        reg8 = ra.isInRegister(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" })
+        asmWriter.write(f"\tld\t{reg16_hi}, 0\n")
+        if reg8:
+            if reg16_lo != reg8:
+                asmWriter.loadRegisterWithRegister(reg16_lo, reg8)
+        else:
+            asmWriter.loadRegisterWithAddress(reg16_lo, self.lhsAddr.impl)
+        ra.loadedSymbolInRegister(self.resultAddr, reg16)
 
 class IREqual(IR):
     def __init__(self, lhsAddr, rhsAddr):
@@ -530,3 +552,6 @@ class IREqual(IR):
         elif self.lhsAddr.type == "int":
             regZ = self.load16bitLhsAndRhs()
             asmWriter.write(f"\tsbc\thl, {regZ}\n")
+
+
+

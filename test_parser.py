@@ -84,6 +84,36 @@ class TestParser(unittest.TestCase):
                                       [ StringConstant(String("hello"))]))
 
     #
+    # typedef
+    #
+    def test_typedef(self):
+        ast = parser.parse("typedef char MyType;MyType myvar;")
+        self.assertEqual(ast[0],
+                         TypeDef("MyType", "char"))
+        self.assertEqual(ast[1],
+                         VariableDefinition("MyType", "myvar"))
+
+    #
+    # struct
+    #
+    def test_defineStruct(self):
+        ast = parser.parse("struct mystruct { char foo; int bar; };")
+        self.assertEqual(ast[0],
+                         StructDefinition("mystruct",
+                                          ( VariableDefinition("char", "foo"),
+                                           VariableDefinition("int", "bar"))))
+
+    def test_structVariable(self):
+        self.maxDiff = None
+        ast = parser.parse("struct mystruct { char foo; }; struct mystruct s;")
+        self.assertEqual(ast[0],
+                         StructDefinition("mystruct",
+                                          ( VariableDefinition("char", "foo"), )))
+        self.assertEqual(ast[1],
+                         VariableDefinition(StructType("mystruct", ()), "s"))
+
+
+    #
     # Function declaration
     #
     def test_functionDeclaration(self):
@@ -105,7 +135,7 @@ class TestParser(unittest.TestCase):
         ast[0].visit(context)
         blocks = blockFactory.blocks()
         block = blocks["foo_0000"]
-        self.assertIsInstance(ast[0], Function)
+        self.assertIsInstance(ast[0], FunctionDefinition)
         self.assertEqual(ast[0].frameSize, 0)
         self.assertTrue(isinstance(block.statements[0], IRDefFun))
         self.assertEqual(block.statements[1], IRReturn("char", Constant("char", 0), "foo"))

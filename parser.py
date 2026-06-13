@@ -1,8 +1,8 @@
-from lexer import tokens
+from lexer import tokens, lexer
 import ply.yacc as yacc
 from address import Constant
 from astnodes import *
-from error import Location
+from error import Location, CompileError
 import sys
 
 def loc(p, i=1):
@@ -29,6 +29,7 @@ def p_statement(p):
               | function_definition
               | if_expression
               | while_expression
+              | typedef_statement SEMI
     '''
     p[0] = p[1]
 
@@ -36,6 +37,7 @@ def p_expression(p):
     '''
     expression : return_expression
                | function_expression
+               | struct_definition_expression
                | var_def_expression
                | var_assign_expression
                | ptr_assign_expression
@@ -44,11 +46,15 @@ def p_expression(p):
 
 def p_lvalue(p):
     'lvalue : ID'
-    p[0] = Variable(p[1])
+    p[0] = Variable(p[1], location=loc(p))
+
+def p_lvalue_struct_field(p):
+    'lvalue : primary PERIOD ID'
+    p[0] = StructFieldReference(p[1], p[3], location=loc(p, 3))
 
 def p_ptrlvalue(p):
     'ptrlvalue : STAR ID'
-    p[0] = Variable(p[2])
+    p[0] = Variable(p[2], location=loc(p, 2))
 
 def p_value_expression(p):
     'value_expression : comparisson'
@@ -89,6 +95,10 @@ def p_unary_addressOf(p):
     '''
     p[0] = AddressOf(p[2])
 
+def p_unary_struct_field(p):
+    'unary : primary PERIOD ID'
+    p[0] = StructFieldReference(p[1], p[3], location=loc(p, 3))
+
 def p_unary_primary(p):
     'unary : primary'
     p[0] = p[1]
@@ -107,36 +117,55 @@ def p_primary_variable(p):
     '''
     primary : ID
     '''
-    p[0] = Variable(p[1])
+    p[0] = Variable(p[1], location=loc(p))
 
 def p_primary_fun_call(p):
     '''
     primary : function_expression
     '''
     f = p[1]
-    f.storeResult = True
+    f.setStoreResult()
     p[0] = p[1]
+
+def p_struct_definition_expression(p):
+    'struct_definition_expression : STRUCT ID LCURL var_list RCURL'
+    p[0] = StructDefinition(p[2], p[4], location=loc(p, 2))
 
 def p_variable_definition_expression(p):
     'var_def_expression : type ID'
-    p[0] = VariableDefinition(p[1], p[2])
+    p[0] = VariableDefinition(p[1], p[2], location=loc(p, 2))
 
 def p_variable_definition_expression_value(p):
     'var_def_expression : type ID ASSIGN value_expression'
     # 'var_def_expression : type ID ASSIGN constant'
-    p[0] = VariableDefinition(p[1], p[2], p[4])
+    p[0] = VariableDefinition(p[1], p[2], p[4], location=loc(p, 2))
+
+def p_typedef(p):
+    'typedef_statement : TYPEDEF type ID'
+    p[0] = TypeDef(p[3], p[2], location=loc(p, 1))
 
 def p_type(p):
     '''type : base_type pointers
     '''
-    p[0] = p[1] + "*"*p[2]
+    if p[2]>0:
+        p[0] = p[1] + "*"*p[2]
+    else:
+        p[0] = p[1]
 
 def p_base_type(p):
+    # '''base_type | ID'''
     '''base_type : CHAR
                  | INT
                  | VOID
+                 | ID
     '''
     p[0] = p[1]
+
+def p_base_type_struct(p):
+    # '''base_type | ID'''
+    '''base_type : STRUCT ID
+    '''
+    p[0] = StructType(p[2], ())
 
 def p_pointers_empty(p):
     '''
@@ -151,7 +180,7 @@ def p_pointers_more(p):
 
 def p_variable_assignment_expression(p):
     'var_assign_expression : lvalue ASSIGN value_expression'
-    p[0] = VariableAssignment(p[1], p[3])
+    p[0] = VariableAssignment(p[1], p[3], location=loc(p, 2))
 
 def p_ptr_assignment_expression(p):
     'ptr_assign_expression : ptrlvalue ASSIGN value_expression'
@@ -167,7 +196,6 @@ def p_function_expression_no_args(p):
 
 def p_function_expression_args(p):
     'function_expression : ID LPARA expr_list RPARA'
-    loc(p, 1)
     p[0] = FunctionCall(p[1], p[3], location=loc(p))
 
 def p_function_declaration_no_args(p):
@@ -182,12 +210,12 @@ def p_function_declaration_args(p):
 
 def p_function_definition_no_args(p):
     'function_definition : type ID LPARA RPARA LCURL statement_list RCURL'
-    node = Function(p[1], p[2], p[6], loc(p))
+    node = FunctionDefinition(p[1], p[2], p[6], location=loc(p))
     p[0] = node
 
 def p_function_definition_args(p):
     'function_definition : type ID LPARA arg_list RPARA LCURL statement_list RCURL'
-    node = Function(p[1], p[2], p[7], loc(p), p[4])
+    node = FunctionDefinition(p[1], p[2], p[7], p[4], location=loc(p))
     p[0] = node
 
 def p_if_expression(p):
@@ -200,7 +228,7 @@ def p_while_expression(p):
     '''
     while_expression : WHILE LPARA value_expression RPARA block
     '''
-    p[0] = While(p[3], p[5], loc(p))
+    p[0] = While(p[3], p[5], location=loc(p))
 
 def p_block(p):
     'block : LCURL statement_list RCURL'
@@ -222,6 +250,14 @@ def p_expr_list_multiple(p):
     'expr_list : expr_list COMMA value_expression'
     p[0] = p[1] + [p[3]]
 
+def p_var_list_single(p):
+    'var_list : var_def_expression SEMI'
+    p[0] = (p[1],)
+
+def p_var_list_multiple(p):
+    'var_list : var_list var_def_expression SEMI'
+    p[0] = p[1] + (p[2],)
+
 def p_arg_list_single(p):
     'arg_list : arg'
     p[0] = (p[1],)
@@ -238,10 +274,9 @@ def p_error(p):
     if p:
         file = p.lexer.file
         line = p.lineno
-        print(f"{file}:{line} error: Syntax error {p}")
+        raise CompileError(f"Syntax error {p}", Location(file, line))
     else:
-        print(f"{file}:{line} error: Unexpected end of file")
-    sys.exit(1);
+        raise CompileError(f"Unexpected end of file", Location(lexer.file, lexer.lineno))
 
 def p_constant_number(p):
     '''
@@ -253,6 +288,6 @@ def p_constant_string(p):
     '''
     constant : STRING
     '''
-    p[0] = String(p[1][1:-1], loc(p, 1))
+    p[0] = String(p[1][1:-1], location=loc(p, 1))
 
 parser = yacc.yacc()

@@ -2,7 +2,6 @@ from pprint import pprint
 import ir
 from parser import parser
 from symbolTable import SymbolTable
-from astnodes import Function, Argument
 from compiler import astToThreeCode, updateLive, genCode, genDataSegment
 from asmWriter import AsmWriter
 from astnodes import ASTContext
