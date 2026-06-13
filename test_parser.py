@@ -191,3 +191,20 @@ class TestParser(unittest.TestCase):
         blocks = context.blockFactory.blocks()
         block = blocks["main_0000"]
         # self.assertTrue(False)
+        
+    #
+    # Arithmetics
+    #
+    def test_addition(self):
+        ast = parser.parse("a=b+c;");
+        self.assertEqual(ast[0],
+                         VariableAssignment(Variable("a"),
+                                            Add(Variable("b"),
+                                                Variable("c"))))
+
+    def test_subtraction(self):
+        ast = parser.parse("a=b-c;");
+        self.assertEqual(ast[0],
+                         VariableAssignment(Variable("a"),
+                                            Subtraction(Variable("b"),
+                                                        Variable("c"))))

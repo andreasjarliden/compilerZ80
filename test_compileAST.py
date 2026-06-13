@@ -2,6 +2,7 @@ import unittest
 from testutilities import compileBlockToIR, compileToBlocks, compile
 from symbolTable import SymbolTable
 from astnodes import *
+from pprint import pprint
 
 
 # TODO live should describe the liveness AT the instruction, so we now if it is
@@ -224,6 +225,25 @@ class TestErrorHandling(unittest.TestCase):
     def test_charToIntPromotion(self):
         irs = compileBlockToIR("int i; char c; i = c;")
         self.assertIsInstance(irs[0], IRPromote)
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr) 
+
+    #
+    # Arithmetics
+    #
+    def test_addChar(self):
+        irs = compileBlockToIR("char a;char b;a=a+b;")
+        self.assertIsInstance(irs[0], IRAdd)
+        self.assertEqual(irs[0].lhsAddr.name, "a")
+        self.assertEqual(irs[0].rhsAddr.name, "b")
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr) 
+
+    def test_subChar(self):
+        irs = compileBlockToIR("char a;char b;a=a-b;")
+        self.assertIsInstance(irs[0], IRSub)
+        self.assertEqual(irs[0].lhsAddr.name, "a")
+        self.assertEqual(irs[0].rhsAddr.name, "b")
         self.assertIsInstance(irs[1], IRAssign)
         self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr) 
 

@@ -517,6 +517,32 @@ class IRAdd(IR):
         else:
             error()
 
+
+class IRSub(IR):
+    def __init__(self, addr, addrLhs, addrRhs):
+        super().__init__(addr, addrLhs, addrRhs)
+
+    def genCode(self, asmWriter):
+        ra = registerAllocator.RA
+        ra.verify()
+        # ra.removeSymbol(self.resultAddr)
+        if self.lhsAddr.type == "char":
+            ra.verify()
+            regZ = self.load8bitLhsAndRhs(asmWriter, transitive=False)
+            ra.verify()
+            ra.spillRegister("a")
+            ra.verify()
+            asmWriter.write(f"\tsub\ta, {regZ}\n")
+            ra.loadedSymbolInRegister(self.resultAddr, "a")
+        elif self.lhsAddr.type == "int":
+            regZ = self.load16bitLhsAndRhs(transitive=False)
+            ra.spillRegister("hl")
+            asmWriter.write(f"\tor\ta\n") # Clears Carry flag without changing A
+            asmWriter.write(f"\tsbc\thl, {regZ}\n")
+            ra.loadedSymbolInRegister(self.resultAddr, "hl")
+        else:
+            error()
+
 class IRPromote(IR):
     def __init__(self, addr, exprAddr, toType):
         super().__init__(resultAddr=addr, lhsAddr=exprAddr)

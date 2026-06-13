@@ -11,11 +11,14 @@ class TestIR(unittest.TestCase):
         self.foo = SymEntry("char", "foo")
         self.foo16 = SymEntry("int", "foo")
         self.bar = SymEntry("char", "bar")
+        self.bar16 = SymEntry("int", "bar")
         self.baz = SymEntry("char", "baz")
         self.ptr = SymEntry("int*", "ptr")
         self.derefPtr = SymEntry("char", "derefPtr")
         self.foo.impl = StackAddress(1)
+        self.foo16.impl = StackAddress(1)
         self.bar.impl = StackAddress(2)
+        self.bar16.impl = StackAddress(3)
         self.baz.impl = StackAddress(3)
         self.ptr.impl = StackAddress(4)
         self.derefPtr.impl = PointerAddress(self.ptr)
@@ -55,7 +58,9 @@ class TestIR(unittest.TestCase):
         self.assertRegex(output, r"\tld\t., \(ix \+ 2\)")
         self.assertTrue(registerAllocator.RA.isInRegister(self.foo))
 
+    #
     # IRAdd
+    #
 
     def test_IRAdd_bothAlreadyInRegisters(self):
         registerAllocator.RA.loadedSymbolInRegister(self.bar, "a")
@@ -230,6 +235,51 @@ class TestIR(unittest.TestCase):
         self.assertRegex(output, r"\tld\t., a")
         self.assertIn("\tld\ta, (ix + 2)", output)
         self.assertRegex(output, r"\tadd\ta, .")
+
+    #
+    # IRSub
+    #
+
+    def test_IRSubChar(self):
+        registerAllocator.RA.loadedSymbolInRegister(self.bar, "a")
+        registerAllocator.RA.loadedSymbolInRegister(self.baz, "b")
+
+        # foo = bar - baz
+        ira = ir.IRSub(self.foo, self.bar, self.baz)
+        ira.live[self.foo] = True
+        ira.live[self.bar] = False # Not necessary to spill bar
+        ira.live[self.baz] = True
+        registerAllocator.RA.currentInstruction = ira
+        ira.genCode(self.asmWriter)
+
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
+        self.assertEqual(output, "\tsub\ta, b\n")
+        self.assertEqual(registerAllocator.RA.isInRegister(self.foo), "a")
+        self.assertFalse(registerAllocator.RA.isInRegister(self.bar))
+        self.assertEqual(registerAllocator.RA.isInRegister(self.baz), "b")
+
+    def test_IRSubInt(self):
+        registerAllocator.RA.loadedSymbolInRegister(self.foo16, "hl")
+        registerAllocator.RA.loadedSymbolInRegister(self.bar16, "bc")
+        print(f"HL: {registerAllocator.RA.registers["hl"]}")
+
+        # foo = bar - baz
+        ira = ir.IRSub(self.foo16, self.foo16, self.bar16)
+        ira.live[self.foo16] = True
+        ira.live[self.bar16] = False # Not necessary to spill bar
+        registerAllocator.RA.currentInstruction = ira
+        ira.genCode(self.asmWriter)
+
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
+        self.assertEqual(output, "\tor\ta\n\tsbc\thl, bc\n")
+        self.assertEqual(registerAllocator.RA.isInRegister(self.foo16), "hl")
+        self.assertEqual(registerAllocator.RA.isInRegister(self.bar16), "bc")
+
+    #
+    # IRPromote
+    #
 
     def test_IRPromote_inRegister(self):
         registerAllocator.RA.loadedSymbolInRegister(self.foo, "a")

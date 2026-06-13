@@ -81,6 +81,10 @@ def p_additive_plus(p):
     'additive : additive PLUS multiplicative'
     p[0] = Add(p[1], p[3])
 
+def p_additive_minus(p):
+    'additive : additive MINUS multiplicative'
+    p[0] = Subtraction(p[1], p[3])
+
 def p_multiplicative_single(p):
     'multiplicative : unary'
     p[0] = p[1]

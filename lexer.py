@@ -31,6 +31,7 @@ tokens = [
         'GREATER',
         'GREATER_OR_EQUAL',
         'PLUS',
+        'MINUS',
         'COMMA',
         'STAR',
         'AMPERSAND',
@@ -52,6 +53,7 @@ t_LESS_OR_EQUAL = r'<='
 t_GREATER = r'>'
 t_GREATER_OR_EQUAL = r'>='
 t_PLUS = r'\+'
+t_MINUS = r'-'
 t_COMMA = r','
 t_STAR = r'\*'
 t_AMPERSAND = r'&'

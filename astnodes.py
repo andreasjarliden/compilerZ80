@@ -410,6 +410,20 @@ class Add(ASTNode):
 
 
 @dataclass(frozen=True)
+class Subtraction(ASTNode):
+    lhs : Any
+    rhs : Any
+
+    def visit(self, context):
+        lhsAddr = self.lhs.visit(context)
+        rhsAddr = self.rhs.visit(context)
+        ct = lhsAddr.completeType
+        irAdd = IRSub(context.symbolTable.addTemporary(ct), lhsAddr, rhsAddr)
+        context.blockFactory.addIR(irAdd)
+        return irAdd.resultAddr
+
+
+@dataclass(frozen=True)
 class Relation(ASTNode):
     operation : str
     lhs : Any
