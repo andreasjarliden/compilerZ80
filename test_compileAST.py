@@ -228,6 +228,14 @@ class TestErrorHandling(unittest.TestCase):
         self.assertIsInstance(irs[1], IRAssign)
         self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr) 
 
+    def test_pointerWithAbsoluteValue(self):
+        irs = compileBlockToIR("""int *p;
+        p = (int*)0x8000;""")
+        pprint(irs)
+        self.assertIsInstance(irs[0], IRAssign)
+        self.assertIsInstance(irs[0].lhsAddr, Constant)
+        self.assertEqual(irs[0].lhsAddr.completeType, "int*")
+
     #
     # Arithmetics
     #
@@ -246,6 +254,7 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(irs[0].rhsAddr.name, "b")
         self.assertIsInstance(irs[1], IRAssign)
         self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr) 
+
 
 
 

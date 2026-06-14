@@ -8,6 +8,7 @@ from typeEnv import TypeEnv
 from type_defs import StructType, StructField
 import symbolTable
 import registerAllocator
+from copy import copy
 
 class StringTable:
     def __init__(self):
@@ -292,6 +293,19 @@ def isConvertableTo(fromType, toType):
     return False
 
 
+@dataclass(frozen=True)
+class Cast(ASTNode):
+    completeType : Any
+    value : Any = None 
+
+    def visit(self, context):
+        valueAddr = self.value.visit(context)
+        if isinstance(valueAddr, Constant):
+            temp = copy(valueAddr)
+            temp.completeType = self.completeType
+            return temp
+        else:
+            error()
 
 
 @dataclass(frozen=True)

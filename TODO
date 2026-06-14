@@ -1,6 +1,6 @@
+- Assign pointers with constants
 - Subtraction of constants
 - Test more complex subtractions
-- Hex constants
 - Proper handling of char and int types, including constants.
 - Add c library for rom functions.
 - Rename address.py

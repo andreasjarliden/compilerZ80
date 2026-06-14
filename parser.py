@@ -89,6 +89,10 @@ def p_multiplicative_single(p):
     'multiplicative : unary'
     p[0] = p[1]
 
+def p_unary_cast(p):
+    'unary : LPARA type RPARA unary'
+    p[0] = Cast(p[2], p[4], location=loc(p, 2))
+
 def p_unary_deref(p):
     'unary : STAR unary'
     p[0] = Dereference(p[2])

@@ -203,3 +203,11 @@ class TestIntegration(unittest.TestCase):
                 s.a = 1;
                 a = s.a;
             }""")
+
+    def test_localVariable(self):
+        output = compile("""
+            char main() {
+                char* p;
+                p = (char*)0x8000;
+            }""")
+        self.assertRegex(output, r"ld\t(bc|de|hl), 32768")

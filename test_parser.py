@@ -50,6 +50,15 @@ class TestParser(unittest.TestCase):
         self.assertTrue(ast[1].expr.visit(context).equalByValue(
             SymEntry("char", "a")))
 
+    #
+    # Casting
+    #
+    def test_cast(self):
+        ast = parser.parse("a=(char*)42;");
+        self.assertEqual(ast[0],
+                         VariableAssignment(Variable("a"),
+                                            Cast("char*", Constant("char", 42))))
+
     # 
     # IF
     #
