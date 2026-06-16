@@ -417,7 +417,9 @@ class IRAssign(IR):
                 reg = ra.doLoadInRegister8(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" })
             elif self.resultAddr.type == "int":
                 reg = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" })
+            ra.verify()
             ra.assignedToSymbolWithRegister(self.resultAddr, reg)
+            ra.verify()
         else:
             # Stores directly to memory
             if self.resultAddr.type == "char":
@@ -501,8 +503,8 @@ class IRAdd(IR):
         ra = registerAllocator.RA
         ra.verify()
         ra.removeSymbol(self.resultAddr)
+        ra.verify()
         if self.lhsAddr.type == "char":
-            ra.verify()
             regZ = self.load8bitLhsAndRhs(asmWriter, transitive=True)
             ra.verify()
             ra.spillRegister("a")
@@ -511,9 +513,12 @@ class IRAdd(IR):
             ra.loadedSymbolInRegister(self.resultAddr, "a")
         elif self.lhsAddr.type == "int":
             regZ = self.load16bitLhsAndRhs(transitive=True)
+            ra.verify()
             ra.spillRegister("hl")
+            ra.verify()
             asmWriter.write(f"\tadd\thl, {regZ}\n")
             ra.loadedSymbolInRegister(self.resultAddr, "hl")
+            ra.verify()
         else:
             error()
 

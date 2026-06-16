@@ -56,12 +56,21 @@ class TestRA(unittest.TestCase):
 
     # bar = foo
 
+    def test_assignment(self):
+        self.ra.loadedSymbolInRegister(self.foo, "a") # foo is loaded in a
+        self.ra.assignedToSymbolWithRegister(self.bar, "a") # store foo (loaded in a) to bar
+        self.assertEqual(self.ra.symbols[self.bar], {"a"})
+        self.assertEqual(self.ra.registers["a"], {self.foo, self.bar}) # Now a holds both foo and bar
+
     def test_assignment2(self):
         self.ra.loadedSymbolInRegister(self.bar, "b") # bar was previously in reg b
         self.ra.loadedSymbolInRegister(self.foo, "a") # foo is loaded in a
         self.ra.assignedToSymbolWithRegister(self.bar, "a") # store foo (loaded in a) to bar
         self.assertEqual(self.ra.symbols[self.bar], {"a"}) # Note: b no longer holds updated bar and it is not stored yet to bar
+        self.assertEqual(self.ra.registers["b"], set()) # The old bar value in reg b is no longer current
         self.assertEqual(self.ra.registers["a"], {self.foo, self.bar}) # Now a holds both foo and bar
+
+
 
     #
     # Spilling
