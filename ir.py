@@ -132,7 +132,7 @@ class IR:
         ra = registerAllocator.RA
 
         if transitive:
-            # if the rhs is already in register a, then swap them
+            # if the rhs is already in register hl, then swap them
             if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr) == "hl":
                 self.lhsAddr, self.rhsAddr = self.rhsAddr, self.lhsAddr
 
@@ -483,8 +483,11 @@ class IRAssignToPointer(IR):
                 else:
                     ra.removeSymbolForRegister(self.resultAddr, regX)
             else:
+                ra.verify()
                 regY = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } )
+                ra.verify()
                 regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } - {regY}) 
+                ra.verify()
                 asmWriter.write(f'\tld\t({regX}), {regY[1]}\n')
                 asmWriter.write(f'\tinc\t{regX}\n')
                 asmWriter.write(f'\tld\t({regX}), {regY[0]}\n')
@@ -548,6 +551,44 @@ class IRSub(IR):
             ra.loadedSymbolInRegister(self.resultAddr, "hl")
         else:
             error()
+
+
+class IRBitwiseOr(IR):
+    def __init__(self, addr, addrLhs, addrRhs):
+        super().__init__(addr, addrLhs, addrRhs)
+
+    def genCode(self, asmWriter):
+        ra = registerAllocator.RA
+        ra.verify()
+        ra.removeSymbol(self.resultAddr)
+        ra.verify()
+        if self.lhsAddr.type == "char":
+            regZ = self.load8bitLhsAndRhs(asmWriter, transitive=True)
+            ra.verify()
+            ra.spillRegister("a")
+            ra.verify()
+            asmWriter.write(f"\tor\ta, {regZ}\n")
+            ra.loadedSymbolInRegister(self.resultAddr, "a")
+        elif self.lhsAddr.type == "int":
+            regLhs = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } )
+            regRhs = ra.doLoadInRegister16(self.rhsAddr, { "bc", "de", "hl" } - { regLhs })
+            # TODO, I think we could re-use regLhs or regRhs for this
+            regRes = ra.getRegisterForSymbol(self.resultAddr, { "bc", "de", "hl" } - { regLhs, regRhs })
+            ra.spillRegister("a")
+                                           
+            asmWriter.write(f"\tld\ta, {regLhs[0]}\n")
+            asmWriter.write(f"\tor\t{regRhs[0]}\n")
+            asmWriter.write(f"\tld\t{regRes[0]}, a\n")
+
+            asmWriter.write(f"\tld\ta, {regLhs[1]}\n")
+            asmWriter.write(f"\tor\t{regRhs[1]}\n")
+            asmWriter.write(f"\tld\t{regRes[1]}, a\n")
+
+            ra.loadedSymbolInRegister(self.resultAddr, regRes)
+            ra.verify()
+        else:
+            error()
+
 
 class IRPromote(IR):
     def __init__(self, addr, exprAddr, toType):

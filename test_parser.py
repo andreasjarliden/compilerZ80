@@ -221,3 +221,10 @@ class TestParser(unittest.TestCase):
                          VariableAssignment(Variable("a"),
                                             Subtraction(Variable("b"),
                                                         Variable("c"))))
+
+    def test_or(self):
+        ast = parser.parse("a=b|c;");
+        self.assertEqual(ast[0],
+                         VariableAssignment(Variable("a"),
+                                            BitwiseOr(Variable("b"),
+                                                      Variable("c"))))

@@ -57,14 +57,22 @@ def p_ptrlvalue(p):
     p[0] = Variable(p[2], location=loc(p, 2))
 
 def p_value_expression(p):
-    'value_expression : comparisson'
+    'value_expression : bitwise'
     p[0] = p[1]
+
+def p_bitwise_single(p):
+    'bitwise : comparisson'
+    p[0] = p[1]
+
+def p_bitwise_or(p):
+    '''bitwise : bitwise OR comparisson'''
+    p[0] = BitwiseOr(p[1], p[3])        
 
 def p_comparisson_single(p):
     'comparisson : additive'
     p[0] = p[1]
 
-def p_comparisson_equal(p):
+def p_comparisson_op(p):
     '''comparisson : comparisson EQUAL additive
                    | comparisson NOT_EQUAL additive
                    | comparisson LESS additive

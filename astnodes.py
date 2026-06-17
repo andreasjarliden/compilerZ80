@@ -438,6 +438,20 @@ class Subtraction(ASTNode):
 
 
 @dataclass(frozen=True)
+class BitwiseOr(ASTNode):
+    lhs : Any
+    rhs : Any
+
+    def visit(self, context):
+        lhsAddr = self.lhs.visit(context)
+        rhsAddr = self.rhs.visit(context)
+        ct = lhsAddr.completeType
+        ir = IRBitwiseOr(context.symbolTable.addTemporary(ct), lhsAddr, rhsAddr)
+        context.blockFactory.addIR(ir)
+        return ir.resultAddr
+
+
+@dataclass(frozen=True)
 class Relation(ASTNode):
     operation : str
     lhs : Any

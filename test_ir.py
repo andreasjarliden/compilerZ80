@@ -278,6 +278,42 @@ class TestIR(unittest.TestCase):
         self.assertEqual(registerAllocator.RA.isInRegister(self.bar16), "bc")
 
     #
+    # IRBitwiseOr
+    #
+
+    def test_IRBitwiseOrChar(self):
+        registerAllocator.RA.loadedSymbolInRegister(self.bar, "a")
+        registerAllocator.RA.loadedSymbolInRegister(self.baz, "b")
+
+        # foo = bar | baz
+        ira = ir.IRBitwiseOr(self.foo, self.bar, self.baz)
+        ira.live[self.foo] = True
+        ira.live[self.bar] = False # Not necessary to spill bar
+        ira.live[self.baz] = True
+        registerAllocator.RA.currentInstruction = ira
+        ira.genCode(self.asmWriter)
+
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
+        self.assertEqual(output, "\tor\ta, b\n")
+        self.assertEqual(registerAllocator.RA.isInRegister(self.foo), "a")
+        self.assertFalse(registerAllocator.RA.isInRegister(self.bar))
+        self.assertEqual(registerAllocator.RA.isInRegister(self.baz), "b")
+
+    def test_IRBitwiseOrInt(self):
+        registerAllocator.RA.loadedSymbolInRegister(self.foo16, "hl")
+        registerAllocator.RA.loadedSymbolInRegister(self.bar16, "bc")
+
+        ira = ir.IRBitwiseOr(self.foo16, self.foo16, self.bar16)
+        ira.live[self.foo16] = True
+        ira.live[self.bar16] = False # Not necessary to spill bar
+        registerAllocator.RA.currentInstruction = ira
+        ira.genCode(self.asmWriter)
+
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
+
+    #
     # IRPromote
     #
 
