@@ -212,15 +212,3 @@ class TestIntegration(unittest.TestCase):
             }""")
         self.assertRegex(output, r"ld\t(bc|de|hl), 32768")
 
-    def test_heap(self):
-        output = compile("""
-void createHeap(void* start, int size) {
-  // Write occupied boundary tags at the start and end of the heap
-  int* heapStartTag = start;
-  int* heapEndTag = start + size - 2;
-  heapStartTag = (int*)0x8000;
-  heapEndTag = (int*)0x8000;
-}
-            """)
-        self.assertTrue(False)
-

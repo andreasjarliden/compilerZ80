@@ -98,6 +98,9 @@ class RegisterAllocator:
     def removeSymbolForRegister(self, s, r):
         self.registers[r].remove(s)
         self.symbols[s].remove(r)
+        if len(self.symbols[s] & ALL_REGISTERS) == 0:
+            # Remove if no longer used
+            del self.symbols[s]
 
     # TODO test
     def removeSymbol(self, s):

@@ -70,7 +70,26 @@ class TestRA(unittest.TestCase):
         self.assertEqual(self.ra.registers["b"], set()) # The old bar value in reg b is no longer current
         self.assertEqual(self.ra.registers["a"], {self.foo, self.bar}) # Now a holds both foo and bar
 
+    # removeSymbolForRegister
+    def test_removeSymbolForRegister(self):
+        self.ra.loadedSymbolInRegister(self.foo, "a")
 
+        self.ra.removeSymbolForRegister(self.foo, "a")
+        self.ra.verify()
+
+        self.assertEqual(self.ra.registers["a"], set())
+        self.assertNotIn(self.foo, self.ra.symbols) # Symbol no longer in any rgister
+
+    def test_removeSymbolForRegister2(self):
+        self.ra.loadedSymbolInRegister(self.foo, "a")
+        self.ra.loadedSymbolInRegister(self.foo, "b")
+
+        self.ra.removeSymbolForRegister(self.foo, "a")
+        self.ra.verify()
+
+        self.assertEqual(self.ra.registers["a"], set())
+        self.assertEqual(self.ra.registers["b"], { self.foo })
+        self.assertEqual(self.ra.symbols[self.foo], {self.foo, "b"} )
 
     #
     # Spilling
