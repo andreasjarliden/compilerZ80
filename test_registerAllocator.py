@@ -433,9 +433,12 @@ class TestZ80RA(unittest.TestCase):
 
         self.ra.asmFile.seek(0)
         output = self.ra.asmFile.read()
-        self.assertIn("\tld\tl, (de)\n", output)
+        print(output)
+        self.assertIn("\tld\ta, (de)\n", output)
+        self.assertIn("\tld\tl, a\n", output)
         self.assertIn("\tinc\tde\n", output)
-        self.assertIn("\tld\th, (de)\n", output)
+        self.assertIn("\tld\ta, (de)\n", output)
+        self.assertIn("\tld\th, a\n", output)
         self.assertIn("\tdec\tde\n", output)
 
     def test_loadInHL_fromPointerInRegisterWhichIsDead(self):
@@ -475,6 +478,8 @@ class TestZ80RA(unittest.TestCase):
         self.assertIn("\tld\t(ix + 3), h\n", output)
         self.assertIn("\tld\t(ix + 2), l\n", output)
         # Expect loading hl from (de)
-        self.assertIn("\tld\tl, (de)\n", output)
+        self.assertIn("\tld\ta, (de)\n", output)
+        self.assertIn("\tld\tl, a\n", output)
         self.assertIn("\tinc\tde\n", output)
-        self.assertIn("\tld\th, (de)\n", output)
+        self.assertIn("\tld\ta, (de)\n", output)
+        self.assertIn("\tld\th, a\n", output)

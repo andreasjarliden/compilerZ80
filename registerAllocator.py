@@ -269,9 +269,17 @@ class Z80RegisterAllocator(RegisterAllocator):
         if len(r) == 1:
             self.asmFile.write(f'\tld\t{r}, ({rp})\n')
         elif len(r) == 2:
-            self.asmFile.write(f'\tld\t{r[1]}, ({rp})\n')
-            self.asmFile.write(f'\tinc\t{rp}\n')
-            self.asmFile.write(f'\tld\t{r[0]}, ({rp})\n')
+            if rp == "hl":
+                self.asmFile.write(f'\tld\t{r[1]}, ({rp})\n')
+                self.asmFile.write(f'\tinc\t{rp}\n')
+                self.asmFile.write(f'\tld\t{r[0]}, ({rp})\n')
+            else:
+                # Only a can be loaded from (bc/de)
+                self.asmFile.write(f'\tld\ta, ({rp})\n')
+                self.asmFile.write(f'\tld\t{r[1]}, a\n')
+                self.asmFile.write(f'\tinc\t{rp}\n')
+                self.asmFile.write(f'\tld\ta, ({rp})\n')
+                self.asmFile.write(f'\tld\t{r[0]}, a\n')
             if self.currentInstruction.live[pointer]:
                 self.asmFile.write(f'\tdec\t{rp}\n')
             else:

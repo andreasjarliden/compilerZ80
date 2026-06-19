@@ -483,14 +483,20 @@ class IRAssignToPointer(IR):
                 else:
                     ra.removeSymbolForRegister(self.resultAddr, regX)
             else:
-                ra.verify()
                 regY = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } )
-                ra.verify()
                 regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } - {regY}) 
-                ra.verify()
-                asmWriter.write(f'\tld\t({regX}), {regY[1]}\n')
-                asmWriter.write(f'\tinc\t{regX}\n')
-                asmWriter.write(f'\tld\t({regX}), {regY[0]}\n')
+                if regY == "hl":
+                    asmWriter.write(f'\tld\t({regX}), {regY[1]}\n')
+                    asmWriter.write(f'\tinc\t{regX}\n')
+                    asmWriter.write(f'\tld\t({regX}), {regY[0]}\n')
+                else:
+                    # No ld (bc/de), r instruction only ld (bc/de), a
+                    ra.spillRegister("a")
+                    asmWriter.write(f'\tld\ta, {regY[1]}\n')
+                    asmWriter.write(f'\tld\t({regX}), a\n')
+                    asmWriter.write(f'\tinc\t{regX}\n')
+                    asmWriter.write(f'\tld\ta, {regY[0]}\n')
+                    asmWriter.write(f'\tld\t({regX}), a\n')
                 if self.live[self.resultAddr]:
                     asmWriter.write(f'\tdec\t{regX}\n')
                 else:
