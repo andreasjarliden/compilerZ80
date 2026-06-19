@@ -588,6 +588,43 @@ class IRBitwiseOr(IR):
             ra.verify()
         else:
             error()
+            
+
+class IRBitwiseAnd(IR):
+    def __init__(self, addr, addrLhs, addrRhs):
+        super().__init__(addr, addrLhs, addrRhs)
+
+    def genCode(self, asmWriter):
+        ra = registerAllocator.RA
+        ra.verify()
+        ra.removeSymbol(self.resultAddr)
+        ra.verify()
+        if self.lhsAddr.type == "char":
+            regZ = self.load8bitLhsAndRhs(asmWriter, transitive=True)
+            ra.verify()
+            ra.spillRegister("a")
+            ra.verify()
+            asmWriter.write(f"\tand\ta, {regZ}\n")
+            ra.loadedSymbolInRegister(self.resultAddr, "a")
+        elif self.lhsAddr.type == "int":
+            regLhs = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } )
+            regRhs = ra.doLoadInRegister16(self.rhsAddr, { "bc", "de", "hl" } - { regLhs })
+            # TODO, I think we could re-use regLhs or regRhs for this
+            regRes = ra.getRegisterForSymbol(self.resultAddr, { "bc", "de", "hl" } - { regLhs, regRhs })
+            ra.spillRegister("a")
+                                           
+            asmWriter.write(f"\tld\ta, {regLhs[0]}\n")
+            asmWriter.write(f"\tand\t{regRhs[0]}\n")
+            asmWriter.write(f"\tld\t{regRes[0]}, a\n")
+
+            asmWriter.write(f"\tld\ta, {regLhs[1]}\n")
+            asmWriter.write(f"\tand\t{regRhs[1]}\n")
+            asmWriter.write(f"\tld\t{regRes[1]}, a\n")
+
+            ra.loadedSymbolInRegister(self.resultAddr, regRes)
+            ra.verify()
+        else:
+            error()
 
 
 class IRPromote(IR):

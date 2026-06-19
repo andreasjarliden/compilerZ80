@@ -409,6 +409,7 @@ class Return(ASTNode):
         context.blockFactory.addIR(IRReturn(t, exprAddress, context.functionName))
 
 
+# TODO much duplication for the binary operations
 @dataclass(frozen=True)
 class Add(ASTNode):
     lhs : Any
@@ -447,6 +448,20 @@ class BitwiseOr(ASTNode):
         rhsAddr = self.rhs.visit(context)
         ct = lhsAddr.completeType
         ir = IRBitwiseOr(context.symbolTable.addTemporary(ct), lhsAddr, rhsAddr)
+        context.blockFactory.addIR(ir)
+        return ir.resultAddr
+
+
+@dataclass(frozen=True)
+class BitwiseAnd(ASTNode):
+    lhs : Any
+    rhs : Any
+
+    def visit(self, context):
+        lhsAddr = self.lhs.visit(context)
+        rhsAddr = self.rhs.visit(context)
+        ct = lhsAddr.completeType
+        ir = IRBitwiseAnd(context.symbolTable.addTemporary(ct), lhsAddr, rhsAddr)
         context.blockFactory.addIR(ir)
         return ir.resultAddr
 
