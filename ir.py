@@ -196,9 +196,15 @@ class IRIfVariable(IR):
         # Spill before the jump as this will end the basic block. A later call
         # to spillAll will be a no-op.
         ra.spillAll()
-        # TODO handle 16 bits
-        ra.loadInA(self.lhsAddr)
-        asmWriter.write(f'\tor\ta\n')
+        if self.lhsAddr.type == "char":
+            ra.loadInA(self.lhsAddr)
+            asmWriter.write(f'\tor\ta\n')
+        elif self.lhsAddr.type == "int":
+            ra.loadInHL(self.lhsAddr)
+            asmWriter.write(f'\tld\ta, h\n')
+            asmWriter.write(f'\tor\tl\n')
+        else:
+            error()
         asmWriter.write(f'\tjr\tz, {self.skipLabel}\n') 
 
 class IRSpillAll(IR):
