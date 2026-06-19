@@ -406,6 +406,7 @@ class IRAssign(IR):
         super().__init__(resultAddr=lvalue, lhsAddr=rhsAddress)
 
     def genCode(self, asmWriter):
+        asmWriter.write(f"\t; Assign to {self.resultAddr.name}\n")
         ra = registerAllocator.RA
         # If we are assigning to variable that has no more uses, store it
         # directly to memory. Note: this is somewhat different from being
@@ -458,6 +459,7 @@ class IRAssignToPointer(IR):
         super().__init__(resultAddr=lvalue, lhsAddr=rhsAddress)
 
     def genCode(self, asmWriter):
+        asmWriter.write(f"\t; Assign via pointer {self.resultAddr.name}\n")
         ra = registerAllocator.RA
 
         t = self.resultAddr.completeType[:-1]
