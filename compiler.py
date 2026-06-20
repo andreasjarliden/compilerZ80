@@ -13,6 +13,7 @@ def astToThreeCode(ast, astContext):
 
 def updateLive(blocks):
     for b in blocks.values():
+        # Set all non-temp to live at exit for now
         live = { s: not s.name.startswith("temp") for s in b.exitSymbols}
         for i in reversed(b.statements):
             i.updateLive(live)

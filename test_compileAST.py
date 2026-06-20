@@ -50,6 +50,21 @@ A=2;""")
         self.assertFalse(self.isLive(irs[3], "A")) # A=2
         self.assertTrue(self.isLive(irs[3], "B")) # A=2
 
+    def test_assignToPointer(self):
+        blocks = compileToBlocks("""
+        void main() {
+            int tag = 0x8000;
+            int* pChunkStart = 42;
+            *pChunkStart = tag;
+            pChunkStart = (int*)0;
+        }""", symbolTable = self.symbolTable)
+        irs = blocks["main_0000"].statements
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertIsInstance(irs[2], IRAssign)
+        self.assertIsInstance(irs[3], IRAssignToPointer)
+        # pCunkStart value 42 should be live at *pChunkStart = tag line as we are USING pChunkStart, not assigning it.
+        self.assertEqual(irs[3].live[irs[2].resultAddr], True) 
+
 class TestErrorHandling(unittest.TestCase):
     # TODO duplication with above
     def setUp(self):

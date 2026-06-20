@@ -462,37 +462,49 @@ class IRAssign(IR):
 
 class IRAssignToPointer(IR):
     def __init__(self, lvalue, rhsAddress):
-        super().__init__(resultAddr=lvalue, lhsAddr=rhsAddress)
+        # Note, we are USING the pointer, not replacing it
+        super().__init__(lhsAddr=lvalue, rhsAddr=rhsAddress)
+
+    # def updateLive(self, live):
+    #     if self.resultAddr and isinstance(self.resultAddr, SymEntry):
+    #         # Don't update live to False as we are only assigning through the pointer
+    #         pass
+    #         # live[self.resultAddr] = False
+    #     if self.lhsAddr and isinstance(self.lhsAddr, SymEntry):
+    #         live[self.lhsAddr] = True
+    #     if self.rhsAddr and isinstance(self.rhsAddr, SymEntry):
+    #         live[self.rhsAddr] = True
+    #     self.live = live.copy()
 
     def genCode(self, asmWriter):
-        asmWriter.write(f"\t; Assign via pointer {self.resultAddr.name}\n")
+        asmWriter.write(f"\t; Assign via pointer {self.lhsAddr.name}\n")
         ra = registerAllocator.RA
 
-        t = self.resultAddr.completeType[:-1]
+        t = self.lhsAddr.completeType[:-1]
         ra.spillAllMatchingType(t)
 
-        if self.resultAddr.completeType == "char*":
-            if isinstance(self.lhsAddr, Constant):
-                regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } ) 
-                asmWriter.write(f'\tld\t({regX}), {self.lhsAddr.value}\n')
+        if self.lhsAddr.completeType == "char*":
+            if isinstance(self.rhsAddr, Constant):
+                regX = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } ) 
+                asmWriter.write(f'\tld\t({regX}), {self.rhsAddr.value}\n')
             else:
-                regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } ) 
+                regX = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } ) 
                 # Carefull not to trigger a spill of regX by using a coupled register
-                regY = ra.doLoadInRegister8(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" } - ra.coupledRegisters[regX])
+                regY = ra.doLoadInRegister8(self.rhsAddr, { "a", "b", "c", "d", "e", "h", "l" } - ra.coupledRegisters[regX])
                 asmWriter.write(f'\tld\t({regX}), {regY}\n')
-        elif self.resultAddr.completeType == "int*":
-            if isinstance(self.lhsAddr, Constant):
-                regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } ) 
-                asmWriter.write(f'\tld\t({regX}), {self.lhsAddr.value & 0xff}\n')
+        elif self.lhsAddr.completeType == "int*":
+            if isinstance(self.rhsAddr, Constant):
+                regX = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } ) 
+                asmWriter.write(f'\tld\t({regX}), {self.rhsAddr.value & 0xff}\n')
                 asmWriter.write(f'\tinc\t{regX}\n')
-                asmWriter.write(f'\tld\t({regX}), {self.lhsAddr.value >> 8 & 0xff}\n')
-                if self.live[self.resultAddr]:
+                asmWriter.write(f'\tld\t({regX}), {self.rhsAddr.value >> 8 & 0xff}\n')
+                if self.live[self.lhsAddr]:
                     asmWriter.write(f'\tdec\t{regX}\n')
                 else:
-                    ra.removeSymbolForRegister(self.resultAddr, regX)
+                    ra.removeSymbolForRegister(self.lhsAddr, regX)
             else:
-                regY = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } )
-                regX = ra.doLoadInRegister16(self.resultAddr, { "bc", "de", "hl" } - {regY}) 
+                regY = ra.doLoadInRegister16(self.rhsAddr, { "bc", "de", "hl" } )
+                regX = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } - {regY}) 
                 if regY == "hl":
                     asmWriter.write(f'\tld\t({regX}), {regY[1]}\n')
                     asmWriter.write(f'\tinc\t{regX}\n')
@@ -505,10 +517,10 @@ class IRAssignToPointer(IR):
                     asmWriter.write(f'\tinc\t{regX}\n')
                     asmWriter.write(f'\tld\ta, {regY[0]}\n')
                     asmWriter.write(f'\tld\t({regX}), a\n')
-                if self.live[self.resultAddr]:
+                if self.live[self.lhsAddr]:
                     asmWriter.write(f'\tdec\t{regX}\n')
                 else:
-                    ra.removeSymbolForRegister(self.resultAddr, regX)
+                    ra.removeSymbolForRegister(self.lhsAddr, regX)
         else:
             error()
 
