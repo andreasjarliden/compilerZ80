@@ -282,7 +282,7 @@ class VariableDefinition(ASTNode):
             context.dataSegment[symbol] = value
         else:
             if self.value:
-                rhsAddr = self.value.visit(context)
+                rhsAddr = self.promoteIfNeededTo(self.value.visit(context), t, context, "assignment")
                 context.blockFactory.addIR(IRAssign(symbol, rhsAddr))
 
 def isConvertableTo(fromType, toType):

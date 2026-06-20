@@ -54,7 +54,7 @@ A=2;""")
         blocks = compileToBlocks("""
         void main() {
             int tag = 0x8000;
-            int* pChunkStart = 42;
+            int* pChunkStart = (int*)42;
             *pChunkStart = tag;
             pChunkStart = (int*)0;
         }""", symbolTable = self.symbolTable)
@@ -237,11 +237,37 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(cts.exception.message, "Can't convert char to int* in assignment")
         self.assertEqual(cts.exception.location.line, 3)
 
-    def test_charToIntPromotion(self):
+    def test_assignment_charToIntPromotion(self):
         irs = compileBlockToIR("int i; char c; i = c;")
         self.assertIsInstance(irs[0], IRPromote)
         self.assertIsInstance(irs[1], IRAssign)
         self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr) 
+
+    def test_assignment_narrowing(self):
+        with self.assertRaises(CompileError) as cts:
+            compileBlockToIR("""
+            int i;
+            char c;
+            c = i;""")
+        self.assertEqual(cts.exception.message, "Can't convert int to char in assignment")
+        self.assertEqual(cts.exception.location.line, 4)
+
+    def test_varDef_charToIntPromotion(self):
+        blocks = compileToBlocks("void main() { char c;int i = c; }")
+        irs = blocks["main_0000"].statements[1:]
+        self.assertIsInstance(irs[0], IRPromote)
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr) 
+
+    def test_varDef_narrowing(self):
+        with self.assertRaises(CompileError) as cts:
+            compileToBlocks("""void main() {
+            int i;
+            char c = i;
+        }""");
+        self.assertEqual(cts.exception.message, "Can't convert int to char in assignment")
+        self.assertEqual(cts.exception.location.line, 3)
+
 
     def test_pointerWithAbsoluteValue(self):
         irs = compileBlockToIR("""int *p;
