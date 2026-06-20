@@ -1,3 +1,5 @@
+- Compile block inside function test utiltiy
+- Fix incorrect code generation with de register
 - Assign pointers with constants
 - Subtraction of constants
 - Test more complex subtractions

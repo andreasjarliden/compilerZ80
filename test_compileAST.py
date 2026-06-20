@@ -268,6 +268,28 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(cts.exception.message, "Can't convert int to char in assignment")
         self.assertEqual(cts.exception.location.line, 3)
 
+    def test_argPass_charToIntPromotion(self):
+        blocks = compileToBlocks("""
+            char f(int i) { return 0; } 
+            void main() {
+                f(42);
+            }""")
+        irs = blocks["main_0000"].statements[1:]
+        print(irs)
+        self.assertIsInstance(irs[0], IRPromote)
+        self.assertIsInstance(irs[1], IRArgument)
+        self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr) 
+
+    def test_argPass_narrowing(self):
+        with self.assertRaises(CompileError) as cts:
+            compileToBlocks("""
+            char f(char c) { return 0; } 
+            void main() {
+                int i;
+                f(i);
+            }""");
+        self.assertEqual(cts.exception.message, "Can't convert int to char in argument c")
+        self.assertEqual(cts.exception.location.line, 5)
 
     def test_pointerWithAbsoluteValue(self):
         irs = compileBlockToIR("""int *p;
