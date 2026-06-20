@@ -298,6 +298,7 @@ class IRArgument(IR):
         super().__init__(lhsAddr=exprAddr)
 
     def genCode(self, asmWriter):
+        asmWriter.write(f"\t; Argument {self.lhsAddr}\n")
         ra = registerAllocator.RA
         if self.exprAddr.type == "char":
             if isinstance(self.lhsAddr, Constant):
@@ -352,6 +353,7 @@ class IRFunCall(IR):
         return self.name
 
     def genCode(self, asmWriter):
+        asmWriter.write(f"\t; Function call {self.name}\n")
         ra = registerAllocator.RA
         # TODO only spill what might be accessed by the called function
         ra.spillAll()
