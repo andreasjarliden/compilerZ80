@@ -35,10 +35,46 @@ class SymEntry:
     def equalByValue(self, other):
         return self.name == other.name and self.completeType == other.completeType
 
+
+class CastSymEntry:
+    def __init__(self, s, completeType):
+        self.symEntry = s
+        self.completeType = completeType
+
+    def __repr__(self):
+        return f"<CastSymEntry {self.completeType} {self.symEntry}>"
+
+    @property
+    def name(self):
+        return self.symEntry.name
+
+    @property
+    def impl(self):
+        return self.symEntry.impl
+
+    @property
+    def type(self):
+        if self.symEntry.isPointer:
+            return self.symEntry.type
+        else:
+            return self.completeType
+
+    @property
+    def isPointer(self):
+        # TODO create real pointer type
+        if isinstance(self.completeType, StructType):
+            return False
+        else:
+            return self.completeType.endswith("*")
+
+    def equalByValue(self, other):
+        return self.name == other.name and self.completeType == other.completeType
+
+
 class ValueAddress:
     pass
 
-@dataclass(frozen=True)
+@dataclass
 class StackAddress(ValueAddress):
     offset : int
 

@@ -4,14 +4,19 @@ import registerAllocator
 from asmWriter import *
 from symbolTable import stackFrameSize
 
+def dropCast(o):
+    if isinstance(o, CastSymEntry):
+        return o.symEntry
+    else:
+        return o
 
 # members:
 # - live[symbol] = bool, whether symbol is live _at_ this instruction.
 class IR:
     def __init__(self, resultAddr=None, lhsAddr=None, rhsAddr=None):
-        self.resultAddr=resultAddr
-        self.lhsAddr=lhsAddr
-        self.rhsAddr=rhsAddr
+        self.resultAddr=dropCast(resultAddr)
+        self.lhsAddr=dropCast(lhsAddr)
+        self.rhsAddr=dropCast(rhsAddr)
         self.live = {}
 
     @property
@@ -427,6 +432,8 @@ class IRAssign(IR):
                 reg = ra.doLoadInRegister8(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" })
             elif self.resultAddr.type == "int":
                 reg = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" })
+            else:
+                error()
             ra.verify()
             ra.assignedToSymbolWithRegister(self.resultAddr, reg)
             ra.verify()
@@ -661,6 +668,7 @@ class IRPromote(IR):
         self.toType = toType
 
     def genCode(self, asmWriter):
+        asmWriter.write(f"\t; Promote {self.resultAddr} from {self.lhsAddr}\n")
         ra = registerAllocator.RA
         reg16 = ra.decideRegisterForSymbol(self.resultAddr, { "bc", "de", "hl" })
         reg16_hi = reg16[0]

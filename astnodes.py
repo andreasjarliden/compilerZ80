@@ -41,16 +41,19 @@ def createLabel(context):
     return f"{context.functionName}_l{context.functionLabels}"
 
 
-def promoteIfNeededTo(rhsAddr, toType, context, operation, location):
-    if not isConvertableTo(rhsAddr.completeType, toType):
-        raise CompileError(f"Can't convert {rhsAddr.completeType} to {toType} in {operation}", location)
-    if rhsAddr.completeType != toType:
-        temp = context.symbolTable.addTemporary(toType)
+def promoteIfNeededTo(rhsAddr, toType, toCompleteType, context, operation, location):
+    if not isConvertableTo(rhsAddr.completeType, toCompleteType):
+        raise CompileError(f"Can't convert {rhsAddr.completeType} to {toCompleteType} in {operation}", location)
+    # Only IRPromote if we have to change the simple, concrete type
+    if rhsAddr.type != toType:
+        temp = context.symbolTable.addTemporary(toCompleteType)
         context.blockFactory.addIR(IRPromote(
             temp,
             rhsAddr,
-            toType))
+            toCompleteType))
         return temp
+    else:
+        print(f"Type conversion but no changing in real type {rhsAddr} to {toCompleteType}")
     return rhsAddr
 
 @dataclass(frozen=True)
@@ -257,13 +260,13 @@ class VariableDefinition(ASTNode):
             return self.completeType
 
     def visit(self, context):
-        t = self.completeType
-        s = context.symbolTable.lookUp(t)
+        tComplete = self.completeType
+        s = context.symbolTable.lookUp(tComplete)
         if s and isinstance(s.impl, TypeAddress):
-            t = s.impl.completeType
+            tComplete = s.impl.completeType
         else:
             verifyType(self.completeType, self.location, context.typeEnv)
-        symbol = SymEntry(t, self.name)
+        symbol = SymEntry(tComplete, self.name)
         context.symbolTable.addSymbolEntry(self.name, symbol)
         if not context.functionName:
             symbol.impl = GlobalAddress(self.name)
@@ -273,6 +276,8 @@ class VariableDefinition(ASTNode):
                     value = address.name
                 elif isinstance(address, Constant):
                     value = address.value
+                else:
+                    error()
                 # if self.completeType == "char*":
                 #     value = self.value.value
                 # else:
@@ -283,13 +288,16 @@ class VariableDefinition(ASTNode):
             context.dataSegment[symbol] = value
         else:
             if self.value:
-                rhsAddr = promoteIfNeededTo(self.value.visit(context), t, context, "assignment", self.location)
+                rhsAddr = promoteIfNeededTo(self.value.visit(context), self.type, tComplete, context, "assignment", self.location)
+                print(f"VariableDef {self.name} with value {self.value} promoted to {rhsAddr}")
                 context.blockFactory.addIR(IRAssign(symbol, rhsAddr))
 
 def isConvertableTo(fromType, toType):
     if fromType == toType:
         return True
     if fromType == "char" and toType == "int":
+        return True
+    if fromType == "void*" and toType[-1]=="*":
         return True
     return False
 
@@ -306,7 +314,9 @@ class Cast(ASTNode):
             temp.completeType = self.completeType
             return temp
         else:
-            error()
+            t = CastSymEntry(valueAddr, self.completeType)
+            print(f"Returning cast {t}")
+            return t
 
 
 @dataclass(frozen=True)
@@ -316,7 +326,7 @@ class VariableAssignment(ASTNode):
 
     def visit(self, context):
         lvalue = self.lvalue.visit(context)
-        rhsAddr = promoteIfNeededTo(self.rhs.visit(context), lvalue.completeType, context, "assignment", self.location)
+        rhsAddr = promoteIfNeededTo(self.rhs.visit(context), lvalue.type, lvalue.completeType, context, "assignment", self.location)
         # rhsAddr = self.rhs.visit(context)
         # if not isConvertableTo(rhsAddr.completeType, lvalue.completeType):
         #     raise CompileError(f"Can't assign {lvalue.completeType} from {rhsAddr.completeType}", self.location)
@@ -390,8 +400,7 @@ class FunctionCall(MutableASTNode):
             raise CompileError(f"Attempting to call function {self.name} with {len(self.arguments)} arguments but expected {len(fun.arguments)}", self.location)
         for fa, a in zip(reversed(fun.arguments), reversed(self.arguments)):
             # exprAddress = a.visit(context)
-            print(f"Function call arg {fa} {a}")
-            exprAddress = promoteIfNeededTo(a.visit(context), fa.completeType, context, f"argument {fa.name}", self.location)
+            exprAddress = promoteIfNeededTo(a.visit(context), fa.type, fa.completeType, context, f"argument {fa.name}", self.location)
             context.blockFactory.addIR(IRArgument(exprAddress))
         if self.storeResult:
             irfuncall = IRFunCall(fun.type, self.name, len(self.arguments), addr=context.symbolTable.addTemporary(fun.type))

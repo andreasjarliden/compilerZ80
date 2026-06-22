@@ -4,6 +4,14 @@ from symbolTable import SymbolTable
 from astnodes import *
 from pprint import pprint
 
+class TestConversion(unittest.TestCase):
+    def test1(self):
+        self.assertTrue(isConvertableTo("char", "char"))
+        self.assertTrue(isConvertableTo("int", "int"))
+        self.assertTrue(isConvertableTo("char", "int"))
+        self.assertFalse(isConvertableTo("int", "char"))
+        self.assertTrue(isConvertableTo("void*", "char*"))
+        self.assertFalse(isConvertableTo("void*", "char"))
 
 # TODO live should describe the liveness AT the instruction, so we now if it is
 # free to spill
