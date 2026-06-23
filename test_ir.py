@@ -59,6 +59,39 @@ class TestIR(unittest.TestCase):
         self.assertTrue(registerAllocator.RA.isInRegister(self.foo))
 
     #
+    # IRAssignToPointer
+    #
+    def test_IRAssignToPointerViaHL(self):
+        registerAllocator.RA.loadedSymbolInRegister(self.ptr, "hl")
+        registerAllocator.RA.loadedSymbolInRegister(self.bar16, "de")
+        print(registerAllocator.RA)
+        ira = ir.IRAssignToPointer(self.ptr, self.bar16)
+        ira.live[self.ptr] = True
+        ira.live[self.bar16] = True
+        registerAllocator.RA.currentInstruction = ira
+        ira.genCode(self.asmWriter)
+
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
+        print(output)
+        self.assertIn("\tld\t(hl), e\n\tinc\thl\n\tld\t(hl), d", output)
+
+    def test_IRAssignToPointerViaBC(self):
+        registerAllocator.RA.loadedSymbolInRegister(self.ptr, "bc")
+        registerAllocator.RA.loadedSymbolInRegister(self.bar16, "de")
+        print(registerAllocator.RA)
+        ira = ir.IRAssignToPointer(self.ptr, self.bar16)
+        ira.live[self.ptr] = True
+        ira.live[self.bar16] = True
+        registerAllocator.RA.currentInstruction = ira
+        ira.genCode(self.asmWriter)
+
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
+        # Must load via a as no generic ld R, (BC/DE) only HL support that
+        self.assertIn("\tld\ta, e\n\tld\t(bc), a\n\tinc\tbc\n\tld\ta, d\n\tld\t(bc), a", output)
+
+    #
     # IRAdd
     #
 

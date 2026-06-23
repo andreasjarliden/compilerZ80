@@ -513,7 +513,7 @@ class IRAssignToPointer(IR):
             else:
                 regY = ra.doLoadInRegister16(self.rhsAddr, { "bc", "de", "hl" } )
                 regX = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } - {regY}) 
-                if regY == "hl":
+                if regX == "hl":
                     asmWriter.write(f'\tld\t({regX}), {regY[1]}\n')
                     asmWriter.write(f'\tinc\t{regX}\n')
                     asmWriter.write(f'\tld\t({regX}), {regY[0]}\n')
