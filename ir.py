@@ -490,7 +490,6 @@ class IRAssignToPointer(IR):
         ra = registerAllocator.RA
 
         t = self.lhsAddr.completeType[:-1]
-        ra.spillAllMatchingType(t)
 
         if self.lhsAddr.completeType == "char*":
             if isinstance(self.rhsAddr, Constant):
@@ -532,6 +531,8 @@ class IRAssignToPointer(IR):
                     ra.removeSymbolForRegister(self.lhsAddr, regX)
         else:
             error()
+        # We might have invalidated something of type t
+        ra.spillAllMatchingType(t)
 
 
 class IRAdd(IR):
