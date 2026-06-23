@@ -54,8 +54,8 @@ class CastSymEntry:
 
     @property
     def type(self):
-        if self.symEntry.isPointer:
-            return self.symEntry.type
+        if self.isPointer:
+            return "int"
         else:
             return self.completeType
 

@@ -217,3 +217,17 @@ class TestIntegration(unittest.TestCase):
             }""")
         self.assertRegex(output, r"ld\t(bc|de|hl), 32768")
 
+    def test_castToVoidPtr(self):
+        output = compile("""
+            char main() {
+                int i;
+                void* p;
+                p = (void*)i;
+            }""")
+        print(output)
+        self.assertRegex(output, r"ld\t(b|d|h), \(ix - 1\)")
+        self.assertRegex(output, r"ld\t(c|e|l), \(ix - 2\)")
+        self.assertRegex(output, r"ld\t\(ix - 3\), (b|d|h)")
+        self.assertRegex(output, r"ld\t\(ix - 4\), (c|e|l)")
+
+
