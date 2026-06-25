@@ -11,7 +11,7 @@ class TestIntegration(unittest.TestCase):
         self.assertRegex(output, r"ld\t., 1")
         self.assertRegex(output, r"ld\t\(ix \- 1\), .")
 
-    def test_globalVariable_char(self):
+    def test_globalVariable_assignChar(self):
         output = compile("""
             char FOO;
             char main() {
@@ -20,6 +20,26 @@ class TestIntegration(unittest.TestCase):
         self.assertRegex(output, r"ld\t., 1")
         self.assertRegex(output, r"ld\t\(FOO\), .")
         self.assertRegex(output, r"FOO:\t.int8\t0")
+
+    def test_globalVariable_readIntValue(self):
+        output = compile("""
+            int FOO=1;
+            void main() {
+                int f = FOO;
+            }""")
+        print(output)
+        self.assertRegex(output, r"ld\t(bc|de|hl), \(FOO\)")
+        self.assertRegex(output, r"FOO:\t.int16\t1")
+
+    def test_globalVariable_readPointerValue(self):
+        output = compile("""
+            int* FOO=1;
+            void main() {
+                int* f = FOO;
+            }""")
+        print(output)
+        self.assertRegex(output, r"ld\t(bc|de|hl), \(FOO\)")
+        self.assertRegex(output, r"FOO:\t.int16\t1")
 
     def test_globalVariable_int(self):
         output = compile("""
@@ -102,7 +122,7 @@ class TestIntegration(unittest.TestCase):
                 FOO = "bar";
             }""")
         # Loading original FOO
-        self.assertRegex(output, r"ld\t(bc|de|hl), FOO\n\tpush\t(bc|de|hl)")
+        self.assertRegex(output, r"ld\t(bc|de|hl), \(FOO\)\n\tpush\t(bc|de|hl)")
         # Loading new value
         self.assertRegex(output, r"ld\t(bc|de|hl), __str1")
         # Spilling new value

@@ -1,4 +1,4 @@
-from symEntry import SymEntry, GlobalAddress
+from symEntry import SymEntry, GlobalAddress, GlobalLabel
 # TODO move tyo symEntry?
 
 class Constant:
@@ -51,7 +51,7 @@ class StringConstant(Constant):
         symbol = context.symbolTable.lookUp(name)
         if not symbol:
             symbol = SymEntry("char*", name)
-            symbol.impl = GlobalAddress(name)
+            symbol.impl = GlobalLabel(name)
             context.symbolTable.addSymbolEntry(name, symbol)
             if not symbol in context.dataSegment:
                 # context.dataSegment[symbol] = self._value

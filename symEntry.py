@@ -123,6 +123,17 @@ class GlobalAddress(ValueAddress):
         return GlobalAddress(self.name, self.offset + offset)
 
 
+class GlobalLabel(ValueAddress):
+    def __init__(self, name):
+        self.name = name
+
+    def __repr__(self):
+        return f"GlobaLabel {self.name}"
+
+    def codeArg(self):
+        return f"{self.name}"
+
+
 class PointerAddress(ValueAddress):
     def __init__(self, p : ValueAddress):
         self.pointer = p

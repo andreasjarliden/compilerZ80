@@ -26,10 +26,10 @@ class AsmWriter:
             if isinstance(v, StackAddress):
                 self.file.write(f'\tld\t{r[0]}, {v.codeArg(+1)}\n')
                 self.file.write(f'\tld\t{r[1]}, {v.codeArg()}\n')
-            elif isinstance(v, GlobalAddress):
+            elif isinstance(v, GlobalAddress) or isinstance(v, GlobalLabel):
                 self.file.write(f'\tld\t{r}, {v.codeArg()}\n')
             else:
-                print(f"loadRegisterWithAddress not StackAddress or GlobalAddress {v}")
+                print(f"loadRegisterWithAddress not StackAddress, GlobalAddress or GlobalAddress {v}")
                 error()
         elif len(r) == 1:
             self.file.write(f'\tld\t{r}, {v.codeArg()}\n')

@@ -349,10 +349,7 @@ class Z80RegisterAllocator(RegisterAllocator):
                         self.loadedSymbolInRegister(address, regX)
                     elif address.type == "int":
                         regX = self.getRegisterForSymbol(address, possibleRegisters)
-                        if address.isPointer:
-                            self.asmWriter.loadRegisterWithPointer(regX, address.impl)
-                        else:
-                            self.asmWriter.loadRegisterWithAddress(regX, address.impl)
+                        self.asmWriter.loadRegisterWithAddress(regX, address.impl)
                         self.loadedSymbolInRegister(address, regX)
                     else:
                         error()
