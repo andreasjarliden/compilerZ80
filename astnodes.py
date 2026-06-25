@@ -52,8 +52,6 @@ def promoteIfNeededTo(rhsAddr, toType, toCompleteType, context, operation, locat
             rhsAddr,
             toCompleteType))
         return temp
-    else:
-        print(f"Type conversion but no changing in real type {rhsAddr} to {toCompleteType}")
     return rhsAddr
 
 @dataclass(frozen=True)
@@ -315,7 +313,6 @@ class Cast(ASTNode):
             return temp
         else:
             t = CastSymEntry(valueAddr, self.completeType)
-            print(f"Returning cast {t}")
             return t
 
 
