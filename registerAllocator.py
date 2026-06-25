@@ -253,8 +253,14 @@ class Z80RegisterAllocator(RegisterAllocator):
                     self.spillRegister("a")
                     self.asmWriter.loadRegisterWithRegister("a", r)
                 self.asmFile.write(f"\tld\t{s.impl.codeArg()}, a\n")
+            elif s.type == 'int':
+                # TODO could also use IY
+                if r != "hl":
+                    self.spillRegister("hl")
+                    self.asmWriter.loadRegisterWithRegister("hl", r)
+                self.asmFile.write(f"\tld\t{s.impl.codeArg()}, hl\n")
             else:
-                self.asmFile.write(f"\tld\t{s.impl.codeArg()}, {r}\n")
+                error()
         elif isinstance(s.impl, PointerAddress):
             pointer = s.impl.pointer
             if s.type == 'char':
