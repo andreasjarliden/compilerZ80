@@ -198,6 +198,7 @@ class If(ASTNode):
         context.blockFactory.enterSubBlock()
         for s in self.statements:
             s.visit(context)
+        context.blockFactory.addIR(IRSpillAll())
         context.exitBlock()
         context.blockFactory.enterSubBlock()
         context.blockFactory.addIR(IRLabel(skipLabel))

@@ -144,11 +144,17 @@ class TestIntegration(unittest.TestCase):
 
     def test_if(self):
         output = compile("""
-            char main(char n) {
+            void main(char n) {
+                char c = 42;
                 if (n==0)
-                    return 1;
-                return 0;
+                    c = 24;
             }""")
+        # Spill c = 42 before if statement
+        self.assertRegex(output, r"ld\t., 42\n[^\n]*\n\tld\t\(ix - 1\), .")
+        # Test conditional jump
+        self.assertIn("\tld\ta, (ix + 5)\n\tcp\t0\n\tjr\tnz, main_l1", output)
+        # Spill c = 24 at end of if-statement
+        self.assertRegex(output, r"ld\t., 24\n[^\n]*\n\tld\t\(ix - 1\), .")
 
     def test_while(self):
         output = compile("""char main() {
