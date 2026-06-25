@@ -38,11 +38,11 @@ C_TO_ASM_MAPPING = { "char": "int8",
 
 def genDataSegment(dataSegment, asmWriter):
     asmWriter.write("\n\n")
-    for s, v in dataSegment.items():
+    for name, (t, v) in dataSegment.items():
         # TODO: Note v.value is called except for strings!
         if isinstance(v, String):
             # asmWriter.write(f'{s.name}:\t.string\t"{v.string.encode("unicode_escape").decode()}\\0"\n')
-            asmWriter.write(f'{s.name}:\t.string\t"{v.string}\\0"\n')
+            asmWriter.write(f'{name}:\t.string\t"{v.string}\\0"\n')
         else:
-            asmWriter.write(f"{s.name}:\t.{C_TO_ASM_MAPPING[s.type]}\t{v}\n")
+            asmWriter.write(f"{name}:\t.{C_TO_ASM_MAPPING[t]}\t{v}\n")
 

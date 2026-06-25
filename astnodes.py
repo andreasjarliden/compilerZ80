@@ -285,11 +285,10 @@ class VariableDefinition(ASTNode):
             else:
                 value = 0
             # value = self.value.visit(context) if self.value else Constant(self.completeType, 0)
-            context.dataSegment[symbol] = value
+            context.dataSegment[symbol.name] = (symbol.type, value)
         else:
             if self.value:
                 rhsAddr = promoteIfNeededTo(self.value.visit(context), self.type, tComplete, context, "assignment", self.location)
-                print(f"VariableDef {self.name} with value {self.value} promoted to {rhsAddr}")
                 context.blockFactory.addIR(IRAssign(symbol, rhsAddr))
 
 def isConvertableTo(fromType, toType):

@@ -53,7 +53,9 @@ class StringConstant(Constant):
             symbol = SymEntry("char*", name)
             symbol.impl = GlobalAddress(name)
             context.symbolTable.addSymbolEntry(name, symbol)
-            context.dataSegment[symbol] = self._value
+            if not symbol in context.dataSegment:
+                # context.dataSegment[symbol] = self._value
+                context.dataSegment[symbol.name] = (symbol.type, self._value)
         return symbol
 
 
