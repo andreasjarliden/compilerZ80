@@ -59,6 +59,15 @@ class TestParser(unittest.TestCase):
                          VariableAssignment(Variable("a"),
                                             Cast("char*", Constant("char", 42))))
 
+    #
+    # Address of
+    #
+    def test_addressOf(self):
+        ast = parser.parse("c=%foo;");
+        self.assertEqual(ast[0],
+                         VariableAssignment(Variable("c"),
+                                            AddressOf(Variable("foo"))))
+
     # 
     # IF
     #

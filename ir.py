@@ -385,23 +385,27 @@ class IRAddressOf(IR):
         super().__init__(resultAddr=resAddr, lhsAddr=symEntry)
 
     def genCode(self, asmWriter):
+        print(f"IRAddressOf {self.exprAddr}")
         ra = registerAllocator.RA
-        # print(f'IRAddressOf spilling {self.lhsAddr.name} ra {ra}')
-        # ra.spillName(self.lhsAddr.name)
-        # Compute pointer based on ix and offset
-        offset = self.exprAddr.impl.offset
-        negOffset = 65536+offset
-        negHexOffset = f'{negOffset:05x}h'
-        # Might as well require HL
-        regX = ra.getRegisterForSymbol(self.resultAddr, { "hl" })
-        regT = ra.getTemporaryRegister({ "bc", "de" })
-        # TODO maybe better to use IY instead of HL if small offset?
-        asmWriter.write(f'\tld\t{regX[0]}, ixh\n')
-        asmWriter.write(f'\tld\t{regX[1]}, ixl\n')
-        # TODO Optimize for small values with INC / DEC
-        asmWriter.write(f'\tld\t{regT}, {negHexOffset}\n')
-        asmWriter.write(f'\tadd\t{regX}, {regT}\n')
-        ra.loadedSymbolInRegister(self.resultAddr, regX)
+        if isinstance(self.exprAddr.impl, StackAddress):
+            # print(f'IRAddressOf spilling {self.lhsAddr.name} ra {ra}')
+            # ra.spillName(self.lhsAddr.name)
+            # Compute pointer based on ix and offset
+            offset = self.exprAddr.impl.offset
+            negOffset = 65536+offset
+            negHexOffset = f'{negOffset:05x}h'
+            # Might as well require HL
+            regX = ra.getRegisterForSymbol(self.resultAddr, { "hl" })
+            regT = ra.getTemporaryRegister({ "bc", "de" })
+            # TODO maybe better to use IY instead of HL if small offset?
+            asmWriter.write(f'\tld\t{regX[0]}, ixh\n')
+            asmWriter.write(f'\tld\t{regX[1]}, ixl\n')
+            # TODO Optimize for small values with INC / DEC
+            asmWriter.write(f'\tld\t{regT}, {negHexOffset}\n')
+            asmWriter.write(f'\tadd\t{regX}, {regT}\n')
+            ra.loadedSymbolInRegister(self.resultAddr, regX)
+        elif isinstance(self.exprAddr.impl, GlobalAddress):
+            self.resultAddr.impl = GlobalLabel(self.exprAddr.impl.name)
 
 class IRDereference(IR):
     def __init__(self, symEntry, resAddr):

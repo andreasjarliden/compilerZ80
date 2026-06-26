@@ -69,7 +69,7 @@ def p_bitwise_or(p):
     p[0] = BitwiseOr(p[1], p[3])        
 
 def p_bitwise_and(p):
-    '''bitwise : bitwise AND comparisson'''
+    '''bitwise : bitwise AMPERSAND comparisson'''
     p[0] = BitwiseAnd(p[1], p[3])        
 
 def p_comparisson_single(p):

@@ -34,7 +34,6 @@ tokens = [
         'PLUS',
         'MINUS',
         'OR',
-        'AND',
         'COMMA',
         'STAR',
         'AMPERSAND',
@@ -59,7 +58,6 @@ t_GREATER_OR_EQUAL = r'>='
 t_PLUS = r'\+'
 t_MINUS = r'-'
 t_OR = r'\|'
-t_AND = r'&'
 t_COMMA = r','
 t_STAR = r'\*'
 t_AMPERSAND = r'&'

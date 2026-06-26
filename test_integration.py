@@ -93,6 +93,15 @@ class TestIntegration(unittest.TestCase):
         self.assertIn('__str0:\t.string\t"foo\\0"', output)
         self.assertIn('FOO:\t.int16\t__str0', output)
 
+    def test_addressOfGlobalVariable(self):
+        output = compile("""
+            int FOO=1;
+            void main() {
+                int* f = &FOO;
+                *f=1;
+            }""")
+        self.assertRegex(output, r"ld\t(bc|de|hl), FOO")
+
     def test_spillBeforeFunCall(self):
         output = compile("""
             char FOO;
