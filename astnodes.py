@@ -183,14 +183,12 @@ class If(ASTNode):
 
     def visit(self, context):
         skipLabel = createLabel(context)
-        if isinstance(self.expr, Variable):
-            exprAddr = self.expr.visit(context)
-            ir = IRIfVariable(exprAddr, skipLabel)
-        elif isinstance(self.expr, Relation):
+        if isinstance(self.expr, Relation):
             (lhsAddr, rhsAddr) = self.expr.visit(context)
             ir = IRIfRelation(self.expr.operation, lhsAddr, rhsAddr, skipLabel)
         else:
-            error()
+            exprAddr = self.expr.visit(context)
+            ir = IRIfVariable(exprAddr, skipLabel)
         context.blockFactory.addIR(ir)
         context.exitBlock()
         context.blockFactory.enterSubBlock()

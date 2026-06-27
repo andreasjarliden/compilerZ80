@@ -196,6 +196,16 @@ class TestIntegration(unittest.TestCase):
         # Spill c = 24 at end of if-statement
         self.assertRegex(output, r"ld\t., 24\n[^\n]*\n\tld\t\(ix - 1\), .")
 
+    def test_if_expr(self):
+        output = compile("""
+            void main(char n) {
+                if (n & 0x80)
+                    n = 42;
+            }""")
+        print(output)
+        self.assertIn("ld\ta, (ix + 5)\n\tand\ta, 128\n\tor\ta", output)
+        self.assertIn("jp\tz, main_l1", output)
+
     def test_while(self):
         output = compile("""char main() {
                               char a=0;

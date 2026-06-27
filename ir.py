@@ -198,18 +198,22 @@ class IRIfVariable(IR):
 
     def genCode(self, asmWriter):
         ra = registerAllocator.RA
-        # Spill before the jump as this will end the basic block. A later call
-        # to spillAll will be a no-op.
-        ra.spillAll()
         if self.lhsAddr.type == "char":
             ra.loadInA(self.lhsAddr)
+            # TODO if lhsAddr was just computed and not loaded, the or will not be needed
             asmWriter.write(f'\tor\ta\n')
         elif self.lhsAddr.type == "int":
             ra.loadInHL(self.lhsAddr)
+            # TODO if lhsAddr was just computed and not loaded, the or will not be needed
             asmWriter.write(f'\tld\ta, h\n')
             asmWriter.write(f'\tor\tl\n')
         else:
             error()
+        # Spill before the jump as this will end the basic block. A later call
+        # to spillAll will be a no-op.
+        # TODO a temp expression that we just check is no longer live but will
+        # be spilled for real. Avoidable?
+        ra.spillAll()
         # TODO smart relative jump selection
         # asmWriter.write(f'\tjr\tz, {self.skipLabel}\n') 
         asmWriter.write(f'\tjp\tz, {self.skipLabel}\n') 
@@ -337,6 +341,7 @@ class IRArgument(IR):
                 asmWriter.write(f'\tpush\taf\n')
         elif self.exprAddr.type == "int":
             if isinstance(self.lhsAddr, Constant):
+                # TODO can't this use bc, de also?
                 ra.loadInHL(self.lhsAddr)
                 asmWriter.write(f'\tpush\thl\n')
             else:
