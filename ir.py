@@ -210,7 +210,9 @@ class IRIfVariable(IR):
             asmWriter.write(f'\tor\tl\n')
         else:
             error()
-        asmWriter.write(f'\tjr\tz, {self.skipLabel}\n') 
+        # TODO smart relative jump selection
+        # asmWriter.write(f'\tjr\tz, {self.skipLabel}\n') 
+        asmWriter.write(f'\tjp\tz, {self.skipLabel}\n') 
 
 class IRSpillAll(IR):
     def __init__(self):
