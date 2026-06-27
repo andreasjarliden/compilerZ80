@@ -102,6 +102,17 @@ class TestIntegration(unittest.TestCase):
             }""")
         self.assertRegex(output, r"ld\t(bc|de|hl), FOO")
 
+    def test_voidPtrFunction(self):
+        output = compile("""
+            void* f() {
+                return 0;
+            }
+            void main() {
+                void* p = f();
+            }""")
+        print(output)
+
+
     def test_spillBeforeFunCall(self):
         output = compile("""
             char FOO;

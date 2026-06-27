@@ -5,7 +5,7 @@ from symbolTable import *
 from blocks import BlockFactory
 from error import Location, CompileError
 from typeEnv import TypeEnv
-from type_defs import StructType, StructField
+from type_defs import StructType, StructField, simpleTypeForComplexType
 import symbolTable
 import registerAllocator
 from copy import copy
@@ -399,12 +399,14 @@ class FunctionCall(MutableASTNode):
             # exprAddress = a.visit(context)
             exprAddress = promoteIfNeededTo(a.visit(context), fa.type, fa.completeType, context, f"argument {fa.name}", self.location)
             context.blockFactory.addIR(IRArgument(exprAddress))
+        t = simpleTypeForComplexType(fun.type)
         if self.storeResult:
-            irfuncall = IRFunCall(fun.type, self.name, len(self.arguments), addr=context.symbolTable.addTemporary(fun.type))
+            print(f"FunctionCall {fun=} creating IRFunCall")
+            irfuncall = IRFunCall(t, self.name, len(self.arguments), addr=context.symbolTable.addTemporary(fun.type))
             context.blockFactory.addIR(irfuncall)
             return irfuncall.resultAddr
         else:
-            irfuncall = IRFunCall(fun.type, self.name, len(self.arguments))
+            irfuncall = IRFunCall(t, self.name, len(self.arguments))
             context.blockFactory.addIR(irfuncall)
 
 
@@ -413,9 +415,10 @@ class Return(ASTNode):
     expr : Any
 
     def visit(self, context):
-        t = context.symbolTable.lookUp(context.functionName).type
+        completeType = context.symbolTable.lookUp(context.functionName).type
+        simpleType = simpleTypeForComplexType(completeType)
         exprAddress = self.expr.visit(context)
-        context.blockFactory.addIR(IRReturn(t, exprAddress, context.functionName))
+        context.blockFactory.addIR(IRReturn(simpleType, exprAddress, context.functionName))
 
 
 # TODO much duplication for the binary operations

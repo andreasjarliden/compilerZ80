@@ -3,6 +3,10 @@
 from dataclasses import dataclass, field
 from typing import Any
 
+def simpleTypeForComplexType(ct):
+    if isinstance(ct, StructType) or not ct.endswith("*"):
+        return ct
+    return "int"
 
 @dataclass(frozen=True)
 class StructType:

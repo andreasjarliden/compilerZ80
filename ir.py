@@ -295,6 +295,9 @@ class IRReturn(IR):
             ra.loadInA(self.lhsAddr)
         elif self.type =="int":
             ra.loadInHL(self.lhsAddr)
+        else:
+            print(f"IRReturn returning type {self.type}")
+            error();
         ra.spillAll()
         asmWriter.write(f'\tjr\t{self.functionName}_exit\n')
 

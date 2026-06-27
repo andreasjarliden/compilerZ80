@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from type_defs import StructType
+from type_defs import StructType, simpleTypeForComplexType
 
 
 # Object semantics but with custom equalByValue function
@@ -15,10 +15,7 @@ class SymEntry:
 
     @property
     def type(self):
-        if self.isPointer:
-            return "int"
-        else:
-            return self.completeType
+        return simpleTypeForComplexType(self.completeType)
 
     @property
     def isPointer(self):
@@ -54,10 +51,7 @@ class CastSymEntry:
 
     @property
     def type(self):
-        if self.isPointer:
-            return "int"
-        else:
-            return self.completeType
+        return simpleTypeForComplexType(self.completeType)
 
     @property
     def isPointer(self):
