@@ -330,6 +330,7 @@ class TestIR(unittest.TestCase):
         output = self.asmWriter.read()
         self.assertEqual(output, "\tor\ta, b\n")
         self.assertEqual(registerAllocator.RA.isInRegister(self.foo), "a")
+        self.assertNotIn(self.foo, registerAllocator.RA.symbols[self.foo]) # Only in register
         self.assertFalse(registerAllocator.RA.isInRegister(self.bar))
         self.assertEqual(registerAllocator.RA.isInRegister(self.baz), "b")
 
@@ -345,6 +346,8 @@ class TestIR(unittest.TestCase):
 
         self.asmWriter.seek(0)
         output = self.asmWriter.read()
+
+        self.assertNotIn(self.foo16, registerAllocator.RA.symbols[self.foo16]) # Only in register
 
     #
     # IRPromote

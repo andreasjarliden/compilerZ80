@@ -613,7 +613,7 @@ class IRBitwiseOr(IR):
             ra.spillRegister("a")
             ra.verify()
             asmWriter.write(f"\tor\ta, {regZ}\n")
-            ra.loadedSymbolInRegister(self.resultAddr, "a")
+            ra.assignedToSymbolWithRegister(self.resultAddr, "a")
         elif self.lhsAddr.type == "int":
             regLhs = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } )
             regRhs = ra.doLoadInRegister16(self.rhsAddr, { "bc", "de", "hl" } - { regLhs })
@@ -629,7 +629,7 @@ class IRBitwiseOr(IR):
             asmWriter.write(f"\tor\t{regRhs[1]}\n")
             asmWriter.write(f"\tld\t{regRes[1]}, a\n")
 
-            ra.loadedSymbolInRegister(self.resultAddr, regRes)
+            ra.assignedToSymbolWithRegister(self.resultAddr, regRes)
             ra.verify()
         else:
             error()
@@ -650,7 +650,7 @@ class IRBitwiseAnd(IR):
             ra.spillRegister("a")
             ra.verify()
             asmWriter.write(f"\tand\ta, {regZ}\n")
-            ra.loadedSymbolInRegister(self.resultAddr, "a")
+            ra.assignedToSymbolWithRegister(self.resultAddr, "a")
         elif self.lhsAddr.type == "int":
             regLhs = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } )
             regRhs = ra.doLoadInRegister16(self.rhsAddr, { "bc", "de", "hl" } - { regLhs })
@@ -666,7 +666,7 @@ class IRBitwiseAnd(IR):
             asmWriter.write(f"\tand\t{regRhs[1]}\n")
             asmWriter.write(f"\tld\t{regRes[1]}, a\n")
 
-            ra.loadedSymbolInRegister(self.resultAddr, regRes)
+            ra.assignedToSymbolWithRegister(self.resultAddr, regRes)
             ra.verify()
         else:
             error()
