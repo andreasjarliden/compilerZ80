@@ -57,33 +57,33 @@ def p_ptrlvalue(p):
     p[0] = Variable(p[2], location=loc(p, 2))
 
 def p_value_expression(p):
-    'value_expression : bitwise'
+    'value_expression : comparisson'
     p[0] = p[1]
-
-def p_bitwise_single(p):
-    'bitwise : comparisson'
-    p[0] = p[1]
-
-def p_bitwise_or(p):
-    '''bitwise : bitwise OR comparisson'''
-    p[0] = BitwiseOr(p[1], p[3])        
-
-def p_bitwise_and(p):
-    '''bitwise : bitwise AMPERSAND comparisson'''
-    p[0] = BitwiseAnd(p[1], p[3])        
 
 def p_comparisson_single(p):
-    'comparisson : additive'
+    'comparisson : bitwise'
     p[0] = p[1]
 
 def p_comparisson_op(p):
-    '''comparisson : comparisson EQUAL additive
-                   | comparisson NOT_EQUAL additive
-                   | comparisson LESS additive
-                   | comparisson LESS_OR_EQUAL additive
-                   | comparisson GREATER additive
-                   | comparisson GREATER_OR_EQUAL additive'''
+    '''comparisson : comparisson EQUAL bitwise
+                   | comparisson NOT_EQUAL bitwise
+                   | comparisson LESS bitwise
+                   | comparisson LESS_OR_EQUAL bitwise
+                   | comparisson GREATER bitwise
+                   | comparisson GREATER_OR_EQUAL bitwise'''
     p[0] = Relation(p[2], p[1], p[3])
+
+def p_bitwise_single(p):
+    'bitwise : additive'
+    p[0] = p[1]
+
+def p_bitwise_or(p):
+    '''bitwise : bitwise OR additive'''
+    p[0] = BitwiseOr(p[1], p[3])        
+
+def p_bitwise_and(p):
+    '''bitwise : bitwise AMPERSAND additive'''
+    p[0] = BitwiseAnd(p[1], p[3])        
 
 def p_additive_single(p):
     'additive : multiplicative'

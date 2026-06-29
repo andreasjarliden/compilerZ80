@@ -237,3 +237,16 @@ class TestParser(unittest.TestCase):
                          VariableAssignment(Variable("a"),
                                             BitwiseOr(Variable("b"),
                                                       Variable("c"))))
+
+    #
+    # bitwise closer than comparison
+    #
+    def test_priority1(self):
+        ast = parser.parse("return a & b != c;")
+        self.assertEqual(ast[0],
+                         Return(Relation("!=",
+                                         BitwiseAnd(Variable("a"),
+                                                    Variable("b")),
+                                         Variable("c"))))
+
+
