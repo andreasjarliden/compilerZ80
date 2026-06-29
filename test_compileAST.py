@@ -111,7 +111,7 @@ class TestErrorHandling(unittest.TestCase):
                                 return 0;
                               }""")
         self.assertEqual(ctx.exception.location.line, 2) 
-        self.assertEqual(ctx.exception.message, "Attempting to call unknown foo") 
+        self.assertEqual(ctx.exception.message, "Attempting to call unknown function foo") 
 
     def test_callingNonFunction(self):
         with self.assertRaises(CompileError) as ctx:
@@ -306,6 +306,17 @@ class TestErrorHandling(unittest.TestCase):
         self.assertIsInstance(irs[0], IRAssign)
         self.assertIsInstance(irs[0].lhsAddr, Constant)
         self.assertEqual(irs[0].lhsAddr.completeType, "int*")
+
+    def test_dereferenceNonPointer(self):
+        with self.assertRaises(CompileError) as cts:
+            compileToBlocks("""
+            char main() {
+                char i;
+                char t = *i;
+            }""");
+        self.assertEqual(cts.exception.message, "Attempt to dereference non-pointer i of type char")
+        self.assertEqual(cts.exception.location.line, 4)
+
 
     #
     # Arithmetics

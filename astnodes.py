@@ -363,11 +363,9 @@ class Dereference(ASTNode):
 
     def visit(self, context):
         pointer = self.expr.visit(context)
+        if not pointer.isPointer:
+            raise CompileError(f"Attempt to dereference non-pointer {self.expr.name} of type {pointer.completeType}", location=self.location)
         ct = pointer.completeType[:-1] # remove trailing *
-        if pointer.completeType.startswith("*"):
-            t = "int"
-        else:
-            t = ct
         deref = IRDereference(pointer, context.symbolTable.addTemporary(ct))
         context.blockFactory.addIR(deref)
         deref.resultAddr.impl = PointerAddress(pointer)
@@ -388,7 +386,7 @@ class FunctionCall(MutableASTNode):
     def visit(self, context):
         fun = context.symbolTable.lookUp(self.name)
         if not fun:
-            raise CompileError(f"Attempting to call unknown {self.name}", self.location)
+            raise CompileError(f"Attempting to call unknown function {self.name}", self.location)
         if not isinstance(fun, Function):
             raise CompileError(f"Attempting to call non-function {self.name}", self.location)
         if len(fun.arguments) != len(self.arguments):

@@ -107,7 +107,7 @@ def p_unary_cast(p):
 
 def p_unary_deref(p):
     'unary : STAR unary'
-    p[0] = Dereference(p[2])
+    p[0] = Dereference(p[2], location=loc(p))
 
 def p_unary_addressOf(p):
     '''
@@ -235,12 +235,12 @@ def p_function_declaration_args(p):
 
 def p_function_definition_no_args(p):
     'function_definition : type ID LPARA RPARA LCURL statement_list RCURL'
-    node = FunctionDefinition(p[1], p[2], p[6], location=loc(p))
+    node = FunctionDefinition(p[1], p[2], p[6], location=loc(p, 2))
     p[0] = node
 
 def p_function_definition_args(p):
     'function_definition : type ID LPARA arg_list RPARA LCURL statement_list RCURL'
-    node = FunctionDefinition(p[1], p[2], p[7], p[4], location=loc(p))
+    node = FunctionDefinition(p[1], p[2], p[7], p[4], location=loc(p, 2))
     p[0] = node
 
 def p_if_expression(p):
