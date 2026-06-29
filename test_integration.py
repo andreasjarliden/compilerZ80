@@ -192,7 +192,7 @@ class TestIntegration(unittest.TestCase):
         # Spill c = 42 before if statement
         self.assertRegex(output, r"ld\t., 42\n[^\n]*\n\tld\t\(ix - 1\), .")
         # Test conditional jump
-        self.assertIn("\tld\ta, (ix + 5)\n\tcp\t0\n\tjr\tnz, main_l1", output)
+        self.assertIn("\tld\ta, (ix + 5)\n\tcp\t0\n\tjp\tnz, main_l1", output)
         # Spill c = 24 at end of if-statement
         self.assertRegex(output, r"ld\t., 24\n[^\n]*\n\tld\t\(ix - 1\), .")
 
@@ -217,7 +217,7 @@ class TestIntegration(unittest.TestCase):
         # Test spill before first label
         self.assertRegex(output, r"\tld\t\(ix \- 1\), .\nmain_l1:")
         # Test conditional jump to skip label
-        self.assertRegex(output, r"\tjr\t., main_l2")
+        self.assertRegex(output, r"\tjp\t., main_l2")
         # jump to loop label
         self.assertRegex(output, r"\tjp\tmain_l1\n")
 

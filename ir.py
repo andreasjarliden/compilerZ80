@@ -257,7 +257,7 @@ class IRIfRelation(IR):
         elif self.lhsAddr.type == "int":
             regZ = self.load16bitLhsAndRhs(transitive)
             asmWriter.write(f"\tsbc\thl, {regZ}\n")
-        asmWriter.write(f'\tjr\t{flag}, {self.skipLabel}\n') 
+        asmWriter.write(f'\tjp\t{flag}, {self.skipLabel}\n') 
 
 class IRLabel(IR):
     def __init__(self, label):
