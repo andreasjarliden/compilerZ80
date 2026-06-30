@@ -320,6 +320,10 @@ class VariableAssignment(ASTNode):
     rhs : Any
 
     def visit(self, context):
+        if not (isinstance(self.lvalue, Variable) or 
+                isinstance(self.lvalue, Dereference) or 
+                isinstance(self.lvalue, StructFieldReference)):
+            raise CompileError(f"Can't assign to non-lvalue {self.lvalue}", self.location)
         lvalue = self.lvalue.visit(context)
         rhsAddr = promoteIfNeededTo(self.rhs.visit(context), lvalue.type, lvalue.completeType, context, "assignment", self.location)
         # rhsAddr = self.rhs.visit(context)

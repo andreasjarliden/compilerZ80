@@ -44,14 +44,6 @@ def p_expression(p):
     '''
     p[0] = p[1]
 
-def p_lvalue(p):
-    'lvalue : ID'
-    p[0] = Variable(p[1], location=loc(p))
-
-def p_lvalue_struct_field(p):
-    'lvalue : primary PERIOD ID'
-    p[0] = StructFieldReference(p[1], p[3], location=loc(p, 3))
-
 def p_ptrlvalue(p):
     'ptrlvalue : STAR ID'
     p[0] = Variable(p[2], location=loc(p, 2))
@@ -212,7 +204,7 @@ def p_pointers_more(p):
     p[0] = p[1] + 1
 
 def p_variable_assignment_expression(p):
-    'var_assign_expression : lvalue ASSIGN value_expression'
+    'var_assign_expression : value_expression ASSIGN value_expression'
     p[0] = VariableAssignment(p[1], p[3], location=loc(p, 2))
 
 def p_ptr_assignment_expression(p):

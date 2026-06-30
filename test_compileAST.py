@@ -237,6 +237,13 @@ class TestErrorHandling(unittest.TestCase):
     # Assignments
     #
 
+    def test_assing_nonLValue(self):
+        with self.assertRaises(CompileError) as cts:
+            compileBlockToIR("""1 = 2;""")
+        self.assertIn("Can't assign to non-lvalue", cts.exception.message)
+        self.assertEqual(cts.exception.location.line, 1)
+
+
     def test_conflictingTypes(self):
         with self.assertRaises(CompileError) as cts:
             compileBlockToIR("""char a;
@@ -311,6 +318,21 @@ class TestErrorHandling(unittest.TestCase):
             void main() {
                 int *p = (int*)0x8000;
                 int i = *(p+1);
+            }""")
+        irs = blocks["main_0000"].statements[1:]
+        pprint(irs)
+        self.assertIsInstance(irs[0], IRAssign)
+        self.assertIsInstance(irs[1], IRAdd)
+        self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr)
+        self.assertEqual(irs[1].rhsAddr, Constant("char", 1))
+        self.assertIsInstance(irs[2], IRDereference)
+        self.assertEqual(irs[2].lhsAddr, irs[1].resultAddr)
+
+    def test_pointerArithmeticDereference2(self):
+        blocks = compileToBlocks("""
+            void main() {
+                int *p = (int*)0x8000;
+                *(p+1) = 42;
             }""")
         irs = blocks["main_0000"].statements[1:]
         pprint(irs)
