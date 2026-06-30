@@ -302,10 +302,24 @@ class TestErrorHandling(unittest.TestCase):
     def test_pointerWithAbsoluteValue(self):
         irs = compileBlockToIR("""int *p;
         p = (int*)0x8000;""")
-        pprint(irs)
         self.assertIsInstance(irs[0], IRAssign)
         self.assertIsInstance(irs[0].lhsAddr, Constant)
         self.assertEqual(irs[0].lhsAddr.completeType, "int*")
+
+    def test_pointerArithmeticDereference(self):
+        blocks = compileToBlocks("""
+            void main() {
+                int *p = (int*)0x8000;
+                int i = *(p+1);
+            }""")
+        irs = blocks["main_0000"].statements[1:]
+        pprint(irs)
+        self.assertIsInstance(irs[0], IRAssign)
+        self.assertIsInstance(irs[1], IRAdd)
+        self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr)
+        self.assertEqual(irs[1].rhsAddr, Constant("char", 1))
+        self.assertIsInstance(irs[2], IRDereference)
+        self.assertEqual(irs[2].lhsAddr, irs[1].resultAddr)
 
     def test_dereferenceNonPointer(self):
         with self.assertRaises(CompileError) as cts:

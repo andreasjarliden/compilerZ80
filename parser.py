@@ -120,7 +120,15 @@ def p_unary_struct_field(p):
     p[0] = StructFieldReference(p[1], p[3], location=loc(p, 3))
 
 def p_unary_primary(p):
-    'unary : primary'
+    'unary : grouping'
+    p[0] = p[1]
+
+def p_grouping_paran(p):
+    'grouping : LPARA value_expression RPARA' 
+    p[0] = p[2]
+
+def p_grouping_primary(p):
+    'grouping : primary'
     p[0] = p[1]
 
 def p_primary_constant(p):

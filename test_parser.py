@@ -238,6 +238,15 @@ class TestParser(unittest.TestCase):
                                             BitwiseOr(Variable("b"),
                                                       Variable("c"))))
 
+    def test_paranthesis(self):
+        ast = parser.parse("a=b-(c+d);");
+        print(ast[0])
+        self.assertEqual(ast[0],
+                         VariableAssignment(Variable("a"),
+                                            Subtraction(Variable("b"),
+                                                                 Add(Variable("c"),
+                                                                     Variable("d")))))
+
     #
     # bitwise closer than comparison
     #
