@@ -566,14 +566,14 @@ class IRAdd(IR):
             ra.spillRegister("a")
             ra.verify()
             asmWriter.write(f"\tadd\ta, {regZ}\n")
-            ra.loadedSymbolInRegister(self.resultAddr, "a")
+            ra.assignedToSymbolWithRegister(self.resultAddr, "a")
         elif self.lhsAddr.type == "int":
             regZ = self.load16bitLhsAndRhs(transitive=True)
             ra.verify()
             ra.spillRegister("hl")
             ra.verify()
             asmWriter.write(f"\tadd\thl, {regZ}\n")
-            ra.loadedSymbolInRegister(self.resultAddr, "hl")
+            ra.assignedToSymbolWithRegister(self.resultAddr, "hl")
             ra.verify()
         else:
             error()
@@ -594,13 +594,13 @@ class IRSub(IR):
             ra.spillRegister("a")
             ra.verify()
             asmWriter.write(f"\tsub\ta, {regZ}\n")
-            ra.loadedSymbolInRegister(self.resultAddr, "a")
+            ra.assignedToSymbolWithRegister(self.resultAddr, "a")
         elif self.lhsAddr.type == "int":
             regZ = self.load16bitLhsAndRhs(transitive=False)
             ra.spillRegister("hl")
             asmWriter.write(f"\tor\ta\n") # Clears Carry flag without changing A
             asmWriter.write(f"\tsbc\thl, {regZ}\n")
-            ra.loadedSymbolInRegister(self.resultAddr, "hl")
+            ra.assignedToSymbolWithRegister(self.resultAddr, "hl")
         else:
             error()
 

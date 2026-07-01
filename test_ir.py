@@ -111,6 +111,7 @@ class TestIR(unittest.TestCase):
         output = self.asmWriter.read()
         self.assertEqual(output, "\tadd\ta, b\n")
         self.assertEqual(registerAllocator.RA.isInRegister(self.foo), "a")
+        self.assertNotIn(self.foo, registerAllocator.RA.symbols[self.foo]) # Not spilled yet
         self.assertFalse(registerAllocator.RA.isInRegister(self.bar))
         self.assertEqual(registerAllocator.RA.isInRegister(self.baz), "b")
 
@@ -289,6 +290,7 @@ class TestIR(unittest.TestCase):
         output = self.asmWriter.read()
         self.assertEqual(output, "\tsub\ta, b\n")
         self.assertEqual(registerAllocator.RA.isInRegister(self.foo), "a")
+        self.assertNotIn(self.foo, registerAllocator.RA.symbols[self.foo]) # Not spilled yet
         self.assertFalse(registerAllocator.RA.isInRegister(self.bar))
         self.assertEqual(registerAllocator.RA.isInRegister(self.baz), "b")
 
