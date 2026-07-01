@@ -516,7 +516,9 @@ class IRAssignToPointer(IR):
                 asmWriter.write(f'\tld\t({regX}), {regY}\n')
         elif self.lhsAddr.completeType == "int*":
             if isinstance(self.rhsAddr, Constant):
-                regX = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } ) 
+                # TODO bc, de requires to go via a instead
+                regX = ra.doLoadInRegister16(self.lhsAddr, { "hl" } ) 
+                # regX = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } ) 
                 asmWriter.write(f'\tld\t({regX}), {self.rhsAddr.value & 0xff}\n')
                 asmWriter.write(f'\tinc\t{regX}\n')
                 asmWriter.write(f'\tld\t({regX}), {self.rhsAddr.value >> 8 & 0xff}\n')
