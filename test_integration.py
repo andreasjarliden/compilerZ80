@@ -286,4 +286,23 @@ class TestIntegration(unittest.TestCase):
         self.assertRegex(output, r"ld\t\(ix - 3\), (b|d|h)")
         self.assertRegex(output, r"ld\t\(ix - 4\), (c|e|l)")
 
+    def test_dereference(self):
+        output = compile("""
+            char main() {
+                int* a = (int*)0x8000;
+                int b = 42;
+                int c = *(a + b - 2);
+            }""")
+        print(output)
+        self.assertTrue(False)
 
+    def test_assignDereference(self):
+        output = compile("""
+            char main() {
+                int* a = (int*)0x8000;
+                int b = 42;
+                *(a + b - 2) = 42;
+            }""")
+        print(output)
+        self.assertRegex(output, r"ld\t\((bc|de|hl)\), 42")
+        self.assertTrue(False)
