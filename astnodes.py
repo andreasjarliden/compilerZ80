@@ -325,30 +325,12 @@ class VariableAssignment(ASTNode):
                 isinstance(self.lvalue, StructFieldReference)):
             raise CompileError(f"Can't assign to non-lvalue {self.lvalue}", self.location)
         lvalue = self.lvalue.visit(context)
-        rhsAddr = promoteIfNeededTo(self.rhs.visit(context), lvalue.type, lvalue.completeType, context, "assignment", self.location)
-        # rhsAddr = self.rhs.visit(context)
-        # if not isConvertableTo(rhsAddr.completeType, lvalue.completeType):
-        #     raise CompileError(f"Can't assign {lvalue.completeType} from {rhsAddr.completeType}", self.location)
-        # if rhsAddr.completeType != lvalue.completeType:
-        #     temp = context.symbolTable.addTemporary(lvalue.completeType)
-        #     context.blockFactory.addIR(IRPromote(
-        #         temp,
-        #         rhsAddr,
-        #         lvalue.completeType))
-        #     rhsAddr = temp
-        context.blockFactory.addIR(IRAssign(lvalue, rhsAddr))
-
-
-@dataclass(frozen=True)
-class DerefPointerAssignment(ASTNode):
-    lvalue : Any
-    rhs : Any
-
-    def visit(self, context):
-        lvalue = self.lvalue.visit(context)
         rhsAddr = self.rhs.visit(context)
-        context.blockFactory.addIR(IRAssignToPointer(lvalue, rhsAddr))
-
+        rhsAddr = promoteIfNeededTo(rhsAddr, lvalue.type, lvalue.completeType, context, "assignment", self.location)
+        if isinstance(self.lvalue, Dereference):
+            context.blockFactory.addIR(IRAssignToPointer(lvalue.impl.pointer, rhsAddr))
+        else:
+            context.blockFactory.addIR(IRAssign(lvalue, rhsAddr))
 
 @dataclass(frozen=True)
 class AddressOf(ASTNode):

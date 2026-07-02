@@ -69,9 +69,11 @@ A=2;""")
         irs = blocks["main_0000"].statements
         self.assertIsInstance(irs[1], IRAssign)
         self.assertIsInstance(irs[2], IRAssign)
-        self.assertIsInstance(irs[3], IRAssignToPointer)
+        self.assertIsInstance(irs[3], IRDereference)
+        self.assertIsInstance(irs[4], IRAssignToPointer)
         # pCunkStart value 42 should be live at *pChunkStart = tag line as we are USING pChunkStart, not assigning it.
         self.assertEqual(irs[3].live[irs[2].resultAddr], True) 
+        self.assertEqual(irs[4].live[irs[2].resultAddr], True) 
 
 class TestErrorHandling(unittest.TestCase):
     # TODO duplication with above

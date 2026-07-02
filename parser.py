@@ -40,13 +40,8 @@ def p_expression(p):
                | struct_definition_expression
                | var_def_expression
                | var_assign_expression
-               | ptr_assign_expression
     '''
     p[0] = p[1]
-
-def p_ptrlvalue(p):
-    'ptrlvalue : STAR ID'
-    p[0] = Variable(p[2], location=loc(p, 2))
 
 def p_value_expression(p):
     'value_expression : comparisson'
@@ -178,7 +173,6 @@ def p_type(p):
         p[0] = p[1]
 
 def p_base_type(p):
-    # '''base_type | ID'''
     '''base_type : CHAR
                  | INT
                  | VOID
@@ -206,10 +200,6 @@ def p_pointers_more(p):
 def p_variable_assignment_expression(p):
     'var_assign_expression : value_expression ASSIGN value_expression'
     p[0] = VariableAssignment(p[1], p[3], location=loc(p, 2))
-
-def p_ptr_assignment_expression(p):
-    'ptr_assign_expression : ptrlvalue ASSIGN value_expression'
-    p[0] = DerefPointerAssignment(p[1], p[3])
 
 def p_return_expression(p):
     'return_expression : RETURN value_expression'

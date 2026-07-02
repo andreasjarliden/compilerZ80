@@ -14,15 +14,15 @@ class RegisterAllocator:
     def __init__(self):
         self.registers = {r: set() for r in ALL_REGISTERS}
         self.symbols = {}
-        self.coupledRegisters = { 'bc': ('b', 'c'),
-                                 'b': ['bc'],
-                                 'c': ('bc',),
-                                 'de': ('d', 'e'),
-                                 'd': ['de'],
-                                 'e': ('de',),
-                                 'hl': ('h', 'l'),
-                                 'h': ['hl'],
-                                 'l': ('hl',) }
+        self.coupledRegisters = { 'bc': {'b', 'c'},
+                                 'b': {'bc'},
+                                 'c': {'bc',},
+                                 'de': {'d', 'e'},
+                                 'd': {'de'},
+                                 'e': {'de',},
+                                 'hl': {'h', 'l'},
+                                 'h': {'hl'},
+                                 'l': {'hl',} }
         self.currentInstruction = None
 
     def __repr__(self):
@@ -57,7 +57,7 @@ class RegisterAllocator:
             error()
         self._verifyRegisters()
 
-    def doSpillToSymbol(self, reg, s):
+    def doStoreToSymbol(self, reg, s):
         pass
 
     def isFree(self, r):
@@ -85,7 +85,7 @@ class RegisterAllocator:
     def spillRegisterToSymbol(self, r, s):
         # Spill if live and not already in memory
         if self.currentInstruction.live[s] and not s in self.symbols[s]:
-            self.doSpillToSymbol(r, s)
+            self.doStoreToSymbol(r, s)
             if len(self.symbols[s]) > 1:
                 # Add if symbol still in some other register
                 self.symbols[s].add(s)
@@ -94,6 +94,12 @@ class RegisterAllocator:
         if len(self.symbols[s] & ALL_REGISTERS) == 0:
             # Remove if no longer used
             del self.symbols[s]
+
+    def storeRegisterToSymbol(self, r, s):
+        # Spill if live and not already in memory
+        if not s in self.symbols[s]:
+            self.doStoreToSymbol(r, s, onlyStore=True)
+            self.symbols[s].add(s)
 
     def removeSymbolForRegister(self, s, r):
         self.registers[r].remove(s)
@@ -133,16 +139,24 @@ class RegisterAllocator:
         r = next(iter(self.symbols[s] & ALL_REGISTERS))
         self.spillRegisterToSymbol(r, s)
 
+    def _storeSymbol(self, s):
+        # pick one of register containing n
+        r = next(iter(self.symbols[s] & ALL_REGISTERS))
+        self.storeRegisterToSymbol(r, s)
+
     def spillAll(self):
         symbols = self.symbols.copy()
         for s in symbols:
             self._spillSymbol(s)
 
-    def spillAllMatchingType(self, t):
+    def storeAllMatchingType(self, t):
         symbols = self.symbols.copy()
         for s in symbols:
+            # Shouldn't have to store any temp things due to dereferencing?
+            if s.name.startswith("temp"):
+                continue
             if s.completeType == t:
-                self._spillSymbol(s)
+                self._storeSymbol(s)
             
     def _bestRegisterToSpill(self, possibleRegisters):
         return min(possibleRegisters, key=self._spillScore)
@@ -241,8 +255,11 @@ class Z80RegisterAllocator(RegisterAllocator):
         self.asmFile = asmFile
         self.asmWriter = AsmWriter(asmFile)
 
-    def doSpillToSymbol(self, r, s):
-        self.asmFile.write(f"; spill register {r} to var {s.name}\n")
+    def doStoreToSymbol(self, r, s, onlyStore=False):
+        if onlyStore:
+            self.asmFile.write(f"; store register {r} to var {s.name}\n")
+        else:
+            self.asmFile.write(f"; spill register {r} to var {s.name}\n")
         if isinstance(s.impl, StackAddress):
             if s.type == 'char':
                 self.asmFile.write(f"\tld\t{s.impl.codeArg()}, {r}\n")

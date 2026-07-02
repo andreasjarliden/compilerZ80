@@ -39,6 +39,13 @@ class TestParser(unittest.TestCase):
         self.assertEqual(ast[0],
                          VariableAssignment(Variable("a"),
                                             Constant("char", 42)))
+
+    def test_derefAssignment(self):
+        ast = parser.parse("*a=42;");
+        self.assertEqual(ast[0],
+                         VariableAssignment(Dereference(Variable("a")),
+                                            Constant("char", 42)))
+
     #
     # Variable use
     #
@@ -240,7 +247,6 @@ class TestParser(unittest.TestCase):
 
     def test_paranthesis(self):
         ast = parser.parse("a=b-(c+d);");
-        print(ast[0])
         self.assertEqual(ast[0],
                          VariableAssignment(Variable("a"),
                                             Subtraction(Variable("b"),

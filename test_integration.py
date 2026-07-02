@@ -27,7 +27,6 @@ class TestIntegration(unittest.TestCase):
             void main() {
                 int f = FOO;
             }""")
-        print(output)
         self.assertRegex(output, r"ld\t(bc|de|hl), \(FOO\)")
         self.assertRegex(output, r"FOO:\t.int16\t1")
 
@@ -37,7 +36,6 @@ class TestIntegration(unittest.TestCase):
             void main() {
                 int* f = FOO;
             }""")
-        print(output)
         self.assertRegex(output, r"ld\t(bc|de|hl), \(FOO\)")
         self.assertRegex(output, r"FOO:\t.int16\t1")
 
@@ -110,7 +108,6 @@ class TestIntegration(unittest.TestCase):
             void main() {
                 void* p = f();
             }""")
-        print(output)
 
 
     def test_spillBeforeFunCall(self):
@@ -155,7 +152,6 @@ class TestIntegration(unittest.TestCase):
             char main(char* str, char* str2) {
                 main("foo", "foo");
             }""")
-        print(output)
         self.assertIn("ld\thl, __str0\n", output)
         self.assertIn("push\thl\n", output)
         self.assertIn("push\thl", output)
@@ -202,7 +198,6 @@ class TestIntegration(unittest.TestCase):
                 if (n & 0x80)
                     n = 42;
             }""")
-        print(output)
         self.assertIn("ld\ta, (ix + 5)\n\tand\ta, 128\n\tor\ta", output)
         self.assertIn("jp\tz, main_l1", output)
 
@@ -280,7 +275,6 @@ class TestIntegration(unittest.TestCase):
                 void* p;
                 p = (void*)i;
             }""")
-        print(output)
         self.assertRegex(output, r"ld\t(b|d|h), \(ix - 1\)")
         self.assertRegex(output, r"ld\t(c|e|l), \(ix - 2\)")
         self.assertRegex(output, r"ld\t\(ix - 3\), (b|d|h)")
@@ -293,16 +287,14 @@ class TestIntegration(unittest.TestCase):
                 int b = 42;
                 int c = *(a + b - 2);
             }""")
-        print(output)
-        self.assertTrue(False)
+        # TODO should make it easy to assert something after some other string
+        self.assertRegex(output, "ld\t., \(hl\)") # The pointer must be in HL as computed with sbc
 
     def test_assignDereference(self):
         output = compile("""
             char main() {
-                int* a = (int*)0x8000;
-                int b = 42;
+                char* a = (char*)0x8000;
+                int b = 24;
                 *(a + b - 2) = 42;
             }""")
-        print(output)
         self.assertRegex(output, r"ld\t\((bc|de|hl)\), 42")
-        self.assertTrue(False)

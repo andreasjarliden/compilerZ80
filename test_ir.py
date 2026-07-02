@@ -64,7 +64,6 @@ class TestIR(unittest.TestCase):
     def test_IRAssignToPointerViaHL(self):
         registerAllocator.RA.loadedSymbolInRegister(self.ptr, "hl")
         registerAllocator.RA.loadedSymbolInRegister(self.bar16, "de")
-        print(registerAllocator.RA)
         ira = ir.IRAssignToPointer(self.ptr, self.bar16)
         ira.live[self.ptr] = True
         ira.live[self.bar16] = True
@@ -73,13 +72,11 @@ class TestIR(unittest.TestCase):
 
         self.asmWriter.seek(0)
         output = self.asmWriter.read()
-        print(output)
         self.assertIn("\tld\t(hl), e\n\tinc\thl\n\tld\t(hl), d", output)
 
     def test_IRAssignToPointerViaBC(self):
         registerAllocator.RA.loadedSymbolInRegister(self.ptr, "bc")
         registerAllocator.RA.loadedSymbolInRegister(self.bar16, "de")
-        print(registerAllocator.RA)
         ira = ir.IRAssignToPointer(self.ptr, self.bar16)
         ira.live[self.ptr] = True
         ira.live[self.bar16] = True
@@ -297,7 +294,6 @@ class TestIR(unittest.TestCase):
     def test_IRSubInt(self):
         registerAllocator.RA.loadedSymbolInRegister(self.foo16, "hl")
         registerAllocator.RA.loadedSymbolInRegister(self.bar16, "bc")
-        print(f"HL: {registerAllocator.RA.registers["hl"]}")
 
         # foo = bar - baz
         ira = ir.IRSub(self.foo16, self.foo16, self.bar16)

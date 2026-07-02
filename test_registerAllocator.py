@@ -15,9 +15,9 @@ class TestRA(unittest.TestCase):
         self.ra.currentInstruction = IR()
         self.ra.currentInstruction.live = { self.foo: True, self.bar: True }
         self.performedSpills = []
-        self.ra.doSpillToSymbol = self.doSpillToSymbol
+        self.ra.doStoreToSymbol = self.doStoreToSymbol
 
-    def doSpillToSymbol(self, reg, s):
+    def doStoreToSymbol(self, reg, s, onlyStore=False):
         self.performedSpills.append( (reg, s) )
 
     # loadRegister
@@ -213,42 +213,39 @@ class TestRA(unittest.TestCase):
 
     # spillAllMatchingType
 
-    def test_spillAllMatchingType_int(self):
+    def test_storeAllMatchingType_int(self):
         foo = SymEntry("char", "foo")
         foo2 = SymEntry("char", "foo")
         baz = SymEntry("int", "baz")
+        temp = SymEntry("int", "temp001") # should not be spilled
         self.ra.currentInstruction.live[foo] = True
         self.ra.currentInstruction.live[foo2] = True
+        self.ra.currentInstruction.live[baz] = False # store even if not live
         self.ra.currentInstruction.live[baz] = True
         self.ra.assignedToSymbolWithRegister(foo, "a") # char
         self.ra.assignedToSymbolWithRegister(foo2, "b") # char
         self.ra.assignedToSymbolWithRegister(baz, "c") # int
 
-        self.ra.spillAllMatchingType("int")
+        self.ra.storeAllMatchingType("int")
 
-        self.assertEqual(self.ra.registers["a"], {foo})
-        self.assertEqual(self.ra.registers["b"], {foo2})
-        self.assertEqual(self.ra.registers["c"], set())
-        self.assertFalse(baz in self.ra.symbols)
-
-    def test_spillAllMatchingType_char(self):
-        foo = SymEntry("char", "foo")
-        foo2 = SymEntry("char", "foo")
-        baz = SymEntry("int", "baz")
-        self.ra.currentInstruction.live[foo] = True
-        self.ra.currentInstruction.live[foo2] = True
-        self.ra.currentInstruction.live[baz] = True
-        self.ra.assignedToSymbolWithRegister(foo, "a") # char
-        self.ra.assignedToSymbolWithRegister(foo2, "b") # char
-        self.ra.assignedToSymbolWithRegister(baz, "c") # int
-
-        self.ra.spillAllMatchingType("char")
-
-        self.assertEqual(self.ra.registers["a"], set())
-        self.assertFalse(foo in self.ra.symbols)
-        self.assertEqual(self.ra.registers["b"], set())
-        self.assertFalse(foo2 in self.ra.symbols)
+        self.assertEqual(self.performedSpills, [ ("c", baz) ])
         self.assertEqual(self.ra.registers["c"], {baz})
+        self.assertTrue(baz in self.ra.symbols) # Only store, don't spill
+
+    def test_storeAllMatchingType_char(self):
+        foo = SymEntry("char", "foo")
+        foo2 = SymEntry("char", "foo")
+        baz = SymEntry("int", "baz")
+        self.ra.currentInstruction.live[foo] = True
+        self.ra.currentInstruction.live[foo2] = True
+        self.ra.currentInstruction.live[baz] = True
+        self.ra.assignedToSymbolWithRegister(foo, "a") # char
+        self.ra.assignedToSymbolWithRegister(foo2, "b") # char
+        self.ra.assignedToSymbolWithRegister(baz, "c") # int
+
+        self.ra.storeAllMatchingType("char")
+
+        self.assertEqual(self.performedSpills, [ ("a", foo), ("b", foo2) ])
 
 
 class TestZ80RA(unittest.TestCase):
