@@ -234,7 +234,7 @@ class IRIfRelation(IR):
                   '<':  ("nc", False, False),
                   '>=': ("c", False, False),
                   '>':  ("nc", False, True), 
-                  '<':  ("c", False, True) }
+                  '<=':  ("c", False, True) }
     def __init__(self, operation, lhsAddr, rhsAddr, skipLabel):
         super().__init__(lhsAddr=lhsAddr, rhsAddr=rhsAddr)
         self.skipLabel = skipLabel
