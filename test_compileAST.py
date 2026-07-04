@@ -147,6 +147,29 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(cts.exception.message, "Attempting to reference unknown a")
         self.assertEqual(cts.exception.location.line, 2)
 
+    def test_ifLocalScope(self):
+        with self.assertRaises(CompileError) as cts:
+            compile("""void main() {
+                            if (1) {
+                                int a;
+                            }
+                            int b = a;
+                       }""")
+        self.assertEqual(cts.exception.message, "Attempting to reference unknown a")
+        self.assertEqual(cts.exception.location.line, 5)
+
+    def test_whileLocalScope(self):
+        with self.assertRaises(CompileError) as cts:
+            compile("""void main() {
+                            int t;
+                            while (t) {
+                                int a;
+                            }
+                            int b = a;
+                       }""")
+        self.assertEqual(cts.exception.message, "Attempting to reference unknown a")
+        self.assertEqual(cts.exception.location.line, 6)
+
     #
     # Variable definition
     #

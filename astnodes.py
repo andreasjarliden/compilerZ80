@@ -22,6 +22,10 @@ class StringTable:
             self._count += 1
         return self._table[s]
 
+# def updateLiveInBlock(block):
+#     live = { s: not s.name.startswith("temp") for s in block.exitSymbols}
+#     for i in reversed(block.statements):
+#         i.updateLive(live)
 
 @dataclass
 class ASTContext:
@@ -34,6 +38,15 @@ class ASTContext:
 
     def exitBlock(self):
         self.blockFactory.exitBlock(self.symbolTable.allSymbols())
+        # updateLiveInBlock(self.blockFactory.currentBlock)
+
+    def pushFrame(self):
+        self.typeEnv.pushFrame()
+        self.symbolTable.pushFrame()
+        
+    def popFrame(self):
+        self.symbolTable.popFrame()
+        self.typeEnv.popFrame()
 
 
 def createLabel(context):
@@ -142,8 +155,7 @@ class FunctionDefinition(Function):
 
     def visit(self, context):
         context.symbolTable.addSymbolEntry(self.name, self)
-        context.typeEnv.pushFrame()
-        context.symbolTable.pushFrame()
+        context.pushFrame()
         context.functionName = self.name
         context.functionLabels = 0
         context.blockFactory.enterBlock(self.name)
@@ -170,8 +182,7 @@ class FunctionDefinition(Function):
         self.frameSize = stackFrameSize(symbolTable)
         context.blockFactory.addIR(IRFunExit(self))
         context.exitBlock()
-        context.symbolTable.popFrame()
-        context.typeEnv.popFrame()
+        context.popFrame()
         context.functionName = None
         return symbolTable # for testing
 
@@ -192,8 +203,11 @@ class If(ASTNode):
         context.blockFactory.addIR(ir)
         context.exitBlock()
         context.blockFactory.enterSubBlock()
+        # TODO enable after fixing mapSymbols
+        # context.pushFrame()
         for s in self.statements:
             s.visit(context)
+        # context.popFrame()
         context.blockFactory.addIR(IRSpillAll())
         context.exitBlock()
         context.blockFactory.enterSubBlock()
@@ -223,8 +237,11 @@ class While(ASTNode):
             error()
         context.blockFactory.addIR(ir)
         context.blockFactory.enterSubBlock()
+        # TODO enable after fixing mapSymbols
+        # context.pushFrame()
         for s in self.statements:
             s.visit(context)
+        # context.popFrame()
         context.blockFactory.addIR(IRSpillAll())
         context.exitBlock()
         context.blockFactory.addIR(IRJump(loopLabel))
