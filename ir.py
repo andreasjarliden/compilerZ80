@@ -693,19 +693,6 @@ class IRPromote(IR):
             asmWriter.loadRegisterWithAddress(reg16_lo, self.lhsAddr.impl)
         ra.loadedSymbolInRegister(self.resultAddr, reg16)
 
-class IREqual(IR):
-    def __init__(self, lhsAddr, rhsAddr):
-        super().__init__(lhsAddr=lhsAddr, rhsAddr=rhsAddr)
-        self.addr = Flags()
-
-    def genCode(self, asmWriter):
-        if self.lhsAddr.type == "char":
-            regZ = self.load8bitLhsAndRhs(asmWriter)
-            asmWriter.write(f"\tcp\t{regZ}\n")
-        elif self.lhsAddr.type == "int":
-            regZ = self.load16bitLhsAndRhs()
-            asmWriter.write(f"\tor\ta\n") # Clears Carry flag without changing A
-            asmWriter.write(f"\tsbc\thl, {regZ}\n")
 
 
 
