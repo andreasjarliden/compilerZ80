@@ -298,6 +298,7 @@ class Z80RegisterAllocator(RegisterAllocator):
                 self.asmFile.write(f'\tld\t{r[1]}, ({rp})\n')
                 self.asmFile.write(f'\tinc\t{rp}\n')
                 self.asmFile.write(f'\tld\t{r[0]}, ({rp})\n')
+                self.asmFile.write(f'\tdec\t{rp}\n')
             else:
                 # Only a can be loaded from (bc/de)
                 self.asmFile.write(f'\tld\ta, ({rp})\n')
