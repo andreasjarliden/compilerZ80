@@ -186,9 +186,10 @@ class TestIntegration(unittest.TestCase):
                     c = 24;
             }""")
         # Spill c = 42 before if statement
-        self.assertRegex(output, r"ld\t., 42\n[^\n]*\n\tld\t\(ix - 1\), .")
+        self.assertRegex(output, r"; spill register . to var c")
         # Test conditional jump
-        self.assertIn("\tld\ta, (ix + 5)\n\tcp\t0\n\tjp\tnz, main_l1", output)
+        self.assertIn("\tld\ta, (ix + 5)\n\tcp\t0", output)
+        self.assertIn("jp\tnz, main_l1", output)
         # Spill c = 24 at end of if-statement
         self.assertRegex(output, r"ld\t., 24\n[^\n]*\n\tld\t\(ix - 1\), .")
 

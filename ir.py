@@ -247,7 +247,6 @@ class IRIfRelation(IR):
         ra = registerAllocator.RA
         # Spill before the jump as this will end the basic block. A later call
         # to spillAll will be a no-op.
-        ra.spillAll()
         (flag, transitive, flip) = self.operations[self.operation]
         if flip:
             (self.lhsAddr, self.rhsAddr) = (self.rhsAddr, self.lhsAddr)
@@ -256,7 +255,9 @@ class IRIfRelation(IR):
             asmWriter.write(f"\tcp\t{regZ}\n")
         elif self.lhsAddr.type == "int":
             regZ = self.load16bitLhsAndRhs(transitive)
+            asmWriter.write(f"\tor\ta\n") # Clears Carry flag without changing A
             asmWriter.write(f"\tsbc\thl, {regZ}\n")
+        ra.spillAll()
         asmWriter.write(f'\tjp\t{flag}, {self.skipLabel}\n') 
 
 class IRLabel(IR):
@@ -703,6 +704,7 @@ class IREqual(IR):
             asmWriter.write(f"\tcp\t{regZ}\n")
         elif self.lhsAddr.type == "int":
             regZ = self.load16bitLhsAndRhs()
+            asmWriter.write(f"\tor\ta\n") # Clears Carry flag without changing A
             asmWriter.write(f"\tsbc\thl, {regZ}\n")
 
 

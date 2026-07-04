@@ -385,6 +385,24 @@ class TestIR(unittest.TestCase):
         self.assertIn(f"\tld\t{r_hi}, 0\n", output)
         self.assertIn(f"\tld\t{r_lo}, (ix + 1)\n", output)
 
+    #
+    # IRIfRelation
+    #
+    def test_IRIfRelation_int(self):
+        registerAllocator.RA.loadedSymbolInRegister(self.foo16, "hl")
+        registerAllocator.RA.loadedSymbolInRegister(self.bar16, "bc")
+
+        # foo = bar - baz
+        ira = ir.IRIfRelation("==", self.foo16, self.bar16, "skipLabel")
+        ira.live[self.foo16] = True
+        ira.live[self.bar16] = False # Not necessary to spill bar
+        registerAllocator.RA.currentInstruction = ira
+        ira.genCode(self.asmWriter)
+
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
+        print(output)
+        self.assertEqual(output, "\tor\ta\n\tsbc\thl, bc\n\tjp\tnz, skipLabel\n")
 
 
 
