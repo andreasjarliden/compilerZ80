@@ -293,7 +293,9 @@ def isConvertableTo(fromType, toType):
         return True
     if fromType == "char" and toType == "int":
         return True
-    if fromType == "void*" and toType[-1]=="*":
+    if fromType == "void*" and toType[-1] == "*":
+        return True
+    if fromType[-1] == "*" and toType == "void*":
         return True
     return False
 

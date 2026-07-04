@@ -11,7 +11,10 @@ class TestConversion(unittest.TestCase):
         self.assertTrue(isConvertableTo("char", "int"))
         self.assertFalse(isConvertableTo("int", "char"))
         self.assertTrue(isConvertableTo("void*", "char*"))
+        self.assertTrue(isConvertableTo("char*", "void*"))
         self.assertFalse(isConvertableTo("void*", "char"))
+        self.assertFalse(isConvertableTo("char*", "int*"))
+        self.assertFalse(isConvertableTo("int*", "char*"))
 
 # TODO live should describe the liveness AT the instruction, so we now if it is
 # free to spill
