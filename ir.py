@@ -305,7 +305,7 @@ class IRReturn(IR):
             print(f"IRReturn returning type {self.type}")
             error();
         ra.spillAll()
-        asmWriter.write(f'\tjr\t{self.functionName}_exit\n')
+        asmWriter.write(f'\tjp\t{self.functionName}_exit\n')
 
 class IRArgument(IR):
     def __init__(self, exprAddr):
