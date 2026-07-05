@@ -211,7 +211,7 @@ class TestIntegration(unittest.TestCase):
                           }
                             """)
         # Test spill before first label
-        self.assertRegex(output, r"\tld\t\(ix \- 1\), .\nmain_l1:")
+        self.assertRegex(output, r"\tld\t\(ix \- 1\), .\n;[^\n]*\nmain_l1:")
         # Test conditional jump to skip label
         self.assertRegex(output, r"\tjp\t.+, main_l2")
         # jump to loop label

@@ -26,7 +26,7 @@ class BlockFactory:
         self.currentBlock = BasicBlock(self.currentBlockName)
         self.blockNumber+=1
 
-    def exitBlock(self, exitSymbols):
+    def _exitBlock(self, exitSymbols):
         self.currentBlock.exitSymbols = exitSymbols
         self.basicBlocks[self.currentBlockName] = self.currentBlock
 

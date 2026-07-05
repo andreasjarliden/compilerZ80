@@ -38,8 +38,9 @@ class ASTContext:
     stackOffset : int = field(default = 0, init=False)
 
     def exitBlock(self):
-        self.blockFactory.exitBlock(self.symbolTable.allSymbols())
+        self.blockFactory._exitBlock(self.symbolTable.allSymbols())
         updateLiveInBlock(self.blockFactory.currentBlock)
+        self.blockFactory.currentBlock = None
 
     def resetStackFrame(self):
         self.stackOffset = 0;
@@ -196,16 +197,17 @@ class If(ASTNode):
             exprAddr = self.expr.visit(context)
             ir = IRIfVariable(exprAddr, skipLabel)
         context.blockFactory.addIR(ir)
+        # Note: IRIf handles the spilling
         context.exitBlock()
         context.blockFactory.enterSubBlock()
         context.pushFrame()
         for s in self.statements:
             s.visit(context)
-        context.popFrame()
         context.blockFactory.addIR(IRSpillAll())
         context.exitBlock()
         context.blockFactory.enterSubBlock()
         context.blockFactory.addIR(IRLabel(skipLabel))
+        context.popFrame()
 
 
 @dataclass(frozen=True)
@@ -215,9 +217,9 @@ class While(ASTNode):
 
     def visit(self, context):
         ra = registerAllocator.RA
-        # TODO should spill all be part of exitBlock?
         context.blockFactory.addIR(IRSpillAll())
         context.exitBlock()
+        context.blockFactory.enterSubBlock()
         loopLabel = createLabel(context)
         context.blockFactory.addIR(IRLabel(loopLabel))
         skipLabel = createLabel(context)
@@ -230,17 +232,19 @@ class While(ASTNode):
         else:
             error()
         context.blockFactory.addIR(ir)
+
+        context.exitBlock()
         context.blockFactory.enterSubBlock()
         context.pushFrame()
         for s in self.statements:
             s.visit(context)
-        # context.popFrame()
         context.blockFactory.addIR(IRSpillAll())
-        context.exitBlock()
-        context.popFrame()
         context.blockFactory.addIR(IRJump(loopLabel))
+        context.exitBlock()
         context.blockFactory.enterSubBlock()
         context.blockFactory.addIR(IRLabel(skipLabel))
+        # TODO must popFrame after exitBlock, otherwise we lose symbols when poping the frame
+        context.popFrame()
 
 VALID_TYPES = { 'void', 'char', 'int' }
 def verifyType(t, location, typeEnv):
