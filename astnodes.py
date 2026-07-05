@@ -22,10 +22,10 @@ class StringTable:
             self._count += 1
         return self._table[s]
 
-# def updateLiveInBlock(block):
-#     live = { s: not s.name.startswith("temp") for s in block.exitSymbols}
-#     for i in reversed(block.statements):
-#         i.updateLive(live)
+def updateLiveInBlock(block):
+    live = { s: not s.name.startswith("temp") for s in block.exitSymbols}
+    for i in reversed(block.statements):
+        i.updateLive(live)
 
 @dataclass
 class ASTContext:
@@ -39,7 +39,7 @@ class ASTContext:
 
     def exitBlock(self):
         self.blockFactory.exitBlock(self.symbolTable.allSymbols())
-        # updateLiveInBlock(self.blockFactory.currentBlock)
+        updateLiveInBlock(self.blockFactory.currentBlock)
 
     def resetStackFrame(self):
         self.stackOffset = 0;
@@ -198,11 +198,10 @@ class If(ASTNode):
         context.blockFactory.addIR(ir)
         context.exitBlock()
         context.blockFactory.enterSubBlock()
-        # TODO enable after fixing mapSymbols
-        # context.pushFrame()
+        context.pushFrame()
         for s in self.statements:
             s.visit(context)
-        # context.popFrame()
+        context.popFrame()
         context.blockFactory.addIR(IRSpillAll())
         context.exitBlock()
         context.blockFactory.enterSubBlock()
@@ -232,13 +231,13 @@ class While(ASTNode):
             error()
         context.blockFactory.addIR(ir)
         context.blockFactory.enterSubBlock()
-        # TODO enable after fixing mapSymbols
-        # context.pushFrame()
+        context.pushFrame()
         for s in self.statements:
             s.visit(context)
         # context.popFrame()
         context.blockFactory.addIR(IRSpillAll())
         context.exitBlock()
+        context.popFrame()
         context.blockFactory.addIR(IRJump(loopLabel))
         context.blockFactory.enterSubBlock()
         context.blockFactory.addIR(IRLabel(skipLabel))

@@ -11,13 +11,6 @@ def astToThreeCode(ast, astContext):
         n.visit(context)
     return context.blockFactory.blocks(), context.dataSegment
 
-def updateLive(blocks):
-    for b in blocks.values():
-        # Set all non-temp to live at exit for now
-        live = { s: not s.name.startswith("temp") for s in b.exitSymbols}
-        for i in reversed(b.statements):
-            i.updateLive(live)
-
 def genCode(blocks, asmWriter):
     asmWriter.write("\t.org 08000h\n")
     asmWriter.write('\t#include "constants.asm"\n')

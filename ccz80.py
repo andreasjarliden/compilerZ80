@@ -1,5 +1,5 @@
 from parser import parser
-from compiler import astToThreeCode, updateLive, genCode, genDataSegment
+from compiler import astToThreeCode, genCode, genDataSegment
 from asmWriter import AsmWriter
 from astnodes import ASTContext
 from symbolTable import SymbolTable
@@ -37,7 +37,6 @@ if __name__ == '__main__':
         symbolTable = SymbolTable()
         astContext = ASTContext(symbolTable = symbolTable)
         blocks, dataSegment = astToThreeCode(ast, astContext)
-        updateLive(blocks)
         genCode(blocks, asmWriter)
         genDataSegment(dataSegment, asmWriter)
     except CompileError as e:
