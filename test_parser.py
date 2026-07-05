@@ -1,7 +1,7 @@
 import unittest
 from parser import parser
 from astnodes import *
-from address import Constant
+from address import Constant, Temporary
 from blocks import SingleBlockFactory, BlockFactory
 
 class TestParser(unittest.TestCase):
@@ -181,7 +181,7 @@ class TestParser(unittest.TestCase):
         self.assertTrue(isinstance(block.statements[0], IRDefFun))
         self.assertTrue(isinstance(block.statements[1], IRFunExit))
 
-    def test_function_mapSymbols_byteArgs(self):
+    def test_function_stackLayout_byteArgs(self):
         ast = parser.parse("char foo(char arg1, char arg2) { int iVar; char cVar; }")
         blockFactory = BlockFactory()
         context = ASTContext(blockFactory)
@@ -191,7 +191,7 @@ class TestParser(unittest.TestCase):
         self.assertEqual(symbolTable["iVar"].impl.offset, -2) # (ix-2, ix-1)
         self.assertEqual(symbolTable["cVar"].impl.offset, -3) # (ix-3)
 
-    def test_function_mapSymbols_mixedArgs(self):
+    def test_function_stackLayout_mixedArgs(self):
         ast = parser.parse("char foo(int arg1, char arg2) { char cVar; int iVar; }")
         blockFactory = BlockFactory()
         context = ASTContext(blockFactory)
@@ -200,6 +200,15 @@ class TestParser(unittest.TestCase):
         self.assertEqual(symbolTable["arg2"].impl.offset, +7) # second arg sent as ix+6, ix+7 with the value in IX+7
         self.assertEqual(symbolTable["cVar"].impl.offset, -1) # (ix-1)
         self.assertEqual(symbolTable["iVar"].impl.offset, -3) # (ix-3, ix-2)
+
+    def test_function_stackLayout_temps(self):
+        # Reset for predictable test
+        Temporary.NUM_TEMPS=0
+        ast = parser.parse("void foo() { char a; char b = a + 1; }")
+        blockFactory = BlockFactory()
+        context = ASTContext(blockFactory)
+        symbolTable = ast[0].visit(context)
+        self.assertEqual(symbolTable["temp0"].impl, StackAddress(-3))
 
     #
     # while

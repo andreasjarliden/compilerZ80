@@ -35,10 +35,24 @@ class ASTContext:
     functionName : str = None
     dataSegment : dict[SymEntry, Any] = field(default_factory=dict)
     stringTable : StringTable = field(default_factory=StringTable)
+    stackOffset : int = field(default = 0, init=False)
 
     def exitBlock(self):
         self.blockFactory.exitBlock(self.symbolTable.allSymbols())
         # updateLiveInBlock(self.blockFactory.currentBlock)
+
+    def resetStackFrame(self):
+        self.stackOffset = 0;
+
+    def createTemporary(self, completeType):
+        t = self.symbolTable.addTemporary(completeType)
+        self.addLocal(t)
+        return t
+
+    def addLocal(self, symbol : SymEntry):
+        # stack pointer points to last byte written, so first variable starts at one byte below SP
+        self.stackOffset -= self.typeEnv.sizeOfType(symbol.type)
+        symbol.impl = StackAddress(self.stackOffset)
 
     def pushFrame(self):
         self.typeEnv.pushFrame()
@@ -59,7 +73,7 @@ def promoteIfNeededTo(rhsAddr, toType, toCompleteType, context, operation, locat
         raise CompileError(f"Can't convert {rhsAddr.completeType} to {toCompleteType} in {operation}", location)
     # Only IRPromote if we have to change the simple, concrete type
     if rhsAddr.type != toType:
-        temp = context.symbolTable.addTemporary(toCompleteType)
+        temp = context.createTemporary(toCompleteType)
         context.blockFactory.addIR(IRPromote(
             temp,
             rhsAddr,
@@ -134,28 +148,10 @@ class FunctionDefinition(Function):
     def __repr__(self):
         return "FunctionDefinition " + self.name + " with statements " + str(self.statements)
 
-    def mapSymbols(self, symbolTable, context):
-        # stack pointer points to last byte written, so first variable starts at one byte below SP
-        offset = 0
-        for symbol in symbolTable.values():
-            if not symbol.impl:
-                if "." in symbol.name:
-                    continue
-                offset -= context.typeEnv.sizeOfType(symbol.type)
-                symbol.impl = StackAddress(offset)
-        for symbol in symbolTable.values():
-            if not symbol.impl:
-                if "." in symbol.name:
-                    s, field = symbol.name.split(".", 1)
-                    se = symbolTable[s]
-                    structTypeName = se.completeType.name
-                    structType = context.typeEnv.lookupStructName(structTypeName)
-                    fieldOffset = structType.fields[field].offset
-                    symbol.impl = se.impl.cloneWithOffset(fieldOffset)
-
     def visit(self, context):
         context.symbolTable.addSymbolEntry(self.name, self)
         context.pushFrame()
+        context.resetStackFrame()
         context.functionName = self.name
         context.functionLabels = 0
         context.blockFactory.enterBlock(self.name)
@@ -177,7 +173,6 @@ class FunctionDefinition(Function):
         context.blockFactory.addIR(IRDefFun(self))
         for s in self.statements:
             s.visit(context)
-        self.mapSymbols(symbolTable, context)
         # TODO mutable state
         self.frameSize = stackFrameSize(symbolTable)
         context.blockFactory.addIR(IRFunExit(self))
@@ -301,6 +296,7 @@ class VariableDefinition(ASTNode):
             # value = self.value.visit(context) if self.value else Constant(self.completeType, 0)
             context.dataSegment[symbol.name] = (symbol.type, value)
         else:
+            context.addLocal(symbol)
             if self.value:
                 rhsAddr = promoteIfNeededTo(self.value.visit(context), self.type, tComplete, context, "assignment", self.location)
                 context.blockFactory.addIR(IRAssign(symbol, rhsAddr))
@@ -357,7 +353,7 @@ class AddressOf(ASTNode):
 
     def visit(self, context):
         exprAddr = self.expr.visit(context)
-        irAddressOf = IRAddressOf(exprAddr, context.symbolTable.addTemporary(exprAddr.completeType + "*"))
+        irAddressOf = IRAddressOf(exprAddr, context.createTemporary(exprAddr.completeType + "*"))
         context.blockFactory.addIR(irAddressOf)
         return irAddressOf.resultAddr
 
@@ -371,7 +367,7 @@ class Dereference(ASTNode):
         if not pointer.isPointer:
             raise CompileError(f"Attempt to dereference non-pointer {self.expr.name} of type {pointer.completeType}", location=self.location)
         ct = pointer.completeType[:-1] # remove trailing *
-        deref = IRDereference(pointer, context.symbolTable.addTemporary(ct))
+        deref = IRDereference(pointer, context.createTemporary(ct))
         context.blockFactory.addIR(deref)
         deref.resultAddr.impl = PointerAddress(pointer)
         return deref.resultAddr
@@ -403,7 +399,7 @@ class FunctionCall(MutableASTNode):
         t = simpleTypeForComplexType(fun.type)
         if self.storeResult:
             print(f"FunctionCall {fun=} creating IRFunCall")
-            irfuncall = IRFunCall(t, self.name, len(self.arguments), addr=context.symbolTable.addTemporary(fun.type))
+            irfuncall = IRFunCall(t, self.name, len(self.arguments), addr=context.createTemporary(fun.type))
             context.blockFactory.addIR(irfuncall)
             return irfuncall.resultAddr
         else:
@@ -432,7 +428,7 @@ class Add(ASTNode):
         lhsAddr = self.lhs.visit(context)
         rhsAddr = self.rhs.visit(context)
         ct = lhsAddr.completeType
-        irAdd = IRAdd(context.symbolTable.addTemporary(ct), lhsAddr, rhsAddr)
+        irAdd = IRAdd(context.createTemporary(ct), lhsAddr, rhsAddr)
         context.blockFactory.addIR(irAdd)
         return irAdd.resultAddr
 
@@ -446,7 +442,7 @@ class Subtraction(ASTNode):
         lhsAddr = self.lhs.visit(context)
         rhsAddr = self.rhs.visit(context)
         ct = lhsAddr.completeType
-        irAdd = IRSub(context.symbolTable.addTemporary(ct), lhsAddr, rhsAddr)
+        irAdd = IRSub(context.createTemporary(ct), lhsAddr, rhsAddr)
         context.blockFactory.addIR(irAdd)
         return irAdd.resultAddr
 
@@ -460,7 +456,7 @@ class BitwiseOr(ASTNode):
         lhsAddr = self.lhs.visit(context)
         rhsAddr = self.rhs.visit(context)
         ct = lhsAddr.completeType
-        ir = IRBitwiseOr(context.symbolTable.addTemporary(ct), lhsAddr, rhsAddr)
+        ir = IRBitwiseOr(context.createTemporary(ct), lhsAddr, rhsAddr)
         context.blockFactory.addIR(ir)
         return ir.resultAddr
 
@@ -474,7 +470,7 @@ class BitwiseAnd(ASTNode):
         lhsAddr = self.lhs.visit(context)
         rhsAddr = self.rhs.visit(context)
         ct = lhsAddr.completeType
-        ir = IRBitwiseAnd(context.symbolTable.addTemporary(ct), lhsAddr, rhsAddr)
+        ir = IRBitwiseAnd(context.createTemporary(ct), lhsAddr, rhsAddr)
         context.blockFactory.addIR(ir)
         return ir.resultAddr
 
@@ -526,13 +522,11 @@ class StructFieldReference(ASTNode):
         try:
             offset = struct.fields[self.field].offset
         except KeyError:
-            print(self.structVar)
             raise CompileError(f"Unknown field {self.field} in struct {struct.name}", self.location)
         name = f"{self.structVar.name}.{self.field}"
         if not context.symbolTable.lookUp(name):
             symEntry = SymEntry(struct.fields[self.field].type, name)
+            symEntry.impl = structAddr.impl.cloneWithOffset(offset)
             context.symbolTable.addSymbolEntry(symEntry.name, symEntry)
         return context.symbolTable.lookUp(name)
-        print(f"StructFieldReference {id(symEntry)} {field}")
-        return symEntry
 

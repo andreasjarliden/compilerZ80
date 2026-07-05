@@ -94,6 +94,11 @@ class GlobalAddress(ValueAddress):
         self.name = name
         self.offset = offset
 
+    def __eq__(self, other):
+        if not isinstance(other, GlobalAddress):
+            return NotImplemented
+        return self.name == other.name and self.offset == other.offset
+
     def __repr__(self):
         if self.offset:
             return f"GlobaAddress {self.name} offset {self.offset}"

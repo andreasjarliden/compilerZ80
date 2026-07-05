@@ -237,6 +237,21 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(irs[4].resultAddr.impl, StackAddress(-4))
         self.assertEqual(irs[4].lhsAddr, Constant("char", 3))
 
+    def test_globalStruct_assignField(self):
+        blocks = compileToBlocks("""
+            struct myStruct{ int a; char b; };
+            struct myStruct s;
+            char main() {
+                s.a = (int)1;
+                s.b = 2;
+            }""")
+        irs = blocks["main_0000"].statements
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertEqual(irs[1].lhsAddr, Constant("int", 1))
+        self.assertEqual(irs[1].resultAddr.impl, GlobalAddress("s", 0))
+        self.assertEqual(irs[2].lhsAddr, Constant("char", 2))
+        self.assertEqual(irs[2].resultAddr.impl, GlobalAddress("s", 2))
+
     def test_struct_referenceField(self):
         blocks = compileToBlocks("""
             struct myStruct { char a; };
