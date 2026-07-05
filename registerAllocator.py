@@ -306,10 +306,7 @@ class Z80RegisterAllocator(RegisterAllocator):
                 self.asmFile.write(f'\tinc\t{rp}\n')
                 self.asmFile.write(f'\tld\ta, ({rp})\n')
                 self.asmFile.write(f'\tld\t{r[0]}, a\n')
-            if self.currentInstruction.live[pointer]:
                 self.asmFile.write(f'\tdec\t{rp}\n')
-            else:
-                self.removeSymbolForRegister(pointer, rp)
 
     def loadInA(self, address):
         return self.doLoadInRegister8(address, { "a" } )

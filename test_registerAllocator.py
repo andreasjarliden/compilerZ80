@@ -448,8 +448,6 @@ class TestZ80RA(unittest.TestCase):
 
         self.ra.asmFile.seek(0)
         output = self.ra.asmFile.read()
-        # No need to restore the pointer
-        self.assertNotIn("\tdec\tde\n", output)
         self.assertFalse(self.ra.isInRegister("ptr", { "de" }))
         # TODO also check that we don't ruin the register if it also stores a different name
 
