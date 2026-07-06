@@ -250,16 +250,14 @@ class TestParser(unittest.TestCase):
             };
             void foo() {
                struct Bar bar;
-               bar.f = 42;
+               bar.f.b = 42;
             }""")
-        pprint(ast)
         blockFactory = BlockFactory()
         context = ASTContext(blockFactory)
         ast[0].visit(context)
         ast[1].visit(context)
         symbolTable = ast[2].visit(context)
-        print(symbolTable)
-        self.assertEqual(symbolTable["bar.f.b"].impl.offset, +4)
+        self.assertEqual(symbolTable["bar.f.b"].impl.offset, -1)
 
     #
     # while
