@@ -369,6 +369,8 @@ class Dereference(ASTNode):
         if not pointer.isPointer:
             raise CompileError(f"Attempt to dereference non-pointer {self.expr.name} of type {pointer.completeType}", location=self.location)
         ct = pointer.completeType[:-1] # remove trailing *
+        if ct == "void":
+            raise CompileError(f"Attempt to dereference void pointer {self.expr.name}", location=self.location)
         deref = IRDereference(pointer, context.createTemporary(ct))
         context.blockFactory.addIR(deref)
         deref.resultAddr.impl = PointerAddress(pointer)

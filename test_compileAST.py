@@ -417,6 +417,15 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(cts.exception.message, "Attempt to dereference non-pointer i of type char")
         self.assertEqual(cts.exception.location.line, 4)
 
+    def test_dereferenceVoidPointer(self):
+        with self.assertRaises(CompileError) as cts:
+            compileToBlocks("""
+            char main() {
+                void* p;
+                char t = *p;
+            }""");
+        self.assertEqual(cts.exception.message, "Attempt to dereference void pointer p")
+        self.assertEqual(cts.exception.location.line, 4)
 
     #
     # Arithmetics
