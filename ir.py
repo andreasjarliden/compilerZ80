@@ -677,7 +677,7 @@ class IRPromote(IR):
     def genCode(self, asmWriter):
         asmWriter.write(f"\t; Promote {self.resultAddr} from {self.lhsAddr}\n")
         ra = registerAllocator.RA
-        reg16 = ra.decideRegisterForSymbol(self.resultAddr, { "bc", "de", "hl" })
+        reg16 = ra.getRegisterForSymbol(self.resultAddr, { "bc", "de", "hl" })
         reg16_hi = reg16[0]
         reg16_lo = reg16[1]
         if isinstance(self.lhsAddr, Constant):

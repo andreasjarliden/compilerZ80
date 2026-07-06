@@ -220,6 +220,8 @@ class RegisterAllocator:
     # A symbol was loaded from memory into a register, i.e. it exists in both
     # places (cmp assignedToSymbolWithRegister where it is only in register)
     def loadedSymbolInRegister(self, s, r):
+        if r not in self.freeRegisters:
+            error()
         self.symbols.setdefault(s, set())
         self.symbols[s].add(r)
         self.symbols[s].add(s)
