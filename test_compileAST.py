@@ -276,6 +276,27 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(cts.exception.message, "Unknown field b in struct myStruct")
         self.assertEqual(cts.exception.location.line, 6)
 
+    def test_struct_nestedStruct(self):
+        blocks = compileToBlocks("""
+            struct Foo {
+                char a;
+                char b;
+            };
+            struct Bar {
+                char c;
+                struct Foo f;
+            };
+            void main() {
+               struct Bar bar;
+               bar.f.b = 42;
+               bar.c = 24;
+            }""")
+        irs = blocks["main_0000"].statements
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertEqual(irs[1].resultAddr.impl, StackAddress(-1))
+        self.assertIsInstance(irs[2], IRAssign)
+        self.assertEqual(irs[2].resultAddr.impl, StackAddress(-3))
+
     #
     # Assignments
     #

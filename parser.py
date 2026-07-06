@@ -103,7 +103,7 @@ def p_unary_addressOf(p):
     p[0] = AddressOf(p[2])
 
 def p_unary_struct_field(p):
-    'unary : primary PERIOD ID'
+    'unary : unary PERIOD ID'
     p[0] = StructFieldReference(p[1], p[3], location=loc(p, 3))
 
 def p_unary_primary(p):

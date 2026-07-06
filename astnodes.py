@@ -262,6 +262,8 @@ class VariableDefinition(ASTNode):
 
     @property
     def type(self):
+        if isinstance(self.completeType, StructType):
+            return self.completeType
         if self.completeType[-1] == "*":
             # Pointers are handled as int
             return "int"
@@ -515,6 +517,10 @@ class StructDefinition(ASTNode):
 class StructFieldReference(ASTNode):
     structVar : Any
     field : str
+    name : str = field(init=False)
+
+    def __post_init__(self):
+        object.__setattr__(self, "name", f"{self.structVar.name}.{self.field}")
 
     def visit(self, context):
         structAddr = self.structVar.visit(context);
@@ -523,10 +529,9 @@ class StructFieldReference(ASTNode):
             offset = struct.fields[self.field].offset
         except KeyError:
             raise CompileError(f"Unknown field {self.field} in struct {struct.name}", self.location)
-        name = f"{self.structVar.name}.{self.field}"
-        if not context.symbolTable.lookUp(name):
-            symEntry = SymEntry(struct.fields[self.field].type, name)
+        if not context.symbolTable.lookUp(self.name):
+            symEntry = SymEntry(struct.fields[self.field].type, self.name)
             symEntry.impl = structAddr.impl.cloneWithOffset(offset)
             context.symbolTable.addSymbolEntry(symEntry.name, symEntry)
-        return context.symbolTable.lookUp(name)
+        return context.symbolTable.lookUp(self.name)
 

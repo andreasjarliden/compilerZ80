@@ -141,6 +141,34 @@ class TestParser(unittest.TestCase):
         self.assertEqual(ast[1],
                          VariableDefinition(StructType("mystruct", ()), "s"))
 
+    def test_structFieldReference(self):
+        ast = parser.parse("""struct mystruct { char foo; };
+            void main() {
+                struct mystruct s;
+                s.foo = 42;
+            }
+            """)
+        funAst = ast[1].statements
+        self.assertEqual(funAst[1],
+                         VariableAssignment(StructFieldReference(Variable("s"),
+                                                                 "foo"),
+                                            Constant("char", 42)))
+
+    def test_nextedStructFieldReference(self):
+        ast = parser.parse("""
+            struct Foo { char a; char b; };
+            struct Bar { int a; struct Foo foo; };
+            void main() {
+                struct Bar bar;
+                bar.foo.b = 42;
+            }
+            """)
+        funAst = ast[2].statements
+        self.assertEqual(funAst[1],
+                         VariableAssignment(StructFieldReference(StructFieldReference(Variable("bar"),
+                                                                                      "foo"),
+                                                                 "b"),
+                                            Constant("char", 42)))
 
     #
     # Function declaration
@@ -209,6 +237,29 @@ class TestParser(unittest.TestCase):
         context = ASTContext(blockFactory)
         symbolTable = ast[0].visit(context)
         self.assertEqual(symbolTable["temp0"].impl, StackAddress(-3))
+
+    def test_stackLayout_nestedStruct(self):
+        ast = parser.parse("""
+            struct Foo {
+                char a;
+                char b;
+            };
+            struct Bar {
+                char c;
+                struct Foo f;
+            };
+            void foo() {
+               struct Bar bar;
+               bar.f = 42;
+            }""")
+        pprint(ast)
+        blockFactory = BlockFactory()
+        context = ASTContext(blockFactory)
+        ast[0].visit(context)
+        ast[1].visit(context)
+        symbolTable = ast[2].visit(context)
+        print(symbolTable)
+        self.assertEqual(symbolTable["bar.f.b"].impl.offset, +4)
 
     #
     # while
