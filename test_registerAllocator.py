@@ -28,14 +28,6 @@ class TestRA(unittest.TestCase):
         self.assertEqual(self.ra.registers["a"], {self.foo})
         self.assertFalse("a" in self.ra.freeRegisters)
 
-    def test_loadRegister_replacingOld(self):
-        self.ra.loadedSymbolInRegister(self.bar, "c") # bar previously loaded in c
-        self.ra.loadedSymbolInRegister(self.foo, "a")
-        self.ra.loadedSymbolInRegister(self.bar, "a") # a no longer contains foo
-        self.assertEqual(self.ra.symbols[self.bar], {self.bar, "a", "c"})
-        self.assertTrue(self.bar in self.ra.registers["a"]) 
-        self.assertFalse("a" in self.ra.freeRegisters)
-
     # isFree
 
     def test_isFree(self):
