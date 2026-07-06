@@ -42,6 +42,10 @@ class ASTContext:
         updateLiveInBlock(self.blockFactory.currentBlock)
         self.blockFactory.currentBlock = None
 
+    def newSubBlock(self):
+        self.exitBlock();
+        self.blockFactory.enterSubBlock()
+
     def resetStackFrame(self):
         self.stackOffset = 0;
 
@@ -198,14 +202,12 @@ class If(ASTNode):
             ir = IRIfVariable(exprAddr, skipLabel)
         context.blockFactory.addIR(ir)
         # Note: IRIf handles the spilling
-        context.exitBlock()
-        context.blockFactory.enterSubBlock()
+        context.newSubBlock()
         context.pushFrame()
         for s in self.statements:
             s.visit(context)
         context.blockFactory.addIR(IRSpillAll())
-        context.exitBlock()
-        context.blockFactory.enterSubBlock()
+        context.newSubBlock()
         context.blockFactory.addIR(IRLabel(skipLabel))
         context.popFrame()
 
@@ -218,8 +220,7 @@ class While(ASTNode):
     def visit(self, context):
         ra = registerAllocator.RA
         context.blockFactory.addIR(IRSpillAll())
-        context.exitBlock()
-        context.blockFactory.enterSubBlock()
+        context.newSubBlock()
         loopLabel = createLabel(context)
         context.blockFactory.addIR(IRLabel(loopLabel))
         skipLabel = createLabel(context)
@@ -232,18 +233,14 @@ class While(ASTNode):
         else:
             error()
         context.blockFactory.addIR(ir)
-
-        context.exitBlock()
-        context.blockFactory.enterSubBlock()
+        context.newSubBlock()
         context.pushFrame()
         for s in self.statements:
             s.visit(context)
         context.blockFactory.addIR(IRSpillAll())
         context.blockFactory.addIR(IRJump(loopLabel))
-        context.exitBlock()
-        context.blockFactory.enterSubBlock()
+        context.newSubBlock()
         context.blockFactory.addIR(IRLabel(skipLabel))
-        # TODO must popFrame after exitBlock, otherwise we lose symbols when poping the frame
         context.popFrame()
 
 VALID_TYPES = { 'void', 'char', 'int' }
