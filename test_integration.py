@@ -299,3 +299,4 @@ class TestIntegration(unittest.TestCase):
                 *(a + b - 2) = 42;
             }""")
         self.assertRegex(output, r"ld\t\((bc|de|hl)\), 42")
+

@@ -9,7 +9,7 @@ class Constant:
     def __eq__(self, other):
         if not isinstance(other, Constant):
             return NotImplemented
-        return self.type == other.type and self.value == other.value
+        return self.completeType == other.completeType and self.value == other.value
 
     @property
     def value(self):

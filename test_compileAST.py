@@ -5,7 +5,7 @@ from astnodes import *
 from pprint import pprint
 
 class TestConversion(unittest.TestCase):
-    def test1(self):
+    def testIsConvertableTo(self):
         self.assertTrue(isConvertableTo("char", "char"))
         self.assertTrue(isConvertableTo("int", "int"))
         self.assertTrue(isConvertableTo("char", "int"))
@@ -15,6 +15,12 @@ class TestConversion(unittest.TestCase):
         self.assertFalse(isConvertableTo("void*", "char"))
         self.assertFalse(isConvertableTo("char*", "int*"))
         self.assertFalse(isConvertableTo("int*", "char*"))
+
+    def testPromotedType(self):
+        self.assertEqual(promotedType("char", "char", "char", "char"), ("char", "char"))
+        self.assertEqual(promotedType("int", "int*", "int", "int"), ("int", "int*"))
+        self.assertEqual(promotedType("int", "int*", "char", "char"), ("int", "int*"))
+        self.assertEqual(promotedType("char", "char", "int", "void*"), ("int", "void*"))
 
 # TODO live should describe the liveness AT the instruction, so we now if it is
 # free to spill
@@ -380,15 +386,15 @@ class TestErrorHandling(unittest.TestCase):
     def test_pointerArithmeticDereference(self):
         blocks = compileToBlocks("""
             void main() {
-                int *p = (int*)0x8000;
-                int i = *(p+1);
+                char *p = (char*)0x8000;
+                char i = *(p+1);
             }""")
         irs = blocks["main_0000"].statements[1:]
         pprint(irs)
         self.assertIsInstance(irs[0], IRAssign)
         self.assertIsInstance(irs[1], IRAdd)
         self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr)
-        self.assertEqual(irs[1].rhsAddr, Constant("char", 1))
+        self.assertEqual(irs[1].rhsAddr, Constant("char*", 1))
         self.assertIsInstance(irs[2], IRDereference)
         self.assertEqual(irs[2].lhsAddr, irs[1].resultAddr)
 
@@ -403,7 +409,7 @@ class TestErrorHandling(unittest.TestCase):
         self.assertIsInstance(irs[0], IRAssign)
         self.assertIsInstance(irs[1], IRAdd)
         self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr)
-        self.assertEqual(irs[1].rhsAddr, Constant("char", 1))
+        self.assertEqual(irs[1].rhsAddr, Constant("int*", 2))
         self.assertIsInstance(irs[2], IRDereference)
         self.assertEqual(irs[2].lhsAddr, irs[1].resultAddr)
 
@@ -438,6 +444,22 @@ class TestErrorHandling(unittest.TestCase):
         self.assertIsInstance(irs[1], IRAssign)
         self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr) 
 
+    def test_addCharAndInt(self):
+        irs = compileBlockToIR("char c;int i;i=c+i;")
+        self.assertIsInstance(irs[0], IRPromote)
+        self.assertEqual(irs[0].lhsAddr.name, "c")
+        self.assertIsInstance(irs[1], IRAdd)
+        self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr)
+        self.assertEqual(irs[1].rhsAddr.name, "i")
+
+    def test_addIntAndChar(self):
+        irs = compileBlockToIR("char c;int i;i=i+c;")
+        self.assertIsInstance(irs[0], IRPromote)
+        self.assertEqual(irs[0].lhsAddr.name, "c")
+        self.assertIsInstance(irs[1], IRAdd)
+        self.assertEqual(irs[1].lhsAddr.name, "i")
+        self.assertEqual(irs[1].rhsAddr, irs[0].resultAddr)
+
     def test_subChar(self):
         irs = compileBlockToIR("char a;char b;a=a-b;")
         self.assertIsInstance(irs[0], IRSub)
@@ -447,6 +469,21 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr) 
 
 
+    #
+    # Pointer arithmetics
+    #
+    def test_intConstantPointer(self):
+        irs = compileBlockToIR("int* p;p=p+1;")
+        pprint(irs)
+        # self.assertIsInstance(irs[0], IRPromote)
+        # self.assertEqual(irs[0].resultAddr.completeType, "int*")
+        self.assertIsInstance(irs[0], IRAdd)
+        self.assertEqual(irs[0].rhsAddr, Constant("int*", 2))
+
+        irs = compileBlockToIR("int* p;p=1+p;")
+        pprint(irs)
+        self.assertIsInstance(irs[0], IRAdd)
+        self.assertEqual(irs[0].lhsAddr, Constant("int*", 2))
 
 
 

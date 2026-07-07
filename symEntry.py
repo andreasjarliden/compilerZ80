@@ -11,7 +11,7 @@ class SymEntry:
         self.impl = None
 
     def __repr__(self):
-        return f"<SymEntry {id(self)} {self.completeType} {self.name} {self.impl}>"
+        return f"<SymEntry {self.completeType} {self.name} {self.impl}>"
 
     @property
     def type(self):
@@ -24,10 +24,6 @@ class SymEntry:
             return False
         else:
             return self.completeType.endswith("*")
-
-    # @property
-    # def size(self):
-    #     return sizeForType(self.type)
 
     def equalByValue(self, other):
         return self.name == other.name and self.completeType == other.completeType

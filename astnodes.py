@@ -72,6 +72,18 @@ def createLabel(context):
     context.functionLabels += 1
     return f"{context.functionName}_l{context.functionLabels}"
 
+def arithmeticPromoteIfNeededTo(rhsAddr, toType, toCompleteType, context, operation, location):
+    if not isArithmeticConvertableTo(rhsAddr.completeType, toCompleteType):
+        raise CompileError(f"Can't convert {rhsAddr.completeType} to {toCompleteType} in {operation}", location)
+    # Only IRPromote if we have to change the simple, concrete type
+    if rhsAddr.type != toType:
+        temp = context.createTemporary(toCompleteType)
+        context.blockFactory.addIR(IRPromote(
+            temp,
+            rhsAddr,
+            toCompleteType))
+        return temp
+    return rhsAddr
 
 def promoteIfNeededTo(rhsAddr, toType, toCompleteType, context, operation, location):
     if not isConvertableTo(rhsAddr.completeType, toCompleteType):
@@ -303,6 +315,14 @@ class VariableDefinition(ASTNode):
                 rhsAddr = promoteIfNeededTo(self.value.visit(context), self.type, tComplete, context, "assignment", self.location)
                 context.blockFactory.addIR(IRAssign(symbol, rhsAddr))
 
+def promotedType(t1, ct1, t2, ct2):
+    if t1 == t2:
+        return t1, ct1
+    if t1 == "char" and t2 == "int":
+        return "int", ct2
+    if t1 == "int" and t2 == "char":
+        return "int", ct1
+
 def isConvertableTo(fromType, toType):
     if fromType == toType:
         return True
@@ -314,6 +334,21 @@ def isConvertableTo(fromType, toType):
         return True
     return False
 
+
+def isArithmeticConvertableTo(fromType, toType):
+    if fromType == toType:
+        return True
+    if fromType == "char" and toType == "int":
+        return True
+    if fromType == "void*" and toType[-1] == "*":
+        return True
+    if fromType[-1] == "*" and toType == "void*":
+        return True
+    if fromType == "char" and toType[-1] == "*":
+        return True
+    if fromType == "int" and toType[-1] == "*":
+        return True
+    return False
 
 @dataclass(frozen=True)
 class Cast(ASTNode):
@@ -431,10 +466,18 @@ class Add(ASTNode):
     def visit(self, context):
         lhsAddr = self.lhs.visit(context)
         rhsAddr = self.rhs.visit(context)
-        ct = lhsAddr.completeType
-        irAdd = IRAdd(context.createTemporary(ct), lhsAddr, rhsAddr)
-        context.blockFactory.addIR(irAdd)
-        return irAdd.resultAddr
+        if isinstance(lhsAddr, Constant) and rhsAddr.isPointer:
+            rhsIntanceType = rhsAddr.completeType[:-1]
+            lhsAddr = Constant(rhsAddr.completeType, lhsAddr.value * context.typeEnv.sizeOfType(rhsIntanceType))
+        if isinstance(rhsAddr, Constant) and lhsAddr.isPointer:
+            lhsIntanceType = lhsAddr.completeType[:-1]
+            rhsAddr = Constant(lhsAddr.completeType, rhsAddr.value * context.typeEnv.sizeOfType(lhsIntanceType))
+        pt, pct = promotedType(lhsAddr.type, lhsAddr.completeType, rhsAddr.type, rhsAddr.completeType)
+        lhsAddr = promoteIfNeededTo(lhsAddr, pt, pct, context, "addition", self.location)
+        rhsAddr = promoteIfNeededTo(rhsAddr, pt, pct, context, "addition", self.location)
+        ir = IRAdd(context.createTemporary(pct), lhsAddr, rhsAddr)
+        context.blockFactory.addIR(ir)
+        return ir.resultAddr
 
 
 @dataclass(frozen=True)
@@ -445,10 +488,18 @@ class Subtraction(ASTNode):
     def visit(self, context):
         lhsAddr = self.lhs.visit(context)
         rhsAddr = self.rhs.visit(context)
-        ct = lhsAddr.completeType
-        irAdd = IRSub(context.createTemporary(ct), lhsAddr, rhsAddr)
-        context.blockFactory.addIR(irAdd)
-        return irAdd.resultAddr
+        if isinstance(lhsAddr, Constant) and rhsAddr.isPointer:
+            rhsIntanceType = rhsAddr.completeType[:-1]
+            lhsAddr = Constant(rhsAddr.completeType, lhsAddr.value * context.typeEnv.sizeOfType(rhsIntanceType))
+        if isinstance(rhsAddr, Constant) and lhsAddr.isPointer:
+            lhsIntanceType = lhsAddr.completeType[:-1]
+            rhsAddr = Constant(lhsAddr.completeType, rhsAddr.value * context.typeEnv.sizeOfType(lhsIntanceType))
+        pt, pct = promotedType(lhsAddr.type, lhsAddr.completeType, rhsAddr.type, rhsAddr.completeType)
+        lhsAddr = promoteIfNeededTo(lhsAddr, pt, pct, context, "addition", self.location)
+        rhsAddr = promoteIfNeededTo(rhsAddr, pt, pct, context, "addition", self.location)
+        ir = IRSub(context.createTemporary(pct), lhsAddr, rhsAddr)
+        context.blockFactory.addIR(ir)
+        return ir.resultAddr
 
 
 @dataclass(frozen=True)
