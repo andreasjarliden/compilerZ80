@@ -348,6 +348,28 @@ class TestIR(unittest.TestCase):
         self.assertNotIn(self.foo16, registerAllocator.RA.symbols[self.foo16]) # Only in register
 
     #
+    # IRMul
+    #
+    def test_IRMul_int_constant(self):
+        registerAllocator.RA.loadedSymbolInRegister(self.foo16, "de")
+
+        ira = ir.IRMul(self.bar16, self.foo16, Constant("int", 5))
+        ira.live[self.foo16] = True
+        registerAllocator.RA.currentInstruction = ira
+        ira.genCode(self.asmWriter)
+
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
+
+        print(output)
+        self.assertIn("\tld\thl, 0\n" +
+            "\tadd\thl, de\n" +
+            "\tsla\te\n\trl\td\n"*2 +
+            "\tadd\thl, de\n", output)
+        self.assertNotIn(self.bar16, registerAllocator.RA.symbols[self.bar16]) # Only in register
+        self.assertEqual(registerAllocator.RA.registers["de"], set()) # Only in register
+
+    #
     # IRPromote
     #
 

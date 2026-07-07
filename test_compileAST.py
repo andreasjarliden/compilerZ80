@@ -468,6 +468,11 @@ class TestErrorHandling(unittest.TestCase):
         self.assertIsInstance(irs[1], IRAssign)
         self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr) 
 
+    def test_mulIntAndConst(self):
+        irs = compileBlockToIR("int i;i=i*3;")
+        self.assertIsInstance(irs[0], IRMul)
+        self.assertEqual(irs[0].lhsAddr.name, "i")
+        self.assertEqual(irs[0].rhsAddr, Constant("char", 3))
 
     #
     # Pointer arithmetics

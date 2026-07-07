@@ -531,6 +531,19 @@ class BitwiseAnd(ASTNode):
 
 
 @dataclass(frozen=True)
+class Mul(ASTNode):
+    lhs : Any
+    rhs : Any
+
+    def visit(self, context):
+        lhsAddr = self.lhs.visit(context)
+        rhsAddr = self.rhs.visit(context)
+        ir = IRMul(context.createTemporary(lhsAddr.completeType), lhsAddr, rhsAddr)
+        context.blockFactory.addIR(ir)
+        return ir.resultAddr
+
+
+@dataclass(frozen=True)
 class Relation(ASTNode):
     operation : str
     lhs : Any

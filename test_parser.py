@@ -295,6 +295,20 @@ class TestParser(unittest.TestCase):
                                             Subtraction(Variable("b"),
                                                         Variable("c"))))
 
+    def test_multiplication(self):
+        ast = parser.parse("a=b*c;");
+        self.assertEqual(ast[0],
+                         VariableAssignment(Variable("a"),
+                                            Mul(Variable("b"),
+                                                Variable("c"))))
+
+    def test_multiplication2(self):
+        ast = parser.parse("a=b+c*d;");
+        self.assertEqual(ast[0],
+                         VariableAssignment(Variable("a"),
+                                            Add(Variable("b"),
+                                                Mul(Variable("c"),
+                                                    Variable("d")))))
     def test_or(self):
         ast = parser.parse("a=b|c;");
         self.assertEqual(ast[0],

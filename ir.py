@@ -667,6 +667,30 @@ class IRBitwiseAnd(IR):
             ra.verify()
         else:
             error()
+            
+
+class IRMul(IR):
+    def __init__(self, addr, addrLhs, addrRhs):
+        super().__init__(addr, addrLhs, addrRhs)
+
+    def genCode(self, asmWriter):
+        asmWriter.write(f"\t; Mul {self.lhsAddr} and {self.rhsAddr} to {self.resultAddr.name}\n")
+        ra = registerAllocator.RA
+        regX = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de" })
+        ra.spillRegister("hl");
+        asmWriter.write(f"\tld\thl, 0\n")
+        c = self.rhsAddr.value
+        shifts = 0;
+        for i in range(0, 15):
+            if c & 1:
+                asmWriter.write(f"\tsla\t{regX[1]}\n\trl\t{regX[0]}\n"*shifts)
+                asmWriter.write(f"\tadd\thl, {regX}\n")
+                shifts = 0;
+            c = c >> 1;
+            shifts += 1;
+        ra.assignedToSymbolWithRegister(self.resultAddr, "hl")
+        # Because of the shifting, regX no longer holds lhsAddr
+        ra.removeSymbolForRegister(self.lhsAddr, regX)
 
 
 class IRPromote(IR):
