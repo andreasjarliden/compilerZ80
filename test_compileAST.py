@@ -433,6 +433,17 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(cts.exception.message, "Attempt to dereference void pointer p")
         self.assertEqual(cts.exception.location.line, 4)
 
+    def test_pointerWithPointerArithmetics(self):
+        with self.assertRaises(CompileError) as cts:
+            compileToBlocks("""
+            char main() {
+                void* p1;
+                void* p2;
+                void* p3 = p1 + p2;
+            }""");
+        self.assertEqual(cts.exception.message, "Can't add void* and void*")
+        self.assertEqual(cts.exception.location.line, 5)
+
     #
     # Arithmetics
     #

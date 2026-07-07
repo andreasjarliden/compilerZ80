@@ -78,7 +78,7 @@ def p_additive_single(p):
 
 def p_additive_plus(p):
     'additive : additive PLUS multiplicative'
-    p[0] = Add(p[1], p[3])
+    p[0] = Add(p[1], p[3], location=loc(p, 2))
 
 def p_additive_minus(p):
     'additive : additive MINUS multiplicative'

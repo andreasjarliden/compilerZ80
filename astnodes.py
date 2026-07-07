@@ -466,6 +466,8 @@ class Add(ASTNode):
     def visit(self, context):
         lhsAddr = self.lhs.visit(context)
         rhsAddr = self.rhs.visit(context)
+        if lhsAddr.isPointer and rhsAddr.isPointer:
+            raise CompileError(f"Can't add {lhsAddr.completeType} and {rhsAddr.completeType}", self.location)
         if isinstance(lhsAddr, Constant) and rhsAddr.isPointer:
             rhsIntanceType = rhsAddr.completeType[:-1]
             lhsAddr = Constant(rhsAddr.completeType, lhsAddr.value * context.typeEnv.sizeOfType(rhsIntanceType))
