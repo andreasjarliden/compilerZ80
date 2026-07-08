@@ -72,18 +72,6 @@ def createLabel(context):
     context.functionLabels += 1
     return f"{context.functionName}_l{context.functionLabels}"
 
-def arithmeticPromoteIfNeededTo(rhsAddr, toType, toCompleteType, context, operation, location):
-    if not isArithmeticConvertableTo(rhsAddr.completeType, toCompleteType):
-        raise CompileError(f"Can't convert {rhsAddr.completeType} to {toCompleteType} in {operation}", location)
-    # Only IRPromote if we have to change the simple, concrete type
-    if rhsAddr.type != toType:
-        temp = context.createTemporary(toCompleteType)
-        context.blockFactory.addIR(IRPromote(
-            temp,
-            rhsAddr,
-            toCompleteType))
-        return temp
-    return rhsAddr
 
 def promoteIfNeededTo(rhsAddr, toType, toCompleteType, context, operation, location):
     if not isConvertableTo(rhsAddr.completeType, toCompleteType):
