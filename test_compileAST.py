@@ -488,18 +488,40 @@ class TestErrorHandling(unittest.TestCase):
     #
     # Pointer arithmetics
     #
-    def test_intConstantPointer(self):
+    def test_pointerConstantArithmeticsAdd(self):
+        irs = compileBlockToIR("char* p;p=p+1;")
+        self.assertIsInstance(irs[0], IRAdd)
+        self.assertEqual(irs[0].rhsAddr, Constant("char*", 1))
+
         irs = compileBlockToIR("int* p;p=p+1;")
-        pprint(irs)
-        # self.assertIsInstance(irs[0], IRPromote)
-        # self.assertEqual(irs[0].resultAddr.completeType, "int*")
         self.assertIsInstance(irs[0], IRAdd)
         self.assertEqual(irs[0].rhsAddr, Constant("int*", 2))
 
-        irs = compileBlockToIR("int* p;p=1+p;")
-        pprint(irs)
+        irs = compileBlockToIR("int* p;p=2+p;")
         self.assertIsInstance(irs[0], IRAdd)
-        self.assertEqual(irs[0].lhsAddr, Constant("int*", 2))
+        self.assertEqual(irs[0].lhsAddr, Constant("int*", 4))
+
+        irs = compileBlockToIR("void* p;p=p+1;")
+        self.assertIsInstance(irs[0], IRAdd)
+        self.assertEqual(irs[0].rhsAddr, Constant("void*", 1))
+
+    def test_pointerConstantArithmeticsSub(self):
+        irs = compileBlockToIR("char* p;p=p-1;")
+        self.assertIsInstance(irs[0], IRSub)
+        self.assertEqual(irs[0].rhsAddr, Constant("char*", 1))
+
+        irs = compileBlockToIR("int* p;p=p-1;")
+        self.assertIsInstance(irs[0], IRSub)
+        self.assertEqual(irs[0].rhsAddr, Constant("int*", 2))
+
+        irs = compileBlockToIR("int* p;p=2-p;")
+        self.assertIsInstance(irs[0], IRSub)
+        self.assertEqual(irs[0].lhsAddr, Constant("int*", 4))
+
+        irs = compileBlockToIR("void* p;p=p-1;")
+        self.assertIsInstance(irs[0], IRSub)
+        self.assertEqual(irs[0].rhsAddr, Constant("void*", 1))
+
 
 
 

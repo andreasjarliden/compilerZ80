@@ -291,6 +291,16 @@ class TestIntegration(unittest.TestCase):
         # TODO should make it easy to assert something after some other string
         self.assertRegex(output, "ld\t., \(hl\)") # The pointer must be in HL as computed with sbc
 
+    def test_dereference2(self):
+        output = compile("""
+            char main() {
+                int* a = (int*)0x8000;
+                int b = 42;
+                int c = *(b - 2 + a);
+            }""")
+        # TODO should make it easy to assert something after some other string
+        self.assertRegex(output, "ld\t., \(hl\)") # The pointer must be in HL as computed with sbc
+
     def test_assignDereference(self):
         output = compile("""
             char main() {

@@ -437,7 +437,6 @@ class FunctionCall(MutableASTNode):
             context.blockFactory.addIR(IRArgument(exprAddress))
         t = simpleTypeForComplexType(fun.type)
         if self.storeResult:
-            print(f"FunctionCall {fun=} creating IRFunCall")
             irfuncall = IRFunCall(t, self.name, len(self.arguments), addr=context.createTemporary(fun.type))
             context.blockFactory.addIR(irfuncall)
             return irfuncall.resultAddr
@@ -464,42 +463,83 @@ class Add(ASTNode):
     rhs : Any
 
     def visit(self, context):
+        def computeByteOffset(address, resultType):
+            instanceType = resultType[:-1]
+            if instanceType == "void":
+                sizeOf = 1
+            else:
+                sizeOf = context.typeEnv.sizeOfType(instanceType)
+            if isinstance(address, Constant):
+                return Constant(resultType, address.value * sizeOf)
+            else:
+                if sizeOf == 1:
+                    return address
+                irMul = IRMul(context.createTemporary(resultType), address, Constant("int", sizeOf))
+                context.blockFactory.addIR(irMul)
+                return irMul.resultAddr
+
         lhsAddr = self.lhs.visit(context)
         rhsAddr = self.rhs.visit(context)
         if lhsAddr.isPointer and rhsAddr.isPointer:
             raise CompileError(f"Can't add {lhsAddr.completeType} and {rhsAddr.completeType}", self.location)
-        if isinstance(lhsAddr, Constant) and rhsAddr.isPointer:
-            rhsIntanceType = rhsAddr.completeType[:-1]
-            lhsAddr = Constant(rhsAddr.completeType, lhsAddr.value * context.typeEnv.sizeOfType(rhsIntanceType))
-        if isinstance(rhsAddr, Constant) and lhsAddr.isPointer:
-            lhsIntanceType = lhsAddr.completeType[:-1]
-            rhsAddr = Constant(lhsAddr.completeType, rhsAddr.value * context.typeEnv.sizeOfType(lhsIntanceType))
-        pt, pct = promotedType(lhsAddr.type, lhsAddr.completeType, rhsAddr.type, rhsAddr.completeType)
-        lhsAddr = promoteIfNeededTo(lhsAddr, pt, pct, context, "addition", self.location)
-        rhsAddr = promoteIfNeededTo(rhsAddr, pt, pct, context, "addition", self.location)
-        ir = IRAdd(context.createTemporary(pct), lhsAddr, rhsAddr)
+        if not lhsAddr.isPointer and not rhsAddr.isPointer:
+            # Normal arithmetics
+            pt, resultType = promotedType(lhsAddr.type, lhsAddr.completeType, rhsAddr.type, rhsAddr.completeType)
+            lhsAddr = promoteIfNeededTo(lhsAddr, pt, resultType, context, "addition", self.location)
+            rhsAddr = promoteIfNeededTo(rhsAddr, pt, resultType, context, "addition", self.location)
+        else:
+            # Pointer arithmetics
+            if rhsAddr.isPointer:
+                resultType = rhsAddr.completeType
+                lhsAddr = computeByteOffset(lhsAddr, resultType)
+            else:
+                resultType = lhsAddr.completeType
+                rhsAddr = computeByteOffset(rhsAddr, resultType)
+
+        ir = IRAdd(context.createTemporary(resultType), lhsAddr, rhsAddr)
         context.blockFactory.addIR(ir)
         return ir.resultAddr
 
 
+# TODO duplication with Add
 @dataclass(frozen=True)
 class Subtraction(ASTNode):
     lhs : Any
     rhs : Any
 
     def visit(self, context):
+        def computeByteOffset(address, resultType):
+            instanceType = resultType[:-1]
+            if instanceType == "void":
+                sizeOf = 1
+            else:
+                sizeOf = context.typeEnv.sizeOfType(instanceType)
+            if isinstance(address, Constant):
+                return Constant(resultType, address.value * sizeOf)
+            else:
+                if sizeOf == 1:
+                    return address
+                irMul = IRMul(context.createTemporary(resultType), address, Constant("int", sizeOf))
+                context.blockFactory.addIR(irMul)
+                return irMul.resultAddr
+
         lhsAddr = self.lhs.visit(context)
         rhsAddr = self.rhs.visit(context)
-        if isinstance(lhsAddr, Constant) and rhsAddr.isPointer:
-            rhsIntanceType = rhsAddr.completeType[:-1]
-            lhsAddr = Constant(rhsAddr.completeType, lhsAddr.value * context.typeEnv.sizeOfType(rhsIntanceType))
-        if isinstance(rhsAddr, Constant) and lhsAddr.isPointer:
-            lhsIntanceType = lhsAddr.completeType[:-1]
-            rhsAddr = Constant(lhsAddr.completeType, rhsAddr.value * context.typeEnv.sizeOfType(lhsIntanceType))
-        pt, pct = promotedType(lhsAddr.type, lhsAddr.completeType, rhsAddr.type, rhsAddr.completeType)
-        lhsAddr = promoteIfNeededTo(lhsAddr, pt, pct, context, "addition", self.location)
-        rhsAddr = promoteIfNeededTo(rhsAddr, pt, pct, context, "addition", self.location)
-        ir = IRSub(context.createTemporary(pct), lhsAddr, rhsAddr)
+        if not lhsAddr.isPointer and not rhsAddr.isPointer:
+            # Normal arithmetics
+            pt, resultType = promotedType(lhsAddr.type, lhsAddr.completeType, rhsAddr.type, rhsAddr.completeType)
+            lhsAddr = promoteIfNeededTo(lhsAddr, pt, resultType, context, "subtraction", self.location)
+            rhsAddr = promoteIfNeededTo(rhsAddr, pt, resultType, context, "subtraction", self.location)
+        else:
+            # Pointer arithmetics
+            if rhsAddr.isPointer:
+                resultType = rhsAddr.completeType
+                lhsAddr = computeByteOffset(lhsAddr, resultType)
+            else:
+                resultType = lhsAddr.completeType
+                rhsAddr = computeByteOffset(rhsAddr, resultType)
+
+        ir = IRSub(context.createTemporary(resultType), lhsAddr, rhsAddr)
         context.blockFactory.addIR(ir)
         return ir.resultAddr
 
