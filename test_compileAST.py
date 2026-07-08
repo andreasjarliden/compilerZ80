@@ -361,9 +361,8 @@ class TestErrorHandling(unittest.TestCase):
             }""")
         irs = blocks["main_0000"].statements[1:]
         print(irs)
-        self.assertIsInstance(irs[0], IRPromote)
-        self.assertIsInstance(irs[1], IRArgument)
-        self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr) 
+        self.assertIsInstance(irs[0], IRArgument)
+        self.assertEqual(irs[0].lhsAddr, Constant("int", 42))
 
     def test_argPass_narrowing(self):
         with self.assertRaises(CompileError) as cts:

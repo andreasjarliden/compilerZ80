@@ -77,14 +77,16 @@ def promoteIfNeededTo(rhsAddr, toType, toCompleteType, context, operation, locat
     if not isConvertableTo(rhsAddr.completeType, toCompleteType):
         raise CompileError(f"Can't convert {rhsAddr.completeType} to {toCompleteType} in {operation}", location)
     # Only IRPromote if we have to change the simple, concrete type
-    if rhsAddr.type != toType:
-        temp = context.createTemporary(toCompleteType)
-        context.blockFactory.addIR(IRPromote(
-            temp,
-            rhsAddr,
-            toCompleteType))
-        return temp
-    return rhsAddr
+    if rhsAddr.type == toType:
+        return rhsAddr
+    if isinstance(rhsAddr, Constant):
+        return Constant(toCompleteType, rhsAddr.value)
+    temp = context.createTemporary(toCompleteType)
+    context.blockFactory.addIR(IRPromote(
+        temp,
+        rhsAddr,
+        toCompleteType))
+    return temp
 
 @dataclass(frozen=True)
 class ASTNode:
