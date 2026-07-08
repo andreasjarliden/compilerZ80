@@ -268,7 +268,7 @@ class Z80RegisterAllocator(RegisterAllocator):
             if s.type == 'int':
                 self.asmFile.write(f"\tld\t{s.impl.codeArg(+1)}, {r[0]}\n")
                 self.asmFile.write(f"\tld\t{s.impl.codeArg()}, {r[1]}\n")
-        if isinstance(s.impl, GlobalAddress):
+        elif isinstance(s.impl, GlobalAddress):
             if s.type == 'char':
                 if r != "a":
                     self.spillRegister("a")
@@ -289,6 +289,8 @@ class Z80RegisterAllocator(RegisterAllocator):
             if s.type == 'int':
                 self.asmFile.write(f"\tld\t({pointer+1}), {r[0]}\n")
                 self.asmFile.write(f"\tld\t({pointer}), {r[1]}\n")
+        else:
+            error()
 
 
     # E.g. ld a, (de)
