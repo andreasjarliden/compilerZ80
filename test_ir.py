@@ -13,6 +13,7 @@ class TestIR(unittest.TestCase):
         self.bar = SymEntry("char", "bar")
         self.bar16 = SymEntry("int", "bar")
         self.baz = SymEntry("char", "baz")
+        self.baz16 = SymEntry("int", "baz")
         self.ptr = SymEntry("int*", "ptr")
         self.derefPtr = SymEntry("char", "derefPtr")
         self.foo.impl = StackAddress(1)
@@ -20,6 +21,7 @@ class TestIR(unittest.TestCase):
         self.bar.impl = StackAddress(2)
         self.bar16.impl = StackAddress(3)
         self.baz.impl = StackAddress(3)
+        self.baz16.impl = StackAddress(5)
         self.ptr.impl = StackAddress(4)
         self.derefPtr.impl = PointerAddress(self.ptr)
         self.asmWriter = asmWriter.AsmWriter(StringIO())
@@ -390,6 +392,7 @@ class TestIR(unittest.TestCase):
         r_lo = r[1]
         self.assertIn(f"\tld\t{r_hi}, 0\n", output)
         self.assertIn(f"\tld\t{r_lo}, a\n", output)
+        self.assertNotIn(self.foo16, registerAllocator.RA.symbols[self.foo16]) # Only in register
 
     def test_IRPromote_inMemory(self):
         # foo16 = (int)foo
@@ -406,6 +409,23 @@ class TestIR(unittest.TestCase):
         r_lo = r[1]
         self.assertIn(f"\tld\t{r_hi}, 0\n", output)
         self.assertIn(f"\tld\t{r_lo}, (ix + 1)\n", output)
+        self.assertNotIn(self.foo16, registerAllocator.RA.symbols[self.foo16]) # Only in register
+
+    def test_IRPromote_constant(self):
+        # foo16 = (int)Constant 4
+        ira = ir.IRPromote(self.foo16, Constant("char", 4), self.foo16.type)
+        ira.live[self.foo16] = True
+        registerAllocator.RA.currentInstruction = ira
+        ira.genCode(self.asmWriter)
+
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
+        r = registerAllocator.RA.isInRegister(self.foo16)
+        r_hi = r[0]
+        r_lo = r[1]
+        print(output)
+        self.assertRegex(output, r"\tld\t(bc|de|hl), 4\n", output)
+        self.assertNotIn(self.foo16, registerAllocator.RA.symbols[self.foo16]) # Only in register
 
     #
     # IRIfRelation

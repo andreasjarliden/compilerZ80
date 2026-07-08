@@ -705,8 +705,9 @@ class IRPromote(IR):
         reg16_hi = reg16[0]
         reg16_lo = reg16[1]
         if isinstance(self.lhsAddr, Constant):
+            # TODO must we load it
             asmWriter.write(f"\tld\t{reg16}, {self.lhsAddr.value}\n")
-            ra.loadedSymbolInRegister(self.resultAddr, reg16)
+            ra.assignedToSymbolWithRegister(self.resultAddr, reg16)
             return
         reg8 = ra.isInRegister(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" })
         asmWriter.write(f"\tld\t{reg16_hi}, 0\n")
@@ -715,7 +716,7 @@ class IRPromote(IR):
                 asmWriter.loadRegisterWithRegister(reg16_lo, reg8)
         else:
             asmWriter.loadRegisterWithAddress(reg16_lo, self.lhsAddr.impl)
-        ra.loadedSymbolInRegister(self.resultAddr, reg16)
+        ra.assignedToSymbolWithRegister(self.resultAddr, reg16)
 
 
 
