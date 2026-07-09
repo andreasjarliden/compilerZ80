@@ -123,7 +123,7 @@ class IR:
 
         if transitive:
             # if the rhs is already in register a, then swap them
-            if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr) == "a":
+            if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr, { "a" }):
                 self.lhsAddr, self.rhsAddr = self.rhsAddr, self.lhsAddr
 
         # Load the rhs, first because we might have to temporarily use a, e.g.
@@ -138,7 +138,7 @@ class IR:
 
         if transitive:
             # if the rhs is already in register hl, then swap them
-            if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr) == "hl":
+            if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr, { "hl" } ):
                 self.lhsAddr, self.rhsAddr = self.rhsAddr, self.lhsAddr
 
         ra.loadInHL(self.lhsAddr)
