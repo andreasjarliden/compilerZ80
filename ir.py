@@ -547,24 +547,33 @@ class IRAdd(IR):
 
     def genCode(self, asmWriter):
         ra = registerAllocator.RA
-        ra.verify()
         ra.removeSymbol(self.resultAddr)
-        ra.verify()
         if self.lhsAddr.type == "char":
             regZ = self.load8bitLhsAndRhs(asmWriter, transitive=True)
-            ra.verify()
             ra.spillRegister("a")
-            ra.verify()
             asmWriter.write(f"\tadd\ta, {regZ}\n")
             ra.assignedToSymbolWithRegister(self.resultAddr, "a")
         elif self.lhsAddr.type == "int":
-            regZ = self.load16bitLhsAndRhs(transitive=True)
-            ra.verify()
-            ra.spillRegister("hl")
-            ra.verify()
-            asmWriter.write(f"\tadd\thl, {regZ}\n")
-            ra.assignedToSymbolWithRegister(self.resultAddr, "hl")
-            ra.verify()
+            if isinstance(self.rhsAddr, Constant):
+                # Unless the lhs is already in HL, prefer to load the constant
+                # in hl as then we can pick the other register freely.
+                if not ra.isInRegister(self.lhsAddr, { "hl" }):
+                    ra.loadInHL(self.rhsAddr)
+                    regZ = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de" } )
+                    ra.spillRegister("hl")
+                    asmWriter.write(f"\tadd\thl, {regZ}\n")
+                    ra.assignedToSymbolWithRegister(self.resultAddr, "hl")
+                else:
+                    ra.loadInHL(self.lhsAddr)
+                    regZ = ra.doLoadInRegister16(self.rhsAddr, { "bc", "de" } )
+                    ra.spillRegister("hl")
+                    asmWriter.write(f"\tadd\thl, {regZ}\n")
+                    ra.assignedToSymbolWithRegister(self.resultAddr, "hl")
+            else:
+                regZ = self.load16bitLhsAndRhs(transitive=True)
+                ra.spillRegister("hl")
+                asmWriter.write(f"\tadd\thl, {regZ}\n")
+                ra.assignedToSymbolWithRegister(self.resultAddr, "hl")
         else:
             error()
 

@@ -269,6 +269,36 @@ class TestIR(unittest.TestCase):
         self.assertIn("\tld\ta, (ix + 2)", output)
         self.assertRegex(output, r"\tadd\ta, .")
 
+    def test_IRAddInt_constantOptimized(self):
+        registerAllocator.RA.loadedSymbolInRegister(self.foo16, "bc")
+
+        # bar = foo + 1
+        ira = ir.IRAdd(self.bar16, self.foo16, Constant("char", 1))
+        ira.live[self.foo16] = True
+        registerAllocator.RA.currentInstruction = ira
+        ira.genCode(self.asmWriter)
+
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
+        self.assertIn(output, "\tld\thl, 1\n\tadd\thl, bc\n")
+        self.assertEqual(registerAllocator.RA.isInRegister(self.foo16), "bc")
+        self.assertEqual(registerAllocator.RA.isInRegister(self.bar16), "hl")
+
+    def test_IRAddInt_constantOptimized_LhsInHL(self):
+        registerAllocator.RA.loadedSymbolInRegister(self.foo16, "hl")
+
+        # bar = foo + 1
+        ira = ir.IRAdd(self.bar16, self.foo16, Constant("char", 1))
+        ira.live[self.foo16] = True
+        registerAllocator.RA.currentInstruction = ira
+        ira.genCode(self.asmWriter)
+
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
+        self.assertRegex(output, "\tld\t(bc|de), 1\n\tadd\thl, (bc|de)\n")
+        self.assertNotIn(self.foo16, registerAllocator.RA.registers)
+        self.assertEqual(registerAllocator.RA.isInRegister(self.bar16), "hl")
+
     #
     # IRSub
     #
