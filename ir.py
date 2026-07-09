@@ -586,11 +586,28 @@ class IRSub(IR):
             asmWriter.write(f"\tsub\ta, {regZ}\n")
             ra.assignedToSymbolWithRegister(self.resultAddr, "a")
         elif self.lhsAddr.type == "int":
-            regZ = self.load16bitLhsAndRhs(transitive=False)
-            ra.spillRegister("hl")
-            asmWriter.write(f"\tor\ta\n") # Clears Carry flag without changing A
-            asmWriter.write(f"\tsbc\thl, {regZ}\n")
-            ra.assignedToSymbolWithRegister(self.resultAddr, "hl")
+            if isinstance(self.rhsAddr, Constant):
+                tempAddr = Constant("int", 65536-self.rhsAddr.value)
+                # Unless the lhs is already in HL, prefer to load the constant
+                # in hl as then we can pick the other register freely.
+                if not ra.isInRegister(self.lhsAddr, { "hl" }):
+                    ra.loadInHL(tempAddr)
+                    regZ = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de" } )
+                    ra.spillRegister("hl")
+                    asmWriter.write(f"\tadd\thl, {regZ}\n")
+                    ra.assignedToSymbolWithRegister(self.resultAddr, "hl")
+                else:
+                    ra.loadInHL(self.lhsAddr)
+                    regZ = ra.doLoadInRegister16(tempAddr, { "bc", "de" } )
+                    ra.spillRegister("hl")
+                    asmWriter.write(f"\tadd\thl, {regZ}\n")
+                    ra.assignedToSymbolWithRegister(self.resultAddr, "hl")
+            else:
+                regZ = self.load16bitLhsAndRhs(transitive=False)
+                ra.spillRegister("hl")
+                asmWriter.write(f"\tor\ta\n") # Clears Carry flag without changing A
+                asmWriter.write(f"\tsbc\thl, {regZ}\n")
+                ra.assignedToSymbolWithRegister(self.resultAddr, "hl")
         else:
             error()
 

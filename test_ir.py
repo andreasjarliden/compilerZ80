@@ -310,6 +310,42 @@ class TestIR(unittest.TestCase):
         self.assertEqual(registerAllocator.RA.isInRegister(self.foo16), "hl")
         self.assertEqual(registerAllocator.RA.isInRegister(self.bar16), "bc")
 
+    # Optimize 16 bit subtractions by turning them into add with 1-complement.
+    # It avoids the or, but also makes it a transitive operation, which means
+    # we can use the constant as the lhs which is restricted to HL and always
+    # replaced.  This makes register handling more flexible.
+    def test_IRSubInt_constantOptimized(self):
+        registerAllocator.RA.loadedSymbolInRegister(self.foo16, "bc")
+
+        # bar = foo - 1
+        ira = ir.IRSub(self.bar16, self.foo16, Constant("char", 1))
+        ira.live[self.foo16] = True
+        registerAllocator.RA.currentInstruction = ira
+        ira.genCode(self.asmWriter)
+
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
+        self.assertIn(output, "\tld\thl, 65535\n\tadd\thl, bc\n")
+        self.assertEqual(registerAllocator.RA.isInRegister(self.foo16), "bc")
+        self.assertEqual(registerAllocator.RA.isInRegister(self.bar16), "hl")
+
+    # Optimize 16 bit subtractions by turning them into add with 1-complement.
+    # In this example the lhs is already in hl, so we use the regular order.
+    def test_IRSubInt_constantOptimized_LhsInHL(self):
+        registerAllocator.RA.loadedSymbolInRegister(self.foo16, "hl")
+
+        # bar = foo - 1
+        ira = ir.IRSub(self.bar16, self.foo16, Constant("char", 1))
+        ira.live[self.foo16] = True
+        registerAllocator.RA.currentInstruction = ira
+        ira.genCode(self.asmWriter)
+
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
+        self.assertRegex(output, "\tld\t(bc|de), 65535\n\tadd\thl, (bc|de)\n")
+        self.assertNotIn(self.foo16, registerAllocator.RA.registers)
+        self.assertEqual(registerAllocator.RA.isInRegister(self.bar16), "hl")
+
     #
     # IRBitwiseOr
     #
