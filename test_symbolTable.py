@@ -17,7 +17,7 @@ class TestStringTable(unittest.TestCase):
 class TestStringConstant(unittest.TestCase):
     def test_stringConstant(self):
         c = StringConstant("foo")
-        self.assertEqual(c.completeType, "char*")
+        self.assertEqual(c.completeType, PointerType("char"))
         self.assertEqual(c._value, "foo")
 
     def test_stringConstant_visitAddsToDataSegment(self):

@@ -1,6 +1,7 @@
-- Pointer arithmetics using correct size
-- Compile block inside function test utiltiy
+- Struct -> dereference
 - Optimize subtraction of constants
+- Don't create temps when assigning
+- Compile block inside function test utiltiy
 - Add c library for rom functions.
 - Rename address.py
 - Store live in IR again and update a complete list when traversing the IRs

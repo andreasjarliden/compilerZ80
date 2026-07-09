@@ -3,6 +3,7 @@ import ply.yacc as yacc
 from address import Constant
 from astnodes import *
 from error import Location, CompileError
+from type_defs import PointerType
 import sys
 
 def loc(p, i=1):
@@ -172,7 +173,7 @@ def p_type(p):
     '''type : base_type pointers
     '''
     if p[2]>0:
-        p[0] = p[1] + "*"*p[2]
+        p[0] = PointerType(p[1])
     else:
         p[0] = p[1]
 

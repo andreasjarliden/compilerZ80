@@ -4,9 +4,16 @@ from dataclasses import dataclass, field
 from typing import Any
 
 def simpleTypeForComplexType(ct):
-    if isinstance(ct, StructType) or not ct.endswith("*"):
+    if isinstance(ct, StructType) or not isinstance(ct, PointerType):
         return ct
     return "int"
+
+@dataclass(frozen=True)
+class PointerType:
+    toType : Any
+
+    def __repr__(self):
+        return f"{self.toType}*"
 
 @dataclass(frozen=True)
 class StructType:

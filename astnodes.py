@@ -5,7 +5,7 @@ from symbolTable import *
 from blocks import BlockFactory
 from error import Location, CompileError
 from typeEnv import TypeEnv
-from type_defs import StructType, StructField, simpleTypeForComplexType
+from type_defs import StructType, PointerType, StructField, simpleTypeForComplexType
 import symbolTable
 import registerAllocator
 from copy import copy
@@ -121,7 +121,7 @@ class Argument(ASTNode):
 
     @property
     def type(self):
-        if self.completeType[-1] == "*":
+        if isinstance(self.completeType, PointerType):
             # Pointers are handled as int
             return "int"
         else:
@@ -251,8 +251,8 @@ def verifyType(t, location, typeEnv):
         if not typeEnv.lookupStructName(t.name):
             raise CompileError(f"Unknown struct {t.name}", location)
         return True
-    elif t[-1] == '*':
-        return verifyType(t[:-1], location, typeEnv);
+    elif isinstance(t, PointerType): 
+        return verifyType(t.toType, location, typeEnv);
     if not t in VALID_TYPES:
         raise CompileError(f"Unknown type {t}", location)
 
@@ -266,7 +266,7 @@ class VariableDefinition(ASTNode):
     def type(self):
         if isinstance(self.completeType, StructType):
             return self.completeType
-        if self.completeType[-1] == "*":
+        if isinstance(self.completeType, PointerType):
             # Pointers are handled as int
             return "int"
         else:
@@ -318,9 +318,9 @@ def isConvertableTo(fromType, toType):
         return True
     if fromType == "char" and toType == "int":
         return True
-    if fromType == "void*" and toType[-1] == "*":
+    if fromType == PointerType("void") and isinstance(toType, PointerType):
         return True
-    if fromType[-1] == "*" and toType == "void*":
+    if isinstance(fromType, PointerType) and toType == PointerType("void"):
         return True
     return False
 
@@ -330,13 +330,13 @@ def isArithmeticConvertableTo(fromType, toType):
         return True
     if fromType == "char" and toType == "int":
         return True
-    if fromType == "void*" and toType[-1] == "*":
+    if fromType == "void*" and isinstance(toType, PointerType):
         return True
-    if fromType[-1] == "*" and toType == "void*":
+    if isinstance(fromType, PointerType) and toType == PointerType("void"):
         return True
-    if fromType == "char" and toType[-1] == "*":
+    if fromType == "char" and isinstance(toType, PointerType):
         return True
-    if fromType == "int" and toType[-1] == "*":
+    if fromType == "int" and isinstance(toType, PointerType):
         return True
     return False
 
@@ -380,7 +380,7 @@ class AddressOf(ASTNode):
 
     def visit(self, context):
         exprAddr = self.expr.visit(context)
-        irAddressOf = IRAddressOf(exprAddr, context.createTemporary(exprAddr.completeType + "*"))
+        irAddressOf = IRAddressOf(exprAddr, context.createTemporary(PointerType(exprAddr.completeType)))
         context.blockFactory.addIR(irAddressOf)
         return irAddressOf.resultAddr
 
@@ -393,7 +393,7 @@ class Dereference(ASTNode):
         pointer = self.expr.visit(context)
         if not pointer.isPointer:
             raise CompileError(f"Attempt to dereference non-pointer {self.expr.name} of type {pointer.completeType}", location=self.location)
-        ct = pointer.completeType[:-1] # remove trailing *
+        ct = pointer.completeType.toType
         if ct == "void":
             raise CompileError(f"Attempt to dereference void pointer {self.expr.name}", location=self.location)
         deref = IRDereference(pointer, context.createTemporary(ct))
@@ -454,7 +454,7 @@ class Add(ASTNode):
 
     def visit(self, context):
         def computeByteOffset(address, resultType):
-            instanceType = resultType[:-1]
+            instanceType = resultType.toType
             if instanceType == "void":
                 sizeOf = 1
             else:
@@ -499,7 +499,7 @@ class Subtraction(ASTNode):
 
     def visit(self, context):
         def computeByteOffset(address, resultType):
-            instanceType = resultType[:-1]
+            instanceType = resultType.toType
             if instanceType == "void":
                 sizeOf = 1
             else:

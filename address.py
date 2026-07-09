@@ -1,4 +1,5 @@
 from symEntry import SymEntry, GlobalAddress, GlobalLabel
+from type_defs import PointerType
 # TODO move tyo symEntry?
 
 class Constant:
@@ -24,7 +25,7 @@ class Constant:
 
     @property
     def isPointer(self):
-        return self.completeType.endswith("*")
+        return isinstance(self.completeType, PointerType)
 
     def __repr__(self):
         return f"Constant {self.completeType} {self.value}"
@@ -37,7 +38,7 @@ class Constant:
 class StringConstant(Constant):
 
     def __init__(self, value):
-        super().__init__("char*", value)
+        super().__init__(PointerType("char"), value)
 
     # @property
     # def value(self):
@@ -50,7 +51,7 @@ class StringConstant(Constant):
         name = context.stringTable.addString(self._value)
         symbol = context.symbolTable.lookUp(name)
         if not symbol:
-            symbol = SymEntry("char*", name)
+            symbol = SymEntry(PointerType("char"), name)
             symbol.impl = GlobalLabel(name)
             context.symbolTable.addSymbolEntry(name, symbol)
             if not symbol in context.dataSegment:

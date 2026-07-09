@@ -14,7 +14,7 @@ class TestIR(unittest.TestCase):
         self.bar16 = SymEntry("int", "bar")
         self.baz = SymEntry("char", "baz")
         self.baz16 = SymEntry("int", "baz")
-        self.ptr = SymEntry("int*", "ptr")
+        self.ptr = SymEntry(PointerType("int"), "ptr")
         self.derefPtr = SymEntry("char", "derefPtr")
         self.foo.impl = StackAddress(1)
         self.foo16.impl = StackAddress(1)
