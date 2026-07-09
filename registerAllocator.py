@@ -5,7 +5,6 @@ from address import *
 from asmWriter import AsmWriter
 from ir import *
 from symEntry import StackAddress, PointerAddress
-from pprint import pformat
 
 RA = None
 ALL_REGISTERS = {'a', 'b', 'c', 'd', 'e', 'h', 'l', 'bc', 'de', 'hl'}
@@ -275,11 +274,7 @@ class Z80RegisterAllocator(RegisterAllocator):
                     self.asmWriter.loadRegisterWithRegister("a", r)
                 self.asmFile.write(f"\tld\t{s.impl.codeArg()}, a\n")
             elif s.type == 'int':
-                # TODO could also use IY
-                if r != "hl":
-                    self.spillRegister("hl")
-                    self.asmWriter.loadRegisterWithRegister("hl", r)
-                self.asmFile.write(f"\tld\t{s.impl.codeArg()}, hl\n")
+                self.asmFile.write(f"\tld\t{s.impl.codeArg()}, {r}\n")
             else:
                 error()
         elif isinstance(s.impl, PointerAddress):

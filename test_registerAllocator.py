@@ -310,10 +310,7 @@ class TestZ80RA(unittest.TestCase):
 
         self.ra.asmFile.seek(0)
         output = self.ra.asmFile.read()
-        print(output)
-        self.assertIn("ld\th, b", output)
-        self.assertIn("ld\tl, c", output)
-        self.assertIn("ld\t(GLOBAL), hl", output)
+        self.assertIn("ld\t(GLOBAL), bc", output)
 
     # Check the special case where we are spilling reg a directly
     def test_spillGlobalChar_regA(self):
