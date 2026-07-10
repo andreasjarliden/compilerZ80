@@ -1,5 +1,10 @@
 import unittest
 from testutilities import compile
+import re
+
+def removeComments(s):
+    # Remove comment lines
+    return re.sub("[ \t]*;[^\n]*\n", "", s)
 
 class TestIntegration(unittest.TestCase):
     def test_localVariable(self):
@@ -309,4 +314,34 @@ class TestIntegration(unittest.TestCase):
                 *(a + b - 2) = 42;
             }""")
         self.assertRegex(output, r"ld\t\((bc|de|hl)\), 42")
+
+    def test_structPointerDereferenceDotSyntax(self):
+        output = compile("""
+            struct Foo { char a; char b; };
+            char main() {
+                struct Foo foo;
+                struct Foo* pFoo = &foo;
+                (*pFoo).b = 42;
+            }""")
+        output = removeComments(output)
+        # Expect e.g.:
+        #   ld bc, 1
+        #   add hl, 1
+        #   ld (hl), 42
+        self.assertRegex(output, r"ld\t(bc|de|hl), 1\n\tadd\thl, (bc|de|hl)\n\tld\t\(hl\), 42")
+
+    def test_structPointerDereferenceArrowSyntax(self):
+        output = compile("""
+            struct Foo { char a; char b; };
+            char main() {
+                struct Foo foo;
+                struct Foo* pFoo = &foo;
+                pFoo->b = 42;
+            }""")
+        output = removeComments(output)
+        # Expect e.g.:
+        #   ld bc, 1
+        #   add hl, 1
+        #   ld (hl), 42
+        self.assertRegex(output, r"ld\t(bc|de|hl), 1\n\tadd\thl, (bc|de|hl)\n\tld\t\(hl\), 42")
 

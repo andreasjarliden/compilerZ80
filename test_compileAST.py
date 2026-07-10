@@ -270,6 +270,22 @@ class TestErrorHandling(unittest.TestCase):
         irs = blocks["main_0000"].statements
         # TODO
 
+    def test_structPointer_referenceField(self):
+        blocks = compileToBlocks("""
+            struct myStruct { int a; char b; };
+            char main() {
+                struct myStruct* s;
+                s->b = 1;
+            }""")
+        irs = blocks["main_0000"].statements
+        pprint(irs)
+        self.assertIsInstance(irs[1], IRDereference)
+        self.assertIsInstance(irs[2], IRAdd)
+        self.assertTrue(irs[1].resultAddr, irs[2].lhsAddr)
+        self.assertEqual(irs[2].rhsAddr, Constant("int", 2))
+        self.assertIsInstance(irs[3], IRAssignToPointer)
+        self.assertTrue(irs[2].resultAddr, irs[3].lhsAddr)
+
     def test_struct_missingField(self):
         with self.assertRaises(CompileError) as cts:
             blocks = compileToBlocks("""
@@ -381,6 +397,18 @@ class TestErrorHandling(unittest.TestCase):
         self.assertIsInstance(irs[0], IRAssign)
         self.assertIsInstance(irs[0].lhsAddr, Constant)
         self.assertEqual(irs[0].lhsAddr.completeType, PointerType("int"))
+
+    def test_structPointer(self):
+        blocks = compileToBlocks("""struct Foo { int a; int b; };
+        void main() {
+            struct Foo foo;
+            struct Foo* pFoo = &foo;
+        }""")
+        irs = blocks["main_0000"].statements[1:]
+        pprint(irs)
+        self.assertIsInstance(irs[0], IRAddressOf)
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertEqual(irs[0].resultAddr.completeType, PointerType(StructType("Foo", ())))
 
     def test_pointerArithmeticDereference(self):
         blocks = compileToBlocks("""

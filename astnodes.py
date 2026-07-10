@@ -369,7 +369,10 @@ class VariableAssignment(ASTNode):
         lvalue = self.lvalue.visit(context)
         rhsAddr = self.rhs.visit(context)
         rhsAddr = promoteIfNeededTo(rhsAddr, lvalue.type, lvalue.completeType, context, "assignment", self.location)
+        # TODO should move all of this into IRAssign
         if isinstance(self.lvalue, Dereference):
+            context.blockFactory.addIR(IRAssignToPointer(lvalue.impl.pointer, rhsAddr))
+        elif isinstance(self.lvalue, StructFieldReference) and isinstance(self.lvalue.structVar, Dereference):
             context.blockFactory.addIR(IRAssignToPointer(lvalue.impl.pointer, rhsAddr))
         else:
             context.blockFactory.addIR(IRAssign(lvalue, rhsAddr))
@@ -618,7 +621,10 @@ class StructFieldReference(ASTNode):
     name : str = field(init=False)
 
     def __post_init__(self):
-        object.__setattr__(self, "name", f"{self.structVar.name}.{self.field}")
+        if isinstance(self.structVar, Dereference):
+            object.__setattr__(self, "name", f"{self.structVar.expr.name}->{self.field}")
+        else:
+            object.__setattr__(self, "name", f"{self.structVar.name}.{self.field}")
 
     def visit(self, context):
         structAddr = self.structVar.visit(context);
@@ -628,8 +634,16 @@ class StructFieldReference(ASTNode):
         except KeyError:
             raise CompileError(f"Unknown field {self.field} in struct {struct.name}", self.location)
         if not context.symbolTable.lookUp(self.name):
-            symEntry = SymEntry(struct.fields[self.field].type, self.name)
-            symEntry.impl = structAddr.impl.cloneWithOffset(offset)
+            fieldType = struct.fields[self.field].type
+            symEntry = SymEntry(fieldType, self.name)
+            if isinstance(structAddr.impl, PointerAddress):
+                fieldPointer = context.createTemporary(PointerType(fieldType))
+                # TODO don't add if offset is zero
+                irAdd = IRAdd(fieldPointer, structAddr.impl.pointer, Constant("int", offset))
+                context.blockFactory.addIR(irAdd)
+                symEntry.impl = PointerAddress(fieldPointer)
+            else:
+                symEntry.impl = structAddr.impl.cloneWithOffset(offset)
             context.symbolTable.addSymbolEntry(symEntry.name, symEntry)
         return context.symbolTable.lookUp(self.name)
 

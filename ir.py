@@ -408,9 +408,14 @@ class IRAddressOf(IR):
             # Might as well require HL
             regX = ra.getRegisterForSymbol(self.resultAddr, { "hl" })
             regT = ra.getTemporaryRegister({ "bc", "de" })
-            # TODO maybe better to use IY instead of HL if small offset?
-            asmWriter.write(f'\tld\t{regX[0]}, ixh\n')
-            asmWriter.write(f'\tld\t{regX[1]}, ixl\n')
+            # Could also use unofficial ixh, ixl and do
+            #   ld a, ixh
+            #   ld h, a
+            #   ld x, ixl
+            #   ld l, a
+            # Note, that it isn't possible to do ld h, ixh as it turns into ld ixh, ixh
+            asmWriter.write(f'\tpush\tix\n')
+            asmWriter.write(f'\tpop\t{regX}\n')
             # TODO Optimize for small values with INC / DEC
             asmWriter.write(f'\tld\t{regT}, {negHexOffset}\n')
             asmWriter.write(f'\tadd\t{regX}, {regT}\n')
