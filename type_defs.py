@@ -20,9 +20,14 @@ class StructType:
     name : str
     fields : dict = field(default_factory=dict)
 
+# TODO there is commonality between SymEntry and StructField
 @dataclass(frozen=True)
 class StructField:
-    type : Any
+    completeType : Any
     name : str
     offset :  int
+
+    @property
+    def type(self):
+        return simpleTypeForComplexType(self.completeType)
 

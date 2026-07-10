@@ -127,11 +127,12 @@ class TestParser(unittest.TestCase):
     # struct
     #
     def test_defineStruct(self):
-        ast = parser.parse("struct mystruct { char foo; int bar; };")
+        ast = parser.parse("struct mystruct { char foo; int bar; char* ptr; };")
         self.assertEqual(ast[0],
                          StructDefinition("mystruct",
                                           ( VariableDefinition("char", "foo"),
-                                           VariableDefinition("int", "bar"))))
+                                           VariableDefinition("int", "bar"),
+                                           VariableDefinition(PointerType("char"), "ptr"))))
 
     def test_structVariable(self):
         ast = parser.parse("struct mystruct { char foo; }; struct mystruct s;")

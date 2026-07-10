@@ -608,7 +608,7 @@ class StructDefinition(ASTNode):
         fields = {}
         offset = 0;
         for f in self.fields:
-            fields[f.name] = StructField(type=f.type, name=f.name, offset=offset)
+            fields[f.name] = StructField(completeType=f.completeType, name=f.name, offset=offset)
             offset += context.typeEnv.sizeOfType(f.type)
         s = StructType(self.name, fields)
         context.typeEnv.addStruct(s)
@@ -634,7 +634,7 @@ class StructFieldReference(ASTNode):
         except KeyError:
             raise CompileError(f"Unknown field {self.field} in struct {struct.name}", self.location)
         if not context.symbolTable.lookUp(self.name):
-            fieldType = struct.fields[self.field].type
+            fieldType = struct.fields[self.field].completeType
             symEntry = SymEntry(fieldType, self.name)
             if isinstance(structAddr.impl, PointerAddress):
                 fieldPointer = context.createTemporary(PointerType(fieldType))
