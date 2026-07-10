@@ -140,6 +140,9 @@ class FunctionDeclaration(Function):
     arguments : tuple[Argument] = field(default_factory=tuple)
 
     def visit(self, context):
+        verifyType(self.type, self.location, context.typeEnv)
+        for a in self.arguments:
+            verifyType(a.completeType, a.location, context.typeEnv)
         # TODO, don't add self but a Function but without any statements
         context.symbolTable.addSymbolEntry(self.name, self)
 
@@ -156,6 +159,7 @@ class FunctionDefinition(Function):
         return "FunctionDefinition " + self.name + " with statements " + str(self.statements)
 
     def visit(self, context):
+        verifyType(self.type, self.location, context.typeEnv)
         context.symbolTable.addSymbolEntry(self.name, self)
         context.pushFrame()
         context.resetStackFrame()
@@ -166,6 +170,7 @@ class FunctionDefinition(Function):
         # If pushing AF, then A is at ix+5
         offset = 4
         for a in self.arguments:
+            verifyType(a.completeType, a.location, context.typeEnv)
             symEntry = SymEntry(a.completeType, a.name)
             if a.type == "int":
                 symEntry.impl = StackAddress(offset)
@@ -608,6 +613,7 @@ class StructDefinition(ASTNode):
         fields = {}
         offset = 0;
         for f in self.fields:
+            verifyType(f.completeType, f.location, context.typeEnv)
             fields[f.name] = StructField(completeType=f.completeType, name=f.name, offset=offset)
             offset += context.typeEnv.sizeOfType(f.type)
         s = StructType(self.name, fields)

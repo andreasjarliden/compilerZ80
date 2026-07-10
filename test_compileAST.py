@@ -142,6 +142,45 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(ctx.exception.location.line, 3) 
         self.assertEqual(ctx.exception.message, "Attempting to call function foo with 1 arguments but expected 2") 
 
+    def test_functionWithUnknownArgumentType1(self):
+        with self.assertRaises(CompileError) as ctx:
+            output = compile("""char foo(chur a) {
+                                    return 0;
+                                }
+                                void main() {
+                                    foo(1);
+                              }""")
+        self.assertEqual(ctx.exception.message, "Unknown type chur") 
+        self.assertEqual(ctx.exception.location.line, 1) 
+
+    def test_functionWithUnknownArgumentType2(self):
+        with self.assertRaises(CompileError) as ctx:
+            output = compile("""char foo(chur a);
+                                void main() {
+                                    foo(1);
+                              }""")
+        self.assertEqual(ctx.exception.message, "Unknown type chur") 
+        self.assertEqual(ctx.exception.location.line, 1) 
+
+    def test_functionWithUnknownReturnType1(self):
+        with self.assertRaises(CompileError) as ctx:
+            output = compile("""chur foo();
+                                void main() {
+                                    foo();
+                              }""")
+        self.assertEqual(ctx.exception.message, "Unknown type chur") 
+        self.assertEqual(ctx.exception.location.line, 1) 
+
+    def test_functionWithUnknownReturnType2(self):
+        with self.assertRaises(CompileError) as ctx:
+            output = compile("""chur foo() { return 0; }
+                                void main() {
+                                    foo();
+                              }""")
+        self.assertEqual(ctx.exception.message, "Unknown type chur") 
+        self.assertEqual(ctx.exception.location.line, 1) 
+
+
     #
     # Variable reference
     #
@@ -297,6 +336,20 @@ class TestErrorHandling(unittest.TestCase):
                 }""")
         self.assertEqual(cts.exception.message, "Unknown field b in struct myStruct")
         self.assertEqual(cts.exception.location.line, 6)
+
+    def test_struct_unknownFieldType(self):
+        with self.assertRaises(CompileError) as cts:
+            blocks = compileToBlocks("""
+                struct myStruct {
+                    chur a;
+                };
+                char main() {
+                    char a;
+                    struct myStruct s;
+                    s.b = 1;
+                }""")
+        self.assertEqual(cts.exception.message, "Unknown type chur")
+        self.assertEqual(cts.exception.location.line, 3)
 
     def test_struct_nestedStruct(self):
         blocks = compileToBlocks("""
