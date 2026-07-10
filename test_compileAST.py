@@ -351,6 +351,16 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(cts.exception.message, "Unknown type chur")
         self.assertEqual(cts.exception.location.line, 3)
 
+    def test_recursiveStruct(self):
+        typeEnv = TypeEnv()
+        irs = compileBlockToIR("""
+            struct myStruct {
+                struct myStruct* pMyStruct;
+            };
+            """, typeEnv=typeEnv)
+        pprint(typeEnv)
+        self.assertEqual(typeEnv.lookupStructName("myStruct").fields["pMyStruct"].completeType, PointerType(StructType("myStruct", ())))
+
     def test_struct_nestedStruct(self):
         blocks = compileToBlocks("""
             struct Foo {

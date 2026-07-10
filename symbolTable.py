@@ -21,6 +21,9 @@ class SymbolTable:
     def popFrame(self, ):
         self.env.pop()
     def lookUp(self, name):
+        # TODO for preventing looking up StructType which is not hashable. Handle this in a better way.
+        if not isinstance(name, str):
+            return None
         for frame in reversed(self.env):
             try:
                 return frame[name]

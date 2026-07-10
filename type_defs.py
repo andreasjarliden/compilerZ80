@@ -15,7 +15,7 @@ class PointerType:
     def __repr__(self):
         return f"{self.toType}*"
 
-@dataclass(frozen=True)
+@dataclass
 class StructType:
     name : str
     fields : dict = field(default_factory=dict)

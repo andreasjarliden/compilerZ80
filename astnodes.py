@@ -612,12 +612,13 @@ class StructDefinition(ASTNode):
             raise CompileError(f"Redefinition of struct {self.name}", self.location)
         fields = {}
         offset = 0;
+        s = StructType(self.name, fields)
+        context.typeEnv.addStruct(s)
         for f in self.fields:
             verifyType(f.completeType, f.location, context.typeEnv)
             fields[f.name] = StructField(completeType=f.completeType, name=f.name, offset=offset)
             offset += context.typeEnv.sizeOfType(f.type)
-        s = StructType(self.name, fields)
-        context.typeEnv.addStruct(s)
+        s.fields = fields
         return s
 
 @dataclass(frozen=True)
