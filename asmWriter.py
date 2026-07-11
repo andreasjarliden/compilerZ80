@@ -1,4 +1,5 @@
 from symEntry import *
+from io import StringIO
 
 class AsmWriter:
     def __init__(self, file):
@@ -43,4 +44,14 @@ class AsmWriter:
             self.file.write(f'\tld\t{dst}, {src}\n')
         else:
             assert False
+
+
+class StringAsmWriter(AsmWriter):
+    def __init__(self):
+        super().__init__(StringIO())
+
+    def output(self):
+        self.seek(0)
+        return self.read()
+        output = self.asmWriter.read()
 

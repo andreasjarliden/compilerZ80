@@ -4,7 +4,7 @@ from symEntry import *
 from address import Constant
 import ir
 import registerAllocator
-from asmWriter import AsmWriter
+from asmWriter import StringAsmWriter
 
 class TestIR(unittest.TestCase):
     def setUp(self):
@@ -24,7 +24,7 @@ class TestIR(unittest.TestCase):
         self.baz16.impl = StackAddress(5)
         self.ptr.impl = StackAddress(4)
         self.derefPtr.impl = PointerAddress(self.ptr)
-        self.asmWriter = AsmWriter(StringIO())
+        self.asmWriter = StringAsmWriter()
         registerAllocator.RA = registerAllocator.Z80RegisterAllocator(self.asmWriter)
 
     #
@@ -37,8 +37,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = irdummy
 
         irdummy.loadRhs8(self.derefPtr, self.asmWriter)
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         # spills old value in hl, the pointer of derefPtr (ptr) is loaded
         # afterwards.
         self.assertIn("\tld\t(ix + 2), h\n\tld\t(ix + 1), l\n\tld\th, (ix + 5)\n\tld\tl, (ix + 4)", output)
@@ -51,8 +50,7 @@ class TestIR(unittest.TestCase):
         ira.live[self.foo] = True
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         self.assertRegex(output, "\tld\t., 42\n")
         self.assertTrue(registerAllocator.RA.isInRegister(self.foo))
 
@@ -61,8 +59,7 @@ class TestIR(unittest.TestCase):
         ira.live[self.foo16] = True
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         self.assertRegex(output, f"\tld\t.., {0x1234}\n")
         self.assertTrue(registerAllocator.RA.isInRegister(self.foo16))
 
@@ -72,8 +69,7 @@ class TestIR(unittest.TestCase):
         ira.live[self.bar] = True
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         self.assertRegex(output, r"\tld\t., \(ix \+ 2\)")
         self.assertTrue(registerAllocator.RA.isInRegister(self.foo))
 
@@ -89,8 +85,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         self.assertIn("\tld\t(hl), e\n\tinc\thl\n\tld\t(hl), d", output)
 
     def test_IRAssignToPointerViaBC(self):
@@ -102,8 +97,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         # Must load via a as no generic ld R, (BC/DE) only HL support that
         self.assertIn("\tld\ta, e\n\tld\t(bc), a\n\tinc\tbc\n\tld\ta, d\n\tld\t(bc), a", output)
 
@@ -123,8 +117,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         self.assertEqual(output, "\tadd\ta, b\n")
         self.assertEqual(registerAllocator.RA.isInRegister(self.foo), "a")
         self.assertNotIn(self.foo, registerAllocator.RA.symbols[self.foo]) # Not spilled yet
@@ -143,8 +136,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         self.assertEqual(output, "\tadd\ta, b\n")
         self.assertEqual(registerAllocator.RA.isInRegister(self.foo), "a")
         self.assertEqual(registerAllocator.RA.isInRegister(self.bar), "b")
@@ -160,8 +152,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         self.assertEqual(output, "\tld\ta, (ix + 2)\n\tadd\ta, (ix + 3)\n")
         self.assertEqual(registerAllocator.RA.isInRegister(self.foo), "a")
         self.assertFalse(registerAllocator.RA.isInRegister(self.bar))
@@ -177,8 +168,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         self.assertIn("\tld\ta, (ix + 2)", output)
         self.assertRegex(output, r"ld\t., \(ix \+ 3\)")
         self.assertEqual(registerAllocator.RA.isInRegister(self.foo), "a")
@@ -196,8 +186,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         self.assertEqual(output, "\tld\ta, b\n\tadd\ta, 42\n")
         self.assertEqual(registerAllocator.RA.isInRegister(self.foo), "a")
         self.assertEqual(registerAllocator.RA.isInRegister(self.bar), "b")
@@ -215,8 +204,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         self.assertEqual(output, "\tadd\ta, (hl)\n")
         self.assertEqual(registerAllocator.RA.isInRegister(self.foo), "a")
         self.assertEqual(registerAllocator.RA.isInRegister(self.ptr), "hl")
@@ -234,8 +222,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         self.assertIn("\tld\th, d\n", output)
         self.assertIn("\tld\tl, e\n", output)
         self.assertIn("\tadd\ta, (hl)\n", output)
@@ -254,8 +241,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         self.assertIn("\tld\th, (ix + 5)\n", output)
         self.assertIn("\tld\tl, (ix + 4)\n", output)
         self.assertIn("\tadd\ta, (hl)\n", output)
@@ -276,8 +262,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         # ld a, (global) # Must load (global) to A and transfer it
         # ld <reg>, a
         # add a, <reg>
@@ -295,8 +280,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         self.assertIn(output, "\tld\thl, 1\n\tadd\thl, bc\n")
         self.assertEqual(registerAllocator.RA.isInRegister(self.foo16), "bc")
         self.assertEqual(registerAllocator.RA.isInRegister(self.bar16), "hl")
@@ -310,8 +294,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         self.assertRegex(output, "\tld\t(bc|de), 1\n\tadd\thl, (bc|de)\n")
         self.assertNotIn(self.foo16, registerAllocator.RA.registers)
         self.assertEqual(registerAllocator.RA.isInRegister(self.bar16), "hl")
@@ -332,8 +315,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         self.assertEqual(output, "\tsub\ta, b\n")
         self.assertEqual(registerAllocator.RA.isInRegister(self.foo), "a")
         self.assertNotIn(self.foo, registerAllocator.RA.symbols[self.foo]) # Not spilled yet
@@ -351,8 +333,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         self.assertEqual(output, "\tor\ta\n\tsbc\thl, bc\n")
         self.assertEqual(registerAllocator.RA.isInRegister(self.foo16), "hl")
         self.assertEqual(registerAllocator.RA.isInRegister(self.bar16), "bc")
@@ -370,8 +351,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         self.assertIn(output, "\tld\thl, 65535\n\tadd\thl, bc\n")
         self.assertEqual(registerAllocator.RA.isInRegister(self.foo16), "bc")
         self.assertEqual(registerAllocator.RA.isInRegister(self.bar16), "hl")
@@ -387,8 +367,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         self.assertRegex(output, "\tld\t(bc|de), 65535\n\tadd\thl, (bc|de)\n")
         self.assertNotIn(self.foo16, registerAllocator.RA.registers)
         self.assertEqual(registerAllocator.RA.isInRegister(self.bar16), "hl")
@@ -409,8 +388,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         self.assertEqual(output, "\tor\ta, b\n")
         self.assertEqual(registerAllocator.RA.isInRegister(self.foo), "a")
         self.assertNotIn(self.foo, registerAllocator.RA.symbols[self.foo]) # Only in register
@@ -427,8 +405,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
 
         self.assertNotIn(self.foo16, registerAllocator.RA.symbols[self.foo16]) # Only in register
 
@@ -443,8 +420,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
 
         print(output)
         self.assertIn("\tld\thl, 0\n" +
@@ -468,8 +444,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         r = registerAllocator.RA.isInRegister(self.foo16)
         r_hi = r[0]
         r_lo = r[1]
@@ -485,8 +460,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         r = registerAllocator.RA.isInRegister(self.foo16)
         r_hi = r[0]
         r_lo = r[1]
@@ -501,8 +475,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         r = registerAllocator.RA.isInRegister(self.foo16)
         r_hi = r[0]
         r_lo = r[1]
@@ -524,8 +497,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
 
-        self.asmWriter.seek(0)
-        output = self.asmWriter.read()
+        output = self.asmWriter.output()
         print(output)
         self.assertEqual(output, "\tor\ta\n\tsbc\thl, bc\n\tjp\tnz, skipLabel\n")
 
