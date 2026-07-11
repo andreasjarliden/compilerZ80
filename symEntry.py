@@ -19,11 +19,7 @@ class SymEntry:
 
     @property
     def isPointer(self):
-        # TODO create real pointer type
-        if isinstance(self.completeType, StructType):
-            return False
-        else:
-            return isinstance(self.completeType, PointerType)
+        return isinstance(self.completeType, PointerType)
 
     def equalByValue(self, other):
         return self.name == other.name and self.completeType == other.completeType

@@ -406,10 +406,10 @@ class Dereference(ASTNode):
         ct = pointer.completeType.toType
         if ct == "void":
             raise CompileError(f"Attempt to dereference void pointer {self.expr.name}", location=self.location)
-        deref = IRDereference(pointer, context.createTemporary(ct))
-        context.blockFactory.addIR(deref)
-        deref.resultAddr.impl = PointerAddress(pointer)
-        return deref.resultAddr
+        ir = IRDereference(pointer, context.createTemporary(ct))
+        context.blockFactory.addIR(ir)
+        ir.resultAddr.impl = PointerAddress(pointer)
+        return ir.resultAddr
 
 
 @dataclass
