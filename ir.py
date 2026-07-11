@@ -80,6 +80,7 @@ class IR:
             regZ = ra.isInRegister(rhsAddr.impl.pointer, { "hl" })
             # Already in hl?
             if not regZ:
+                ra.getRegisterForSymbol(rhsAddr.impl.pointer, { "hl" })
                 otherReg = ra.isInRegister(rhsAddr.impl.pointer, { "bc", "de" })
                 if otherReg:
                     # Copy from other register

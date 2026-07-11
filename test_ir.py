@@ -4,7 +4,7 @@ from symEntry import *
 from address import Constant
 import ir
 import registerAllocator
-import asmWriter
+from asmWriter import AsmWriter
 
 class TestIR(unittest.TestCase):
     def setUp(self):
@@ -24,8 +24,25 @@ class TestIR(unittest.TestCase):
         self.baz16.impl = StackAddress(5)
         self.ptr.impl = StackAddress(4)
         self.derefPtr.impl = PointerAddress(self.ptr)
-        self.asmWriter = asmWriter.AsmWriter(StringIO())
+        self.asmWriter = AsmWriter(StringIO())
         registerAllocator.RA = registerAllocator.Z80RegisterAllocator(self.asmWriter)
+
+    #
+    # loadRhs8
+    # 
+    def test_loadRhs8_loadingPointerAddress(self):
+        registerAllocator.RA.assignedToSymbolWithRegister(self.foo16, "hl")
+        irdummy = ir.IR(None, self.derefPtr, self.asmWriter)
+        irdummy.live[self.foo16] = True
+        registerAllocator.RA.currentInstruction = irdummy
+
+        irdummy.loadRhs8(self.derefPtr, self.asmWriter)
+        self.asmWriter.seek(0)
+        output = self.asmWriter.read()
+        # spills old value in hl, the pointer of derefPtr (ptr) is loaded
+        # afterwards.
+        self.assertIn("\tld\t(ix + 2), h\n\tld\t(ix + 1), l\n\tld\th, (ix + 5)\n\tld\tl, (ix + 4)", output)
+        self.assertEqual(registerAllocator.RA.symbols, { self.ptr: {self.ptr, "hl"}})
 
     # IRAssign
 
