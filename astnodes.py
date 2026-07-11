@@ -278,6 +278,8 @@ class VariableDefinition(ASTNode):
             return self.completeType
 
     def visit(self, context):
+        if self.name in context.symbolTable.currentSymbolTable():
+            raise CompileError(f"Attempt to define already defined {self.name}", self.location)
         tComplete = self.completeType
         s = context.symbolTable.lookUp(tComplete)
         if s and isinstance(s.impl, TypeAddress):

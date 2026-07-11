@@ -225,6 +225,29 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(cts.exception.message, "Unknown type chur")
         self.assertEqual(cts.exception.location.line, 2)
 
+    def test_vardef_alreadyDefined(self):
+        with self.assertRaises(CompileError) as cts:
+            compileBlockToIR("""int a;
+                            int a;""")
+        self.assertEqual(cts.exception.message, "Attempt to define already defined a")
+        self.assertEqual(cts.exception.location.line, 2)
+
+        # Allowed
+        compile("""
+            int a;
+            void main() {
+                int a;
+            }""")
+
+        # Allowed
+        compile("""
+            void main() {
+                int a;
+                while (1 == 1) {
+                    int a;
+                }
+            }""")
+
     #
     # Structs
     #
