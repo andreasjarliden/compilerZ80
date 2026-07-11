@@ -396,7 +396,7 @@ class IRAddressOf(IR):
         super().__init__(resultAddr=resAddr, lhsAddr=symEntry)
 
     def genCode(self, asmWriter):
-        print(f"IRAddressOf {self.exprAddr}")
+        asmWriter.write(f"\t; Address of {self.exprAddr}\n")
         ra = registerAllocator.RA
         if isinstance(self.exprAddr.impl, StackAddress):
             # print(f'IRAddressOf spilling {self.lhsAddr.name} ra {ra}')
@@ -422,6 +422,12 @@ class IRAddressOf(IR):
             ra.loadedSymbolInRegister(self.resultAddr, regX)
         elif isinstance(self.exprAddr.impl, GlobalAddress):
             self.resultAddr.impl = GlobalLabel(self.exprAddr.impl.name)
+        elif isinstance(self.exprAddr.impl, PointerAddress):
+            # TODO combine these two?
+            reg = ra.isInRegister(self.exprAddr.impl.pointer)
+            ra.assignedToSymbolWithRegister(self.resultAddr, reg)
+        else:
+            error()
 
 class IRDereference(IR):
     def __init__(self, symEntry, resAddr):

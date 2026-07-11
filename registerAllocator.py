@@ -5,6 +5,7 @@ from address import *
 from asmWriter import AsmWriter
 from ir import *
 from symEntry import StackAddress, PointerAddress
+from pprint import pformat
 
 RA = None
 ALL_REGISTERS = {'a', 'b', 'c', 'd', 'e', 'h', 'l', 'bc', 'de', 'hl'}
@@ -208,6 +209,7 @@ class RegisterAllocator:
             self.spillRegister(cr)
         return r
 
+    # TODO rename
     def isInRegister(self, symbol, possibleRegisters = ALL_REGISTERS):
         # Already loaded?
         regs = self.symbols.get(symbol, set()) & possibleRegisters
