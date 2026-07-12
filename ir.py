@@ -430,7 +430,11 @@ class IRAddressOf(IR):
         else:
             error()
 
+# This is a bit strange as it doesn't actually generate any code, except
+# forcing storing of matching types.
+# Although, it does update the live tracking. Although is resAddress used?
 class IRDereference(IR):
+    # TODO: Fix ordering of arguments!
     def __init__(self, symEntry, resAddr):
         super().__init__(resultAddr=resAddr, lhsAddr=symEntry)
 

@@ -395,6 +395,10 @@ class AddressOf(ASTNode):
         return irAddressOf.resultAddr
 
 
+# Creates and returns a symbol with a PointerAddress to expr.
+# It doesn't read anything itself, but creates an IRDereference instruction
+# which updates the live tracking for the pointer and stores any symbols with
+# matching types).
 @dataclass(frozen=True)
 class Dereference(ASTNode):
     expr : Any
@@ -654,5 +658,13 @@ class StructFieldReference(ASTNode):
             else:
                 symEntry.impl = structAddr.impl.cloneWithOffset(offset)
             context.symbolTable.addSymbolEntry(symEntry.name, symEntry)
+        else:
+            if isinstance(structAddr.impl, PointerAddress):
+                # Since we are using the pointer, use IRDereference to ensure
+                # the pointer becomes live
+                fieldSymbol = context.symbolTable.lookUp(self.name)
+                fieldPointer = fieldSymbol.impl.pointer
+                irDeref = IRDereference(fieldPointer, None)
+                context.blockFactory.addIR(irDeref)
         return context.symbolTable.lookUp(self.name)
 

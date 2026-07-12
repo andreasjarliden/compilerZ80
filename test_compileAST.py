@@ -348,6 +348,26 @@ class TestErrorHandling(unittest.TestCase):
         self.assertIsInstance(irs[3], IRAssignToPointer)
         self.assertTrue(irs[2].resultAddr, irs[3].lhsAddr)
 
+    def test_structPointer_repeatedFieldReference(self):
+        blocks = compileToBlocks("""
+            struct myStruct { char a; };
+            void main() {
+                struct myStruct* s;
+                char a = s->a;
+                char b = s->a;
+            }""")
+        irs = blocks["main_0000"].statements
+        pprint(irs)
+        self.assertIsInstance(irs[1], IRDereference) # *s
+        self.assertIsInstance(irs[2], IRAdd) # computing s->a
+        self.assertIsInstance(irs[3], IRAssign)
+        self.assertIsInstance(irs[4], IRDereference) # *s
+        self.assertIsInstance(irs[5], IRDereference) # deref s-> pointer 
+        self.assertIsInstance(irs[6], IRAssign) # re-uses s->a
+        s_a_pointer = irs[3].lhsAddr.impl.pointer # pointer used for s->a
+        self.assertTrue(irs[5].live[s_a_pointer]) # the pointer is used for the second s->a so must be live
+        self.assertFalse(irs[6].live[s_a_pointer]) 
+
     def test_struct_missingField(self):
         with self.assertRaises(CompileError) as cts:
             blocks = compileToBlocks("""
