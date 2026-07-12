@@ -424,8 +424,11 @@ class IRAddressOf(IR):
         elif isinstance(self.exprAddr.impl, GlobalAddress):
             self.resultAddr.impl = GlobalLabel(self.exprAddr.impl.name)
         elif isinstance(self.exprAddr.impl, PointerAddress):
-            # TODO combine these two?
             reg = ra.isInRegister(self.exprAddr.impl.pointer)
+            if not reg:
+                reg = ra.getRegisterForSymbol(self.resultAddr, { "bc", "de", "hl" })
+                asmWriter.loadRegisterWithAddress(reg, self.exprAddr.impl.pointer.impl)
+                ra.loadedSymbolInRegister(self.exprAddr.impl.pointer, reg)
             ra.assignedToSymbolWithRegister(self.resultAddr, reg)
         else:
             error()
