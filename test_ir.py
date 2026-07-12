@@ -43,6 +43,20 @@ class TestIR(unittest.TestCase):
         self.assertIn("\tld\t(ix + 2), h\n\tld\t(ix + 1), l\n\tld\th, (ix + 5)\n\tld\tl, (ix + 4)", output)
         self.assertEqual(registerAllocator.RA.symbols, { self.ptr: {self.ptr, "hl"}})
 
+    def test_loadRhs8_pointerAlreadyInDE(self):
+        registerAllocator.RA.assignedToSymbolWithRegister(self.foo16, "hl")
+        registerAllocator.RA.assignedToSymbolWithRegister(self.ptr, "de")
+        irdummy = ir.IR(None, self.derefPtr, self.asmWriter)
+        irdummy.live[self.foo16] = True
+        registerAllocator.RA.currentInstruction = irdummy
+
+        irdummy.loadRhs8(self.derefPtr, self.asmWriter)
+        output = self.asmWriter.output()
+        # spills old value in hl, the pointer of derefPtr (ptr) is loaded
+        # afterwards.
+        self.assertIn("\tld\t(ix + 2), h\n\tld\t(ix + 1), l\n\tld\th, d\n\tld\tl, e", output)
+        self.assertEqual(registerAllocator.RA.symbols, { self.ptr: {self.ptr, "hl", "de"}})
+
     # IRAssign
 
     def test_IRAssign_constant8(self):
