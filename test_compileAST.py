@@ -672,8 +672,7 @@ class TestErrorHandling(unittest.TestCase):
     #
     # Comparisons
     #
-
-    def test_comparison_typeMismatch(self):
+    def test_comparison_pointerAndNonPointer(self):
         with self.assertRaises(CompileError) as cts:
             compileToBlocks("""
             char main() {
@@ -683,7 +682,20 @@ class TestErrorHandling(unittest.TestCase):
                     c = 42;
                 }
             }""");
-        self.assertEqual(cts.exception.message, "Comparisson between char and char*")
+        self.assertEqual(cts.exception.message, "Comparisson between pointer and non-pointer: char and char*")
+        self.assertEqual(cts.exception.location.line, 5)
+
+    def test_comparison_differentPointers(self):
+        with self.assertRaises(CompileError) as cts:
+            compileToBlocks("""
+            char main() {
+                char* cp;
+                int* ip;
+                if (ip == cp) {
+                    c = 42;
+                }
+            }""");
+        self.assertEqual(cts.exception.message, "Comparisson between different pointer types: int* and char*")
         self.assertEqual(cts.exception.location.line, 5)
 
 

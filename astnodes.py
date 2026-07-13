@@ -603,7 +603,10 @@ class Relation(ASTNode):
         rhsAddr = self.rhs.visit(context)
         if ((isinstance(lhsAddr.completeType, PointerType) and not isinstance(rhsAddr.completeType, PointerType)) or 
             (not isinstance(lhsAddr.completeType, PointerType) and isinstance(rhsAddr.completeType, PointerType))):
-            raise CompileError(f"Comparisson between {lhsAddr.completeType} and {rhsAddr.completeType}", self.location)
+            raise CompileError(f"Comparisson between pointer and non-pointer: {lhsAddr.completeType} and {rhsAddr.completeType}", self.location)
+        if isinstance(lhsAddr.completeType, PointerType) and isinstance(rhsAddr.completeType, PointerType):
+            if lhsAddr.completeType != rhsAddr.completeType:
+                raise CompileError(f"Comparisson between different pointer types: {lhsAddr.completeType} and {rhsAddr.completeType}", self.location)
         return (lhsAddr, rhsAddr)
 
 @dataclass(frozen=True)
