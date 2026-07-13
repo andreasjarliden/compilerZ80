@@ -330,6 +330,16 @@ class TestIntegration(unittest.TestCase):
         #   ld (hl), 42
         self.assertRegex(output, r"ld\t(bc|de|hl), 1\n\tadd\thl, (bc|de|hl)\n\tld\t\(hl\), 42")
 
+    def test_structPointerDereferenceAnonymous(self):
+        output = compile("""
+            struct myStruct { int a; char b; };
+            char main() {
+                ((struct myStruct*)0)->b = 42;
+            }""")
+        # ld bc/de/hl, 2
+        # ld (bc/de/hl), 42
+        self.assertRegex(output, r"ld\t(bc|de|hl), 2\n\tld\t\((bc|de|hl)\), 42")
+
     def test_structPointerDereferenceArrowSyntax(self):
         output = compile("""
             struct Foo { char a; char b; };

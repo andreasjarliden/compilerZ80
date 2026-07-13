@@ -8,6 +8,7 @@ from typeEnv import TypeEnv
 from type_defs import StructType, PointerType, StructField, simpleTypeForComplexType
 import symbolTable
 import registerAllocator
+from address import Temporary
 from copy import copy
 
 class StringTable:
@@ -635,7 +636,10 @@ class StructFieldReference(ASTNode):
 
     def __post_init__(self):
         if isinstance(self.structVar, Dereference):
-            object.__setattr__(self, "name", f"{self.structVar.expr.name}->{self.field}")
+            if hasattr(self.structVar.expr, "name"):
+                object.__setattr__(self, "name", f"{self.structVar.expr.name}->{self.field}")
+            else:
+                object.__setattr__(self, "name", Temporary(None).name)
         else:
             object.__setattr__(self, "name", f"{self.structVar.name}.{self.field}")
 
@@ -650,10 +654,13 @@ class StructFieldReference(ASTNode):
             fieldType = struct.fields[self.field].completeType
             symEntry = SymEntry(fieldType, self.name)
             if isinstance(structAddr.impl, PointerAddress):
-                fieldPointer = context.createTemporary(PointerType(fieldType))
                 # TODO don't add if offset is zero
-                irAdd = IRAdd(fieldPointer, structAddr.impl.pointer, Constant("int", offset))
-                context.blockFactory.addIR(irAdd)
+                if isinstance(structAddr.impl.pointer, Constant):
+                    fieldPointer = Constant(PointerType(fieldType), structAddr.impl.pointer.value + offset)
+                else:
+                    fieldPointer = context.createTemporary(PointerType(fieldType))
+                    irAdd = IRAdd(fieldPointer, structAddr.impl.pointer, Constant("int", offset))
+                    context.blockFactory.addIR(irAdd)
                 symEntry.impl = PointerAddress(fieldPointer)
             else:
                 symEntry.impl = structAddr.impl.cloneWithOffset(offset)

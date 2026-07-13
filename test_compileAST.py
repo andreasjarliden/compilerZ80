@@ -348,6 +348,19 @@ class TestErrorHandling(unittest.TestCase):
         self.assertIsInstance(irs[3], IRAssignToPointer)
         self.assertTrue(irs[2].resultAddr, irs[3].lhsAddr)
 
+    def test_structPointer_anonymousStruct(self):
+        blocks = compileToBlocks("""
+            struct myStruct { int a; char b; };
+            char main() {
+                ((struct myStruct*)0)->b = 42;
+            }""")
+        irs = blocks["main_0000"].statements
+        pprint(irs)
+        self.assertIsInstance(irs[1], IRDereference)
+        self.assertIsInstance(irs[2], IRAssignToPointer)
+        self.assertEqual(irs[2].lhsAddr, Constant(PointerType("char"), 2))
+        self.assertEqual(irs[2].rhsAddr, Constant("char", 42))
+
     def test_structPointer_repeatedFieldReference(self):
         blocks = compileToBlocks("""
             struct myStruct { char a; };
