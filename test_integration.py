@@ -330,7 +330,7 @@ class TestIntegration(unittest.TestCase):
         #   ld (hl), 42
         self.assertRegex(output, r"ld\t(bc|de|hl), 1\n\tadd\thl, (bc|de|hl)\n\tld\t\(hl\), 42")
 
-    def test_structPointerDereferenceAnonymous(self):
+    def test_structPointerDereferenceAnonymousAndConstant(self):
         output = compile("""
             struct myStruct { int a; char b; };
             char main() {
@@ -339,6 +339,15 @@ class TestIntegration(unittest.TestCase):
         # ld bc/de/hl, 2
         # ld (bc/de/hl), 42
         self.assertRegex(output, r"ld\t(bc|de|hl), 2\n\tld\t\((bc|de|hl)\), 42")
+
+    def test_structPointerAddressOfConstantAddress(self):
+        output = compile("""
+            struct myStruct { int a; char b; };
+            char main() {
+                char* fieldPtr = &((struct myStruct*)0)->b;
+            }""")
+        # ld bc/de/hl, 2
+        self.assertRegex(output, r"; Assign to fieldPtr [^\n]*\n\tld\t(bc|de|hl), 2")
 
     def test_structPointerDereferenceArrowSyntax(self):
         output = compile("""

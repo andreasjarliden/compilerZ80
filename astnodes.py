@@ -391,6 +391,8 @@ class AddressOf(ASTNode):
 
     def visit(self, context):
         exprAddr = self.expr.visit(context)
+        if isinstance(exprAddr.impl, PointerAddress) and isinstance(exprAddr.impl.pointer, Constant):
+            return exprAddr.impl.pointer
         irAddressOf = IRAddressOf(exprAddr, context.createTemporary(PointerType(exprAddr.completeType)))
         context.blockFactory.addIR(irAddressOf)
         return irAddressOf.resultAddr
