@@ -669,6 +669,21 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(irs[0].rhsAddr, Constant(PointerType("void"), 1))
 
 
+    #
+    # Comparisons
+    #
 
+    def test_comparison_typeMismatch(self):
+        with self.assertRaises(CompileError) as cts:
+            compileToBlocks("""
+            char main() {
+                char* cp;
+                char c;
+                if (c == cp) {
+                    c = 42;
+                }
+            }""");
+        self.assertEqual(cts.exception.message, "Comparisson between char and char*")
+        self.assertEqual(cts.exception.location.line, 5)
 
 

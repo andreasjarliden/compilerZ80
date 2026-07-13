@@ -599,7 +599,12 @@ class Relation(ASTNode):
     rhs : Any
 
     def visit(self, context):
-        return (self.lhs.visit(context), self.rhs.visit(context))
+        lhsAddr = self.lhs.visit(context)
+        rhsAddr = self.rhs.visit(context)
+        if ((isinstance(lhsAddr.completeType, PointerType) and not isinstance(rhsAddr.completeType, PointerType)) or 
+            (not isinstance(lhsAddr.completeType, PointerType) and isinstance(rhsAddr.completeType, PointerType))):
+            raise CompileError(f"Comparisson between {lhsAddr.completeType} and {rhsAddr.completeType}", self.location)
+        return (lhsAddr, rhsAddr)
 
 @dataclass(frozen=True)
 class TypeDef(ASTNode):
