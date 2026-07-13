@@ -6,7 +6,7 @@ from symbolTable import stackFrameSize
 
 def dropCast(o):
     if isinstance(o, CastSymEntry):
-        return o.symEntry
+        return dropCast(o.symEntry)
     else:
         return o
 
