@@ -340,7 +340,6 @@ class TestErrorHandling(unittest.TestCase):
                 s->b = 1;
             }""")
         irs = blocks["main_0000"].statements
-        pprint(irs)
         self.assertIsInstance(irs[1], IRDereference)
         self.assertIsInstance(irs[2], IRAdd)
         self.assertTrue(irs[1].resultAddr, irs[2].lhsAddr)

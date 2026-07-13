@@ -114,6 +114,17 @@ class GlobalAddress(ValueAddress):
         return GlobalAddress(self.name, self.offset + offset)
 
 
+class PointerAddress(ValueAddress):
+    def __init__(self, p : ValueAddress):
+        self.pointer = p
+        pass
+
+    def __repr__(self):
+        return f"PointerAddress {self.pointer}"
+
+
+# TODO what is the class? Is it really a ValueAddress?  Is it the value of the
+# label and not what is stored at the label?
 class GlobalLabel(ValueAddress):
     def __init__(self, name):
         self.name = name
@@ -124,14 +135,6 @@ class GlobalLabel(ValueAddress):
     def codeArg(self):
         return f"{self.name}"
 
-
-class PointerAddress(ValueAddress):
-    def __init__(self, p : ValueAddress):
-        self.pointer = p
-        pass
-
-    def __repr__(self):
-        return f"PointerAddress {self.pointer}"
 
 class TypeAddress:
     def __init__(self, completeType):
