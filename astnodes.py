@@ -128,6 +128,10 @@ class Argument(ASTNode):
         else:
             return self.completeType
 
+@dataclass(frozen=True)
+class VarArg(ASTNode):
+    pass
+
 
 @dataclass(frozen=True)
 class Function(ASTNode):
@@ -139,6 +143,14 @@ class FunctionDeclaration(Function):
     type : str
     name : str
     arguments : tuple[Argument] = field(default_factory=tuple)
+    isVarArg : bool = field(init=False)
+
+    def __post_init__(self):
+        if len(self.arguments) > 0 and isinstance(self.arguments[-1], VarArg):
+            object.__setattr__(self, "arguments", self.arguments[0:-1])
+            object.__setattr__(self, "isVarArg", True)
+        else:
+            object.__setattr__(self, "isVarArg", False)
 
     def visit(self, context):
         verifyType(self.type, self.location, context.typeEnv)
@@ -155,6 +167,12 @@ class FunctionDefinition(Function):
         self.name = name
         self.statements = statements
         self.arguments = arguments
+
+        if len(arguments) > 0 and isinstance(arguments[-1], VarArg):
+            object.__setattr__(self, "arguments", arguments[0:-1])
+            self.isVarArg = True
+        else:
+            self.isVarArg = False
 
     def __repr__(self):
         return "FunctionDefinition " + self.name + " with statements " + str(self.statements)
@@ -436,10 +454,19 @@ class FunctionCall(MutableASTNode):
             raise CompileError(f"Attempting to call unknown function {self.name}", self.location)
         if not isinstance(fun, Function):
             raise CompileError(f"Attempting to call non-function {self.name}", self.location)
-        if len(fun.arguments) != len(self.arguments):
-            raise CompileError(f"Attempting to call function {self.name} with {len(self.arguments)} arguments but expected {len(fun.arguments)}", self.location)
-        for fa, a in zip(reversed(fun.arguments), reversed(self.arguments)):
-            # exprAddress = a.visit(context)
+        numVarArgs = 0
+        if fun.isVarArg:
+            numVarArgs = len(self.arguments) - len(fun.arguments)
+            if numVarArgs < 0:
+                raise CompileError(f"Attempting to call function {self.name} with {len(self.arguments)} arguments but expected {len(fun.arguments)}", self.location)
+        else:
+            if len(fun.arguments) != len(self.arguments):
+                raise CompileError(f"Attempting to call function {self.name} with {len(self.arguments)} arguments but expected {len(fun.arguments)}", self.location)
+        numRegularArgs = len(fun.arguments)
+        for a in reversed(self.arguments[numRegularArgs:len(self.arguments)]):
+            exprAddress = a.visit(context)
+            context.blockFactory.addIR(IRArgument(exprAddress))
+        for fa, a in zip(reversed(fun.arguments), reversed(self.arguments[0:numRegularArgs])):
             exprAddress = promoteIfNeededTo(a.visit(context), fa.type, fa.completeType, context, f"argument {fa.name}", self.location)
             context.blockFactory.addIR(IRArgument(exprAddress))
         t = simpleTypeForComplexType(fun.type)

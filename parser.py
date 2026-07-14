@@ -290,6 +290,10 @@ def p_arg_list_multiple(p):
     'arg_list : arg_list COMMA arg'
     p[0] = p[1] + (p[3],)
 
+def p_arg_list_vararg(p):
+    'arg_list : arg_list COMMA ELLIPSIS'
+    p[0] = p[1] + (VarArg(),)
+
 def p_arg(p):
     'arg : type ID'
     p[0] = Argument(p[1], p[2])

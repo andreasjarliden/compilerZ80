@@ -194,10 +194,21 @@ class TestParser(unittest.TestCase):
         blocks = blockFactory.blocks()
         block = blocks["foo_0000"]
         self.assertIsInstance(ast[0], FunctionDefinition)
+        self.assertFalse(ast[0].isVarArg)
+        self.assertFalse(ast[0].isVarArg)
         self.assertEqual(ast[0].frameSize, 0)
         self.assertTrue(isinstance(block.statements[0], IRDefFun))
         self.assertEqual(block.statements[1], IRReturn("char", Constant("char", 0), "foo"))
         self.assertTrue(isinstance(block.statements[2], IRFunExit))
+
+    def test_function_varArg(self):
+        ast = parser.parse("void foo(int arg1, ...) { return 0; }")
+        blockFactory = BlockFactory()
+        context = ASTContext(blockFactory)
+        symbolTable = ast[0].visit(context)
+        self.assertIsInstance(ast[0], FunctionDefinition)
+        self.assertTrue(ast[0].isVarArg)
+        self.assertEqual(symbolTable["arg1"].impl.offset, +4) # First int arg at ix+4, ix+5
 
     def test_function_stackFrame(self):
         ast = parser.parse("char foo(char arg) { int i; }")
@@ -208,6 +219,7 @@ class TestParser(unittest.TestCase):
         block = blocks["foo_0000"]
         self.assertEqual(ast[0].frameSize, 2)
         self.assertTrue(isinstance(block.statements[0], IRDefFun))
+        self.assertFalse(ast[0].isVarArg)
         self.assertTrue(isinstance(block.statements[1], IRFunExit))
 
     def test_function_stackLayout_byteArgs(self):

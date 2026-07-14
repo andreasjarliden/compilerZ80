@@ -180,6 +180,20 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(ctx.exception.message, "Unknown type chur") 
         self.assertEqual(ctx.exception.location.line, 1) 
 
+    def test_callingVarArgFunction(self):
+        blocks = compileToBlocks("""
+            void printf(char* format, ...);
+            void main() {
+                printf("foo %d", (int)42);
+            }""")
+        irs = blocks["main_0000"].statements
+        pprint(irs)
+        self.assertIsInstance(irs[0], IRDefFun)
+        self.assertIsInstance(irs[1], IRArgument)
+        self.assertEqual(irs[1].lhsAddr.completeType, "int")
+        self.assertIsInstance(irs[2], IRArgument)
+        self.assertEqual(irs[2].lhsAddr.completeType, PointerType("char"))
+        self.assertIsInstance(irs[3], IRFunCall)
 
     #
     # Variable reference

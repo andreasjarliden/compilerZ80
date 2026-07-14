@@ -39,6 +39,7 @@ tokens = [
         'AMPERSAND',
         'PERIOD',
         'ARROW',
+        'ELLIPSIS',
         ] + list(reserved.values())
 
 t_NUMBER = r'[0-9]+'
@@ -64,6 +65,7 @@ t_STAR = r'\*'
 t_AMPERSAND = r'&'
 t_PERIOD = r'\.'
 t_ARROW = r'->'
+t_ELLIPSIS = r'\.\.\.'
 
 def t_ID(t):
     r'[a-zA-Z_][0-9a-zA-Z_]*'
