@@ -28,6 +28,31 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA = registerAllocator.Z80RegisterAllocator(self.asmWriter)
 
     #
+    # drops cast
+    #
+    def test_dropCast(self):
+        # res, lhs & rhs all drop any CastSymEntry to the direct SymEntry
+        symEntry = SymEntry("char", "foo");
+        castEntry = CastSymEntry(symEntry, "int")
+        irdummy = ir.IR(castEntry, castEntry, castEntry)
+        self.assertEqual(irdummy.resultAddr, symEntry)
+        self.assertEqual(irdummy.lhsAddr, symEntry)
+        self.assertEqual(irdummy.rhsAddr, symEntry)
+
+        # Drops multiple casts
+        multipleCast = CastSymEntry(castEntry, "char")
+        irdummy = ir.IR(castEntry, castEntry, castEntry)
+        self.assertEqual(irdummy.resultAddr, symEntry)
+
+        # Drops cast on pointers
+        pointerSymEntry = SymEntry(PointerType("char"), "ptr")
+        castPointerSymEntry = CastSymEntry(pointerSymEntry, PointerType("int"))
+        symEntry.impl = PointerAddress(castPointerSymEntry)
+        irdummy = ir.IR(symEntry, symEntry, symEntry)
+        self.assertEqual(irdummy.resultAddr.impl.pointer, pointerSymEntry)
+
+
+    #
     # loadRhs8
     # 
     def test_loadRhs8_loadingPointerAddress(self):

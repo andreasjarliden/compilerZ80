@@ -5,6 +5,8 @@ from asmWriter import *
 from symbolTable import stackFrameSize
 
 def dropCast(o):
+    if o and isinstance(o, SymEntry) and isinstance(o.impl, PointerAddress):
+        o.impl.pointer = dropCast(o.impl.pointer)
     if isinstance(o, CastSymEntry):
         return dropCast(o.symEntry)
     else:
