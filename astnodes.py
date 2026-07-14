@@ -402,6 +402,7 @@ class VariableAssignment(ASTNode):
             context.blockFactory.addIR(IRAssignToPointer(lvalue.impl.pointer, rhsAddr))
         else:
             context.blockFactory.addIR(IRAssign(lvalue, rhsAddr))
+        return lvalue
 
 @dataclass(frozen=True)
 class AddressOf(ASTNode):

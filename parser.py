@@ -26,6 +26,7 @@ def p_statement_list(p):
 def p_statement(p):
     ''' 
     statement : expression SEMI
+              | value_expression SEMI
               | function_declaration
               | function_definition
               | if_expression
@@ -40,13 +41,20 @@ def p_expression(p):
                | function_expression
                | struct_definition_expression
                | var_def_expression
-               | var_assign_expression
     '''
     p[0] = p[1]
 
 def p_value_expression(p):
-    'value_expression : comparisson'
+    'value_expression : assignment'
     p[0] = p[1]
+
+def p_assignment_single(p):
+    'assignment : comparisson'
+    p[0] = p[1]
+
+def p_assignment_regular(p):
+    'assignment : assignment ASSIGN comparisson'
+    p[0] = VariableAssignment(p[1], p[3], location=loc(p, 2))
 
 def p_comparisson_single(p):
     'comparisson : bitwise'
@@ -205,10 +213,6 @@ def p_pointers_more(p):
     '''pointers : pointers STAR
     '''
     p[0] = p[1] + 1
-
-def p_variable_assignment_expression(p):
-    'var_assign_expression : value_expression ASSIGN value_expression'
-    p[0] = VariableAssignment(p[1], p[3], location=loc(p, 2))
 
 def p_return_expression(p):
     'return_expression : RETURN value_expression'

@@ -363,4 +363,3 @@ class TestIntegration(unittest.TestCase):
         #   add hl, 1
         #   ld (hl), 42
         self.assertRegex(output, r"ld\t(bc|de|hl), 1\n\tadd\thl, (bc|de|hl)\n\tld\t\(hl\), 42")
-

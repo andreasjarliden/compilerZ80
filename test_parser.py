@@ -41,6 +41,12 @@ class TestParser(unittest.TestCase):
                          VariableAssignment(Variable("a"),
                                             Constant("char", 42)))
 
+    def test_assignmentAsExpression(self):
+        ast = parser.parse("*(a=42);");
+        self.assertEqual(ast[0],
+                         Dereference(VariableAssignment(Variable("a"),
+                                                        Constant("char", 42))))
+
     def test_derefAssignment(self):
         ast = parser.parse("*a=42;");
         self.assertEqual(ast[0],

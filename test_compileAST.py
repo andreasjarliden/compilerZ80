@@ -455,12 +455,24 @@ class TestErrorHandling(unittest.TestCase):
     # Assignments
     #
 
+    def test_assignmentAsExpression(self):
+        blocks = compileToBlocks("""
+            void main() {
+                int* a;
+                int b = *(a = (int*)42);
+            }""")
+        irs = blocks["main_0000"].statements
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertIsInstance(irs[2], IRDereference)
+        self.assertEqual(irs[2].resultAddr.impl.pointer, irs[1].resultAddr)
+        self.assertIsInstance(irs[3], IRAssign)
+        self.assertEqual(irs[3].lhsAddr, irs[2].resultAddr)
+
     def test_assing_nonLValue(self):
         with self.assertRaises(CompileError) as cts:
             compileBlockToIR("""1 = 2;""")
         self.assertIn("Can't assign to non-lvalue", cts.exception.message)
         self.assertEqual(cts.exception.location.line, 1)
-
 
     def test_conflictingTypes(self):
         with self.assertRaises(CompileError) as cts:
