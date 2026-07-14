@@ -406,8 +406,9 @@ class IRAddressOf(IR):
             # ra.spillName(self.lhsAddr.name)
             # Compute pointer based on ix and offset
             offset = self.exprAddr.impl.offset
-            negOffset = 65536+offset
-            negHexOffset = f'{negOffset:05x}h'
+            if offset < 0:
+                offset = 65536+offset
+            hexOffset = f'{offset:05x}h'
             # Might as well require HL
             regX = ra.getRegisterForSymbol(self.resultAddr, { "hl" })
             regT = ra.getTemporaryRegister({ "bc", "de" })
@@ -420,7 +421,7 @@ class IRAddressOf(IR):
             asmWriter.write(f'\tpush\tix\n')
             asmWriter.write(f'\tpop\t{regX}\n')
             # TODO Optimize for small values with INC / DEC
-            asmWriter.write(f'\tld\t{regT}, {negHexOffset}\n')
+            asmWriter.write(f'\tld\t{regT}, {hexOffset}\n')
             asmWriter.write(f'\tadd\t{regX}, {regT}\n')
             ra.loadedSymbolInRegister(self.resultAddr, regX)
         elif isinstance(self.exprAddr.impl, GlobalAddress):

@@ -540,6 +540,32 @@ class TestIR(unittest.TestCase):
         print(output)
         self.assertEqual(output, "\tor\ta\n\tsbc\thl, bc\n\tjp\tnz, skipLabel\n")
 
+    #
+    # IRAddressOf
+    #
+    def test_IRAddressOf_localVariable(self):
+        result = SymEntry(PointerType("char"), "res")
+        result.impl = StackAddress(-2)
+        arg = SymEntry("char", "arg")
+        # Rightmost argument (16-bit) is at ix+5, ix+4
+        arg.impl = StackAddress(-4) 
+        ira = ir.IRAddressOf(arg, result)
+        ira.genCode(self.asmWriter)
+
+        output = self.asmWriter.output()
+        self.assertRegex(output, "push\tix\n\tpop\thl\n\tld\t(bc|de), 0fffch\n\tadd\thl, (bc|de)")
+
+    def test_IRAddressOf_stackArgument(self):
+        result = SymEntry(PointerType("char"), "res")
+        result.impl = StackAddress(-1)
+        arg = SymEntry("char", "arg")
+        # Rightmost argument (16-bit) is at ix+5, ix+4
+        arg.impl = StackAddress(4) 
+        ira = ir.IRAddressOf(arg, result)
+        ira.genCode(self.asmWriter)
+
+        output = self.asmWriter.output()
+        self.assertRegex(output, "push\tix\n\tpop\thl\n\tld\t(bc|de), 00004h\n\tadd\thl, (bc|de)")
 
 
 
