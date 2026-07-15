@@ -328,7 +328,11 @@ class Z80RegisterAllocator(RegisterAllocator):
             return regX
         elif isinstance(address.impl, PointerAddress):
             regY = self.isInRegister(address.impl.pointer, allPointerRegisters)
-            regX = self.decideRegisterForSymbol(address, possibleRegisters)
+            if regY != "hl" and address.type == "char":
+                # If the pointer is in bc or de, we can only load it into a
+                regX = "a"
+            else:
+                regX = self.decideRegisterForSymbol(address, possibleRegisters)
             if not regY:
                 # Don't use the register we will load to
                 regY = self.getRegisterForSymbol(address.impl.pointer, allPointerRegisters - { regX })

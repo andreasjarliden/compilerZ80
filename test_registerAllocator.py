@@ -414,6 +414,21 @@ class TestZ80RA(unittest.TestCase):
         output = self.ra.asmFile.read()
         self.assertEqual("\tld\ta, (de)\n", output)
 
+    #  doLoadInRegister8
+    def test_doLoadInRegister8(self):
+        ptr = SymEntry(PointerType("char"), "ptr")
+        foo = SymEntry("char", "foo")
+        foo.impl = PointerAddress(ptr)
+
+        # Force an attempt to ld r, (bc/de), when r is not a which is not
+        # supported.
+        self.ra.loadedSymbolInRegister(ptr, "de")
+        self.ra.doLoadInRegister8(foo, { 'b', 'c', 'd', 'e' });
+
+        self.ra.asmFile.seek(0)
+        output = self.ra.asmFile.read()
+        self.assertEqual("\tld\ta, (de)\n", output)
+
     # loadInHL
 
     def test_loadInHL_fromPointerInRegister(self):
