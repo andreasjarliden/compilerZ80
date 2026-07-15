@@ -230,6 +230,77 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(cts.exception.location.line, 6)
 
     #
+    # Continue
+    #
+    def test_while_continue(self):
+        blocks = compileToBlocks("""
+            void main() {
+                char a;
+                while(1) {
+                    continue;
+                    a = 42; 
+                }
+            }""")
+        pprint(blocks)
+        irs = blocks["main_0001"].statements
+        self.assertIsInstance(irs[0], IRLabel)
+        loopLabel = irs[0].label
+        irs = blocks["main_0002"].statements
+        self.assertIsInstance(irs[0], IRJump)
+        self.assertEqual(irs[0].label, loopLabel)
+        self.assertIsInstance(irs[1], IRAssign)
+
+    def test_nestedWhile_continue(self):
+        blocks = compileToBlocks("""
+            void main() {
+                char a;
+                while(1) {
+                    while (2) {
+                        continue;
+                        a=24;
+                    }
+                    continue;
+                    a = 42; 
+                }
+            }""")
+        pprint(blocks)
+        irs = blocks["main_0001"].statements
+        self.assertIsInstance(irs[0], IRLabel)
+        outerLoopLabel = irs[0].label
+        irs = blocks["main_0003"].statements
+        self.assertIsInstance(irs[0], IRLabel)
+        innerLoopLabel = irs[0].label
+
+        # Inner block
+        irs = blocks["main_0004"].statements
+        self.assertIsInstance(irs[0], IRJump)
+        self.assertEqual(irs[0].label, innerLoopLabel)
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertEqual(irs[1].exprAddr, Constant("char", 24))
+
+        # Outer block
+        irs = blocks["main_0005"].statements
+        self.assertIsInstance(irs[0], IRLabel)
+        self.assertIsInstance(irs[1], IRJump)
+        self.assertEqual(irs[1].label, outerLoopLabel)
+        self.assertIsInstance(irs[2], IRAssign)
+        self.assertEqual(irs[2].exprAddr, Constant("char", 42))
+
+
+    def test_while_continue(self):
+        with self.assertRaises(CompileError) as cts:
+          compileToBlocks("""
+            void main() {
+                char a;
+                while(1) {
+                    a = 42; 
+                }
+                continue;
+            }""")
+        self.assertEqual(cts.exception.message, "Continue outside loop")
+        self.assertEqual(cts.exception.location.line, 7)
+
+    #
     # Variable definition
     #
     def test_vardef_unknownType(self):

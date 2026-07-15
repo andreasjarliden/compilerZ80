@@ -11,7 +11,8 @@ reserved = {
         'if': 'IF',
         'while': 'WHILE',
         'struct': 'STRUCT',
-        'typedef': 'TYPEDEF'
+        'typedef': 'TYPEDEF',
+        'continue': 'CONTINUE'
         }
 
 tokens = [
@@ -66,6 +67,7 @@ t_AMPERSAND = r'&'
 t_PERIOD = r'\.'
 t_ARROW = r'->'
 t_ELLIPSIS = r'\.\.\.'
+t_CONTINUE = r'continue'
 
 def t_ID(t):
     r'[a-zA-Z_][0-9a-zA-Z_]*'

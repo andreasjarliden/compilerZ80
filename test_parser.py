@@ -355,4 +355,11 @@ class TestParser(unittest.TestCase):
                                                     Variable("b")),
                                          Variable("c"))))
 
+    #
+    # Control flow
+    #
+    def test_continue(self):
+        ast = parser.parse("continue;")
+        self.assertEqual(ast[0], Continue())
+
 

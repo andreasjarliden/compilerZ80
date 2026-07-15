@@ -32,6 +32,7 @@ def p_statement(p):
               | if_expression
               | while_expression
               | typedef_statement SEMI
+              | continue SEMI
     '''
     p[0] = p[1]
 
@@ -180,6 +181,10 @@ def p_variable_definition_expression_value(p):
 def p_typedef(p):
     'typedef_statement : TYPEDEF type ID'
     p[0] = TypeDef(p[3], p[2], location=loc(p, 1))
+
+def p_continue(p):
+    'continue : CONTINUE'
+    p[0] = Continue(location=loc(p, 1))
 
 def p_type(p):
     '''type : base_type pointers

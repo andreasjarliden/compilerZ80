@@ -34,6 +34,7 @@ class ASTContext:
     symbolTable : SymbolTable = field(default_factory=SymbolTable)
     typeEnv : Any = field(default_factory=TypeEnv)
     functionName : str = None
+    continueLabel : str = None
     dataSegment : dict[SymEntry, Any] = field(default_factory=dict)
     stringTable : StringTable = field(default_factory=StringTable)
     stackOffset : int = field(default = 0, init=False)
@@ -248,9 +249,11 @@ class While(ASTNode):
         context.blockFactory.addIR(IRSpillAll())
         context.newSubBlock()
         loopLabel = createLabel(context)
+        oldContinueLabel = context.continueLabel
+        context.continueLabel = loopLabel
         context.blockFactory.addIR(IRLabel(loopLabel))
         skipLabel = createLabel(context)
-        if isinstance(self.expr, Variable):
+        if isinstance(self.expr, Variable) or isinstance(self.expr, Constant):
             exprAddr = self.expr.visit(context)
             ir = IRIfVariable(exprAddr, skipLabel)
         elif isinstance(self.expr, Relation):
@@ -268,6 +271,7 @@ class While(ASTNode):
         context.newSubBlock()
         context.blockFactory.addIR(IRLabel(skipLabel))
         context.popFrame()
+        context.continueLabel = oldContinueLabel
 
 VALID_TYPES = { 'void', 'char', 'int' }
 def verifyType(t, location, typeEnv):
@@ -712,4 +716,13 @@ class StructFieldReference(ASTNode):
                 irDeref = IRDereference(fieldPointer, None)
                 context.blockFactory.addIR(irDeref)
         return context.symbolTable.lookUp(self.name)
+
+class Continue(ASTNode):
+    def visit(self, context):
+        if not context.continueLabel:
+            raise CompileError(f"Continue outside loop", self.location)
+
+        ir = IRJump(context.continueLabel)
+        context.blockFactory.addIR(ir)
+
 
