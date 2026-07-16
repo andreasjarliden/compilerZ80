@@ -9,6 +9,7 @@ from pprint import pformat
 
 RA = None
 ALL_REGISTERS = {'a', 'b', 'c', 'd', 'e', 'h', 'l', 'bc', 'de', 'hl'}
+ALL_8BIT_REGISTERS = {'a', 'b', 'c', 'd', 'e', 'h', 'l' }
 
 class RegisterAllocator:
     def __init__(self):
@@ -253,39 +254,38 @@ class RegisterAllocator:
 
 
 class Z80RegisterAllocator(RegisterAllocator):
-    def __init__(self, asmFile):
+    def __init__(self, asmWriter):
         super().__init__()
-        self.asmFile = asmFile
-        self.asmWriter = AsmWriter(asmFile)
+        self.asmWriter = asmWriter
 
     def doStoreToSymbol(self, r, s, onlyStore=False):
         if onlyStore:
-            self.asmFile.write(f"; store register {r} to var {s.name}\n")
+            self.asmWriter.write(f"; store register {r} to var {s.name}\n")
         else:
-            self.asmFile.write(f"; spill register {r} to var {s.name}\n")
+            self.asmWriter.write(f"; spill register {r} to var {s.name}\n")
         if isinstance(s.impl, StackAddress):
             if s.type == 'char':
-                self.asmFile.write(f"\tld\t{s.impl.codeArg()}, {r}\n")
+                self.asmWriter.write(f"\tld\t{s.impl.codeArg()}, {r}\n")
             if s.type == 'int':
-                self.asmFile.write(f"\tld\t{s.impl.codeArg(+1)}, {r[0]}\n")
-                self.asmFile.write(f"\tld\t{s.impl.codeArg()}, {r[1]}\n")
+                self.asmWriter.write(f"\tld\t{s.impl.codeArg(+1)}, {r[0]}\n")
+                self.asmWriter.write(f"\tld\t{s.impl.codeArg()}, {r[1]}\n")
         elif isinstance(s.impl, GlobalAddress):
             if s.type == 'char':
                 if r != "a":
                     self.spillRegister("a")
                     self.asmWriter.loadRegisterWithRegister("a", r)
-                self.asmFile.write(f"\tld\t{s.impl.codeArg()}, a\n")
+                self.asmWriter.write(f"\tld\t{s.impl.codeArg()}, a\n")
             elif s.type == 'int':
-                self.asmFile.write(f"\tld\t{s.impl.codeArg()}, {r}\n")
+                self.asmWriter.write(f"\tld\t{s.impl.codeArg()}, {r}\n")
             else:
                 error()
         elif isinstance(s.impl, PointerAddress):
             pointer = s.impl.pointer
             if s.type == 'char':
-                self.asmFile.write(f"\tld\t({s.name}), {r}\n")
+                self.asmWriter.write(f"\tld\t({s.name}), {r}\n")
             if s.type == 'int':
-                self.asmFile.write(f"\tld\t({pointer+1}), {r[0]}\n")
-                self.asmFile.write(f"\tld\t({pointer}), {r[1]}\n")
+                self.asmWriter.write(f"\tld\t({pointer+1}), {r[0]}\n")
+                self.asmWriter.write(f"\tld\t({pointer}), {r[1]}\n")
         else:
             error()
 
@@ -293,21 +293,21 @@ class Z80RegisterAllocator(RegisterAllocator):
     # E.g. ld a, (de)
     def writeAsmLoadRegisterFromPointer(self, r, rp, pointer):
         if len(r) == 1:
-            self.asmFile.write(f'\tld\t{r}, ({rp})\n')
+            self.asmWriter.write(f'\tld\t{r}, ({rp})\n')
         elif len(r) == 2:
             if rp == "hl":
-                self.asmFile.write(f'\tld\t{r[1]}, ({rp})\n')
-                self.asmFile.write(f'\tinc\t{rp}\n')
-                self.asmFile.write(f'\tld\t{r[0]}, ({rp})\n')
-                self.asmFile.write(f'\tdec\t{rp}\n')
+                self.asmWriter.write(f'\tld\t{r[1]}, ({rp})\n')
+                self.asmWriter.write(f'\tinc\t{rp}\n')
+                self.asmWriter.write(f'\tld\t{r[0]}, ({rp})\n')
+                self.asmWriter.write(f'\tdec\t{rp}\n')
             else:
                 # Only a can be loaded from (bc/de)
-                self.asmFile.write(f'\tld\ta, ({rp})\n')
-                self.asmFile.write(f'\tld\t{r[1]}, a\n')
-                self.asmFile.write(f'\tinc\t{rp}\n')
-                self.asmFile.write(f'\tld\ta, ({rp})\n')
-                self.asmFile.write(f'\tld\t{r[0]}, a\n')
-                self.asmFile.write(f'\tdec\t{rp}\n')
+                self.asmWriter.write(f'\tld\ta, ({rp})\n')
+                self.asmWriter.write(f'\tld\t{r[1]}, a\n')
+                self.asmWriter.write(f'\tinc\t{rp}\n')
+                self.asmWriter.write(f'\tld\ta, ({rp})\n')
+                self.asmWriter.write(f'\tld\t{r[0]}, a\n')
+                self.asmWriter.write(f'\tdec\t{rp}\n')
 
     def loadInA(self, address):
         return self.doLoadInRegister8(address, { "a" } )
@@ -324,7 +324,7 @@ class Z80RegisterAllocator(RegisterAllocator):
     def doLoadInRegister(self, address, possibleRegisters, allRegisters, allPointerRegisters):
         if isinstance(address, Constant):
             regX = self.getTemporaryRegister(possibleRegisters)
-            self.asmFile.write(f'\tld\t{regX}, {address.value}\n')
+            self.asmWriter.write(f'\tld\t{regX}, {address.value}\n')
             return regX
         elif isinstance(address.impl, PointerAddress):
             regY = self.isInRegister(address.impl.pointer, allPointerRegisters)

@@ -58,7 +58,8 @@ class ASTContext:
 
     def addLocal(self, symbol : SymEntry):
         # stack pointer points to last byte written, so first variable starts at one byte below SP
-        self.stackOffset -= self.typeEnv.sizeOfType(symbol.type)
+        size = self.typeEnv.sizeOfType(symbol.type)
+        self.stackOffset -= size;
         symbol.impl = StackAddress(self.stackOffset)
 
     def pushFrame(self):
@@ -206,7 +207,7 @@ class FunctionDefinition(Function):
         for s in self.statements:
             s.visit(context)
         # TODO mutable state
-        self.frameSize = stackFrameSize(symbolTable)
+        self.frameSize = -context.stackOffset;
         context.blockFactory.addIR(IRFunExit(self))
         context.exitBlock()
         context.popFrame()

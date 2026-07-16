@@ -254,7 +254,8 @@ class TestZ80RA(unittest.TestCase):
         self.bar.impl = StackAddress(-11)
         self.bar16 = SymEntry("char", "bar16")
         self.bar16.impl = StackAddress(-2)
-        self.ra = Z80RegisterAllocator(StringIO())
+        self.asmWriter = StringAsmWriter()
+        self.ra = Z80RegisterAllocator(self.asmWriter)
         self.ra.currentInstruction = IR()
         self.ra.currentInstruction.live = { self.foo: True, self.bar: True, self.ptr: True }
 
@@ -262,24 +263,24 @@ class TestZ80RA(unittest.TestCase):
     def test_spill(self):
         self.ra.assignedToSymbolWithRegister(self.foo, "a")
         r = self.ra.getRegisterForSymbol(self.bar, { "a" })
+        output = self.asmWriter.output()
         self.assertEqual(r, "a")
-        self.ra.asmFile.seek(0)
-        self.assertIn("\tld\t(ix + 0), a\n", self.ra.asmFile.read())
+        self.assertIn("\tld\t(ix + 0), a\n", output)
 
     def test_spillRegisterPair(self):
         self.ra.assignedToSymbolWithRegister(self.foo, "b")
         r = self.ra.getRegisterForSymbol(self.bar16, { "bc" })
+        output = self.asmWriter.output()
         self.assertEqual(r, "bc")
-        self.ra.asmFile.seek(0)
-        self.assertIn("\tld\t(ix + 0), b\n", self.ra.asmFile.read())
+        self.assertIn("\tld\t(ix + 0), b\n", output)
         self.assertEqual(self.ra.registers["b"], set())
 
     def test_spillRegisterPair2(self):
         self.ra.assignedToSymbolWithRegister(self.foo, "b")
         r = self.ra.getRegisterForSymbol(self.bar16, { "bc" })
+        output = self.asmWriter.output()
         self.assertEqual(r, "bc")
-        self.ra.asmFile.seek(0)
-        self.assertIn("\tld\t(ix + 0), b\n", self.ra.asmFile.read())
+        self.assertIn("\tld\t(ix + 0), b\n", output)
         self.assertEqual(self.ra.registers["b"], set())
 
     # More complicated as we might have to use a to spill a different register
@@ -292,8 +293,7 @@ class TestZ80RA(unittest.TestCase):
 
         self.ra.spillRegister("b")
 
-        self.ra.asmFile.seek(0)
-        output = self.ra.asmFile.read()
+        output = self.asmWriter.output()
         self.assertIn("ld\t(ix + 0), a", output) # spilling A
         self.assertIn("ld\ta, b", output) # copying b to A
         self.assertIn("ld\t(GLOBAL), a", output) # spilling B via A
@@ -308,8 +308,7 @@ class TestZ80RA(unittest.TestCase):
 
         self.ra.spillRegister("bc")
 
-        self.ra.asmFile.seek(0)
-        output = self.ra.asmFile.read()
+        output = self.asmWriter.output()
         self.assertIn("ld\t(GLOBAL), bc", output)
 
     # Check the special case where we are spilling reg a directly
@@ -321,8 +320,7 @@ class TestZ80RA(unittest.TestCase):
 
         self.ra.spillRegister("a")
 
-        self.ra.asmFile.seek(0)
-        output = self.ra.asmFile.read()
+        output = self.asmWriter.output()
         self.assertIn("ld\t(GLOBAL), a", output) # spilling B via A
 
     #
@@ -332,33 +330,36 @@ class TestZ80RA(unittest.TestCase):
     def test_loadInA_alreadyLoaded(self):
         self.ra.loadedSymbolInRegister(self.foo, "a")
         r = self.ra.loadInA(self.foo) 
+
+        output = self.asmWriter.output()
         self.assertEqual(r, "a")
-        self.ra.asmFile.seek(0)
-        self.assertEqual(self.ra.asmFile.read(), "")
+        self.assertEqual(output, "")
 
     def test_loadInA_freeButNotLoaded(self):
         r = self.ra.loadInA(self.foo)
+
+        output = self.asmWriter.output()
         self.assertEqual(r, "a")
-        self.ra.asmFile.seek(0)
-        self.assertEqual(self.ra.asmFile.read(), "\tld\ta, (ix + 0)\n")
+        self.assertEqual(output, "\tld\ta, (ix + 0)\n")
 
     def test_loadInA_loadedInOtherRegister(self):
         self.ra.loadedSymbolInRegister(self.foo, "b")
         r = self.ra.loadInA(self.foo)
+
+        output = self.asmWriter.output()
         self.assertEqual(r, "a")
-        self.ra.asmFile.seek(0)
-        self.assertEqual(self.ra.asmFile.read(), "\tld\ta, b\n")
+        self.assertEqual(output, "\tld\ta, b\n")
     def test_loadInA_fromConstant(self):
         self.ra.loadInA(Constant("char", 42));
 
-        self.ra.asmFile.seek(0)
-        self.assertIn("\tld\ta, 42\n", self.ra.asmFile.read())
+        output = self.asmWriter.output()
+        self.assertIn("\tld\ta, 42\n", output)
 
     def test_loadInA_fromMemory(self):
         self.ra.loadInA(self.foo);
 
-        self.ra.asmFile.seek(0)
-        self.assertIn("\tld\ta, (ix + 0)\n", self.ra.asmFile.read())
+        output = self.asmWriter.output()
+        self.assertIn("\tld\ta, (ix + 0)\n", output)
 
     # already in register b
     def test_loadInA_alreadyInRegister(self):
@@ -366,8 +367,8 @@ class TestZ80RA(unittest.TestCase):
 
         self.ra.loadInA(self.foo);
 
-        self.ra.asmFile.seek(0)
-        self.assertIn("\tld\ta, b\n", self.ra.asmFile.read())
+        output = self.asmWriter.output()
+        self.assertIn("\tld\ta, b\n", output)
         self.assertEqual(self.ra.symbols[self.foo], { self.foo, "a", "b" })
         self.assertEqual(self.ra.registers["a"], { self.foo })
         self.assertEqual(self.ra.registers["b"], { self.foo })
@@ -378,8 +379,8 @@ class TestZ80RA(unittest.TestCase):
 
         self.ra.loadInA(self.foo);
 
-        self.ra.asmFile.seek(0)
-        self.assertIn("\tld\ta, b\n", self.ra.asmFile.read())
+        output = self.asmWriter.output()
+        self.assertIn("\tld\ta, b\n", output)
         self.assertEqual(self.ra.symbols[self.foo], { "a", "b" })
         self.assertEqual(self.ra.registers["a"], { self.foo })
         self.assertEqual(self.ra.registers["b"], { self.foo })
@@ -390,8 +391,8 @@ class TestZ80RA(unittest.TestCase):
 
         self.ra.loadInA(self.foo);
 
-        self.ra.asmFile.seek(0)
-        self.assertEqual("", self.ra.asmFile.read())
+        output = self.asmWriter.output()
+        self.assertEqual("", output)
 
     def test_loadInA_fromPointerInMemory(self):
         # Just to force de to be used
@@ -400,8 +401,7 @@ class TestZ80RA(unittest.TestCase):
 
         self.ra.loadInA(self.derefPtr);
 
-        self.ra.asmFile.seek(0)
-        output = self.ra.asmFile.read()
+        output = self.asmWriter.output()
         self.assertIn("\tld\td, (ix + 3)", output)
         self.assertIn("\tld\te, (ix + 2)", output)
         self.assertIn("\tld\ta, (de)", output)
@@ -410,8 +410,7 @@ class TestZ80RA(unittest.TestCase):
         self.ra.loadedSymbolInRegister(self.ptr, "de")
         self.ra.loadInA(self.derefPtr);
 
-        self.ra.asmFile.seek(0)
-        output = self.ra.asmFile.read()
+        output = self.asmWriter.output()
         self.assertEqual("\tld\ta, (de)\n", output)
 
     #  doLoadInRegister8
@@ -425,8 +424,7 @@ class TestZ80RA(unittest.TestCase):
         self.ra.loadedSymbolInRegister(ptr, "de")
         self.ra.doLoadInRegister8(foo, { 'b', 'c', 'd', 'e' });
 
-        self.ra.asmFile.seek(0)
-        output = self.ra.asmFile.read()
+        output = self.asmWriter.output()
         self.assertEqual("\tld\ta, (de)\n", output)
 
     # loadInHL
@@ -435,9 +433,7 @@ class TestZ80RA(unittest.TestCase):
         self.ra.loadedSymbolInRegister(self.ptr, "de")
         self.ra.loadInHL(self.derefPtr16);
 
-        self.ra.asmFile.seek(0)
-        output = self.ra.asmFile.read()
-        print(output)
+        output = self.asmWriter.output()
         self.assertIn("\tld\ta, (de)\n", output)
         self.assertIn("\tld\tl, a\n", output)
         self.assertIn("\tinc\tde\n", output)
@@ -450,8 +446,7 @@ class TestZ80RA(unittest.TestCase):
         self.ra.currentInstruction.live[self.ptr] = False
         self.ra.loadInHL(self.derefPtr16);
 
-        self.ra.asmFile.seek(0)
-        output = self.ra.asmFile.read()
+        output = self.asmWriter.output()
         self.assertFalse(self.ra.isInRegister("ptr", { "de" }))
         # TODO also check that we don't ruin the register if it also stores a different name
 
@@ -459,8 +454,7 @@ class TestZ80RA(unittest.TestCase):
         self.ra.loadedSymbolInRegister(self.foo, "de")
         self.ra.loadInHL(self.foo);
 
-        self.ra.asmFile.seek(0)
-        output = self.ra.asmFile.read()
+        output = self.asmWriter.output()
         self.assertIn("\tld\th, d\n", output)
         self.assertIn("\tld\tl, e\n", output)
 
@@ -470,8 +464,7 @@ class TestZ80RA(unittest.TestCase):
         self.ra.assignedToSymbolWithRegister(self.ptr, "hl")
         self.ra.loadInHL(self.derefPtr16);
 
-        self.ra.asmFile.seek(0)
-        output = self.ra.asmFile.read()
+        output = self.asmWriter.output()
 
         # Expect copy pointer in hl to de
         self.assertIn("\tld\td, h\n", output)

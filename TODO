@@ -1,5 +1,7 @@
-- Struct -> dereference
-- Optimize subtraction of constants
+- Parse 'c'
+- Create header files
+- Add list api
+- Optimize first struct member access
 - Don't create temps when assigning
 - Compile block inside function test utiltiy
 - Add c library for rom functions.

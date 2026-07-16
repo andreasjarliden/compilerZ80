@@ -195,6 +195,20 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(irs[2].lhsAddr.completeType, PointerType("char"))
         self.assertIsInstance(irs[3], IRFunCall)
 
+    def test_functionFrameSize(self):
+        blocks = compileToBlocks("""void main() {
+                                        char c;
+                                        while (1) {
+                                            int i;
+                                        }
+                                        while (1) {
+                                            int i;
+                                        }
+                                      }""")
+        irs = blocks["main_0000"].statements
+        self.assertEqual(irs[0].function.frameSize, 5);
+
+
     #
     # Variable reference
     #
