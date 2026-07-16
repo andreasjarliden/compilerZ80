@@ -14,8 +14,10 @@ argParser = argparse.ArgumentParser()
 argParser.add_argument('filename')
 
 def preprocess(file : str | Path):
+    script_dir = Path(__file__).resolve().parent
+    include_dir = script_dir / "include"
     path = Path(file)
-    result = subprocess.run(["cpp", str(path)],
+    result = subprocess.run(["cpp", "-nostdinc", "-isystem", include_dir, str(path)],
                             text=True,
                             stdout=subprocess.PIPE,
                             stdin=subprocess.PIPE)
