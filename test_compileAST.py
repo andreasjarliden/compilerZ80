@@ -2,6 +2,7 @@ import unittest
 from testutilities import compileBlockToIR, compileToBlocks, compile
 from symbolTable import SymbolTable
 from astnodes import *
+from promotion import isConvertableTo, promotedType
 from pprint import pprint
 
 class TestConversion(unittest.TestCase):
@@ -242,6 +243,23 @@ class TestErrorHandling(unittest.TestCase):
                        }""")
         self.assertEqual(cts.exception.message, "Attempting to reference unknown a")
         self.assertEqual(cts.exception.location.line, 6)
+
+
+    #
+    # While
+    #
+    def test_while_int_char(self):
+        blocks = compileToBlocks("""
+            void main() {
+                int i;
+                while(i != 0) {
+                    i = i - 1;
+                }
+            }""")
+        irs = blocks["main_0001"].statements
+        self.assertIsInstance(irs[1], IRIfRelation)
+        self.assertEqual(irs[1].lhsAddr.type, "int")
+        self.assertEqual(irs[1].rhsAddr.type, "int")
 
     #
     # Continue

@@ -10,6 +10,7 @@ import symbolTable
 import registerAllocator
 from address import Temporary
 from copy import copy
+from promotion import promoteIfNeededTo, promoteLhsAndRhs
 
 class StringTable:
     def __init__(self):
@@ -76,20 +77,6 @@ def createLabel(context):
     return f"{context.functionName}_l{context.functionLabels}"
 
 
-def promoteIfNeededTo(rhsAddr, toType, toCompleteType, context, operation, location):
-    if not isConvertableTo(rhsAddr.completeType, toCompleteType):
-        raise CompileError(f"Can't convert {rhsAddr.completeType} to {toCompleteType} in {operation}", location)
-    # Only IRPromote if we have to change the simple, concrete type
-    if rhsAddr.type == toType:
-        return rhsAddr
-    if isinstance(rhsAddr, Constant):
-        return Constant(toCompleteType, rhsAddr.value)
-    temp = context.createTemporary(toCompleteType)
-    context.blockFactory.addIR(IRPromote(
-        temp,
-        rhsAddr,
-        toCompleteType))
-    return temp
 
 @dataclass(frozen=True)
 class ASTNode:
@@ -259,6 +246,7 @@ class While(ASTNode):
             ir = IRIfVariable(exprAddr, skipLabel)
         elif isinstance(self.expr, Relation):
             (lhsAddr, rhsAddr) = self.expr.visit(context)
+            assert(lhsAddr.type == rhsAddr.type)
             ir = IRIfRelation(self.expr.operation, lhsAddr, rhsAddr, skipLabel)
         else:
             error()
@@ -336,40 +324,6 @@ class VariableDefinition(ASTNode):
                 rhsAddr = promoteIfNeededTo(self.value.visit(context), self.type, tComplete, context, "assignment", self.location)
                 context.blockFactory.addIR(IRAssign(symbol, rhsAddr))
 
-def promotedType(t1, ct1, t2, ct2):
-    if t1 == t2:
-        return t1, ct1
-    if t1 == "char" and t2 == "int":
-        return "int", ct2
-    if t1 == "int" and t2 == "char":
-        return "int", ct1
-
-def isConvertableTo(fromType, toType):
-    if fromType == toType:
-        return True
-    if fromType == "char" and toType == "int":
-        return True
-    if fromType == PointerType("void") and isinstance(toType, PointerType):
-        return True
-    if isinstance(fromType, PointerType) and toType == PointerType("void"):
-        return True
-    return False
-
-
-def isArithmeticConvertableTo(fromType, toType):
-    if fromType == toType:
-        return True
-    if fromType == "char" and toType == "int":
-        return True
-    if fromType == "void*" and isinstance(toType, PointerType):
-        return True
-    if isinstance(fromType, PointerType) and toType == PointerType("void"):
-        return True
-    if fromType == "char" and isinstance(toType, PointerType):
-        return True
-    if fromType == "int" and isinstance(toType, PointerType):
-        return True
-    return False
 
 @dataclass(frozen=True)
 class Cast(ASTNode):
@@ -524,9 +478,7 @@ class Add(ASTNode):
             raise CompileError(f"Can't add {lhsAddr.completeType} and {rhsAddr.completeType}", self.location)
         if not lhsAddr.isPointer and not rhsAddr.isPointer:
             # Normal arithmetics
-            pt, resultType = promotedType(lhsAddr.type, lhsAddr.completeType, rhsAddr.type, rhsAddr.completeType)
-            lhsAddr = promoteIfNeededTo(lhsAddr, pt, resultType, context, "addition", self.location)
-            rhsAddr = promoteIfNeededTo(rhsAddr, pt, resultType, context, "addition", self.location)
+            lhsAddr, rhsAddr, resultType = promoteLhsAndRhs(lhsAddr, rhsAddr, context, "addition", self.location)
         else:
             # Pointer arithmetics
             if rhsAddr.isPointer:
@@ -567,9 +519,7 @@ class Subtraction(ASTNode):
         rhsAddr = self.rhs.visit(context)
         if not lhsAddr.isPointer and not rhsAddr.isPointer:
             # Normal arithmetics
-            pt, resultType = promotedType(lhsAddr.type, lhsAddr.completeType, rhsAddr.type, rhsAddr.completeType)
-            lhsAddr = promoteIfNeededTo(lhsAddr, pt, resultType, context, "subtraction", self.location)
-            rhsAddr = promoteIfNeededTo(rhsAddr, pt, resultType, context, "subtraction", self.location)
+            lhsAddr, rhsAddr, resultType = promoteLhsAndRhs(lhsAddr, rhsAddr, context, "addition", self.location)
         else:
             # Pointer arithmetics
             if rhsAddr.isPointer:
@@ -640,6 +590,7 @@ class Relation(ASTNode):
         if isinstance(lhsAddr.completeType, PointerType) and isinstance(rhsAddr.completeType, PointerType):
             if lhsAddr.completeType != rhsAddr.completeType:
                 raise CompileError(f"Comparisson between different pointer types: {lhsAddr.completeType} and {rhsAddr.completeType}", self.location)
+        lhsAddr, rhsAddr, resultType = promoteLhsAndRhs(lhsAddr, rhsAddr, context, self.operation, self.location)
         return (lhsAddr, rhsAddr)
 
 @dataclass(frozen=True)
