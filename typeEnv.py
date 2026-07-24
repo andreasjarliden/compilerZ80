@@ -1,4 +1,4 @@
-from type_defs import StructType
+from type_defs import StructType, PointerType
 
 SIZE_FOR_TYPES = { "char": 1,
                    "int": 2 }
@@ -17,6 +17,8 @@ class TypeEnv:
             for field in s.fields.values():
                 sum += self.sizeOfType(field.type)
             return sum
+        if isinstance(t, PointerType):
+            return self.sizeOfType("int")
         return SIZE_FOR_TYPES[t]
 
     def addStruct(self, s : StructType):

@@ -342,6 +342,24 @@ class Cast(ASTNode):
 
 
 @dataclass(frozen=True)
+class SizeOf(ASTNode):
+    expr : Any
+
+    def visit(self, context):
+        if isinstance(self.expr, ASTNode):
+            oldDisabledState = context.blockFactory.disable
+            context.blockFactory.disable = True
+            exprAddr = self.expr.visit(context)
+            context.blockFactory.disable = oldDisabledState
+            size = context.typeEnv.sizeOfType(exprAddr.completeType)
+        elif isinstance(self.expr, StringConstant):
+            size = len(self.expr.value.string) + 1
+        else:
+            size = context.typeEnv.sizeOfType(self.expr)
+        return Constant("int", size)
+
+
+@dataclass(frozen=True)
 class VariableAssignment(ASTNode):
     lvalue : Any
     rhs : Any

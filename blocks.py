@@ -14,6 +14,7 @@ class BlockFactory:
     def __init__(self):
         self.basicBlocks = {}
         self.blockPrefix = None
+        self.disable = False
 
     def enterBlock(self, name):
         self.currentBlockName = name
@@ -34,7 +35,8 @@ class BlockFactory:
         return self.basicBlocks
 
     def addIR(self, ir):
-        self.currentBlock.statements.append(ir)
+        if not self.disable:
+            self.currentBlock.statements.append(ir)
 
 class SingleBlockFactory:
     def __init__(self):

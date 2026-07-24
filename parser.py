@@ -102,6 +102,14 @@ def p_multiplicative_mul(p):
     'multiplicative : multiplicative STAR unary'
     p[0] = Mul(p[1], p[3])
 
+def p_unary_sizeof_expression(p):
+    'unary : SIZEOF LPARA value_expression RPARA'
+    p[0] = SizeOf(p[3], location=loc(p, 1))
+
+def p_unary_sizeof_type(p):
+    'unary : SIZEOF LPARA type RPARA'
+    p[0] = SizeOf(p[3], location=loc(p, 1))
+
 def p_unary_cast(p):
     'unary : LPARA type RPARA unary'
     p[0] = Cast(p[2], p[4], location=loc(p, 2))

@@ -722,6 +722,65 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(cts.exception.location.line, 5)
 
     #
+    # sizeof
+    #
+    def test_sizeof_types(self):
+        blocks = compileToBlocks("""
+            struct myStruct {
+                int i;
+                char c;
+            };
+            void main() {
+                int sInt = sizeof(int);
+                int sChar = sizeof(char);
+                int sCharPointer = sizeof(char*);
+                int sStruct = sizeof(struct myStruct);
+                int sStringLiteral = sizeof("hello");
+            }""")
+        irs = blocks["main_0000"].statements[1:]
+        pprint(irs)
+        self.assertIsInstance(irs[0], IRAssign)
+        self.assertEqual(irs[0].resultAddr.name, "sInt")
+        self.assertEqual(irs[0].resultAddr.name, "sInt")
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertEqual(irs[1].resultAddr.name, "sChar")
+        self.assertEqual(irs[1].exprAddr, Constant("int", 1))
+        self.assertIsInstance(irs[2], IRAssign)
+        self.assertEqual(irs[2].resultAddr.name, "sCharPointer")
+        self.assertEqual(irs[2].exprAddr, Constant("int", 2))
+        self.assertIsInstance(irs[3], IRAssign)
+        self.assertEqual(irs[3].resultAddr.name, "sStruct")
+        self.assertEqual(irs[3].exprAddr, Constant("int", 3))
+        self.assertIsInstance(irs[4], IRAssign)
+        self.assertEqual(irs[4].resultAddr.name, "sStringLiteral")
+        self.assertEqual(irs[4].exprAddr, Constant("int", 6))
+
+    def test_sizeof_expression(self):
+        blocks = compileToBlocks("""
+            void main() {
+                char c;
+                int sC = sizeof(c);
+                int sExpr = sizeof(c+(int)1);
+            }""")
+        irs = blocks["main_0000"].statements[1:]
+        self.assertIsInstance(irs[0], IRAssign)
+        self.assertEqual(irs[0].resultAddr.name, "sC")
+        self.assertEqual(irs[0].exprAddr, Constant("int", 1))
+        # Note, this also ensures no code is generated for the addition
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertEqual(irs[1].resultAddr.name, "sExpr")
+        self.assertEqual(irs[1].exprAddr, Constant("int", 2))
+
+    def test_sizeof_missing(self):
+        with self.assertRaises(CompileError) as cts:
+            compileToBlocks("""
+            char main() {
+                int s = sizeof(foo);
+            }""");
+        self.assertEqual(cts.exception.message, "Attempting to reference unknown foo")
+        self.assertEqual(cts.exception.location.line, 3)
+
+    #
     # Arithmetics
     #
     def test_addChar(self):

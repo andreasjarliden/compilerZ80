@@ -82,6 +82,29 @@ class TestParser(unittest.TestCase):
                          VariableAssignment(Variable("c"),
                                             AddressOf(Variable("foo"))))
 
+    #
+    # sizeof
+    #
+    def test_sizeof_intPointer(self):
+        ast = parser.parse("c=sizeof(int*);");
+        self.assertEqual(ast[0],
+                         VariableAssignment(Variable("c"),
+                                            SizeOf(PointerType("int"))))
+
+    def test_sizeof_variable(self):
+        ast = parser.parse("c=sizeof(a);");
+        self.assertEqual(ast[0],
+                         VariableAssignment(Variable("c"),
+                                            SizeOf(Variable("a"))))
+
+
+    def test_sizeof_expression(self):
+        ast = parser.parse("c=sizeof(a+1);");
+        self.assertEqual(ast[0],
+                         VariableAssignment(Variable("c"),
+                                            SizeOf(Add(Variable("a"),
+                                                       Constant("char", 1)))))
+
     # 
     # IF
     #

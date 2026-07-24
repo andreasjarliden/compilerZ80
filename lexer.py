@@ -12,7 +12,8 @@ reserved = {
         'while': 'WHILE',
         'struct': 'STRUCT',
         'typedef': 'TYPEDEF',
-        'continue': 'CONTINUE'
+        'continue': 'CONTINUE',
+        'sizeof': 'SIZEOF'
         }
 
 tokens = [
