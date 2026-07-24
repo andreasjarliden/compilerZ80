@@ -9,8 +9,11 @@ void printf(char* fmt, ...) {
       if (c == 100) { // %d
         int i = va_arg(ap, int);
         printHex16(i);
+        fmt = fmt + 1;
+        c = *fmt;
+        continue;
       }
-      c = 0;
+      // TODO error
     }
     putchar(c);
     fmt = fmt + 1;

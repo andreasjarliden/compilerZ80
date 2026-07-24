@@ -269,18 +269,20 @@ class TestErrorHandling(unittest.TestCase):
             void main() {
                 char a;
                 while(1) {
-                    continue;
                     a = 42; 
+                    continue;
+                    a = 24;
                 }
             }""")
-        pprint(blocks)
         irs = blocks["main_0001"].statements
         self.assertIsInstance(irs[0], IRLabel)
         loopLabel = irs[0].label
         irs = blocks["main_0002"].statements
-        self.assertIsInstance(irs[0], IRJump)
-        self.assertEqual(irs[0].label, loopLabel)
-        self.assertIsInstance(irs[1], IRAssign)
+        self.assertIsInstance(irs[0], IRAssign)
+        self.assertEqual(irs[0].exprAddr, Constant("char", 42))
+        self.assertIsInstance(irs[1], IRSpillAll)
+        self.assertIsInstance(irs[2], IRJump)
+        self.assertEqual(irs[2].label, loopLabel)
 
     def test_nestedWhile_continue(self):
         blocks = compileToBlocks("""
@@ -295,7 +297,6 @@ class TestErrorHandling(unittest.TestCase):
                     a = 42; 
                 }
             }""")
-        pprint(blocks)
         irs = blocks["main_0001"].statements
         self.assertIsInstance(irs[0], IRLabel)
         outerLoopLabel = irs[0].label
@@ -305,21 +306,23 @@ class TestErrorHandling(unittest.TestCase):
 
         # Inner block
         irs = blocks["main_0004"].statements
-        self.assertIsInstance(irs[0], IRJump)
-        self.assertEqual(irs[0].label, innerLoopLabel)
-        self.assertIsInstance(irs[1], IRAssign)
-        self.assertEqual(irs[1].exprAddr, Constant("char", 24))
+        self.assertIsInstance(irs[0], IRSpillAll)
+        self.assertIsInstance(irs[1], IRJump)
+        self.assertEqual(irs[1].label, innerLoopLabel)
+        self.assertIsInstance(irs[2], IRAssign)
+        self.assertEqual(irs[2].exprAddr, Constant("char", 24))
 
         # Outer block
         irs = blocks["main_0005"].statements
         self.assertIsInstance(irs[0], IRLabel)
-        self.assertIsInstance(irs[1], IRJump)
-        self.assertEqual(irs[1].label, outerLoopLabel)
-        self.assertIsInstance(irs[2], IRAssign)
-        self.assertEqual(irs[2].exprAddr, Constant("char", 42))
+        self.assertIsInstance(irs[1], IRSpillAll)
+        self.assertIsInstance(irs[2], IRJump)
+        self.assertEqual(irs[2].label, outerLoopLabel)
+        self.assertIsInstance(irs[3], IRAssign)
+        self.assertEqual(irs[3].exprAddr, Constant("char", 42))
 
 
-    def test_while_continue(self):
+    def test_while_continueOutisdeLoop(self):
         with self.assertRaises(CompileError) as cts:
           compileToBlocks("""
             void main() {

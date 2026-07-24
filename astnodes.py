@@ -673,8 +673,7 @@ class Continue(ASTNode):
     def visit(self, context):
         if not context.continueLabel:
             raise CompileError(f"Continue outside loop", self.location)
-
-        ir = IRJump(context.continueLabel)
-        context.blockFactory.addIR(ir)
+        context.blockFactory.addIR(IRSpillAll())
+        context.blockFactory.addIR(IRJump(context.continueLabel))
 
 
