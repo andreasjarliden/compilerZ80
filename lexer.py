@@ -1,5 +1,6 @@
 import ply.lex as lex
 import re
+from error import Location, CompileError
 
 re_linemarker = re.compile(r'\#\s*(\d+)\s+"([^"]+)"(?:\s+([1234 ]+))?')
 
@@ -97,8 +98,7 @@ def t_LINEMARKER(t):
     pass
 
 def t_error(t):
-    print(f"Illegal character '{t.value[0]}'")
-    t.lexer.skip(1)
+    raise CompileError(f"Illegal character '{t.value[0]}'", Location(t.lexer.file, t.lexer.lineno))
 
 lexer = lex.lex()
 lexer.file = None
