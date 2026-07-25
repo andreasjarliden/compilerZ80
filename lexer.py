@@ -19,9 +19,10 @@ reserved = {
         }
 
 tokens = [
-        'NUMBER',
+        'DEC_NUMBER',
         'HEX_NUMBER',
         'STRING',
+        'CHAR_LITTERA',
         'ID',
         'LPARA',
         'RPARA',
@@ -46,9 +47,10 @@ tokens = [
         'ELLIPSIS',
         ] + list(reserved.values())
 
-t_NUMBER = r'[0-9]+'
+t_DEC_NUMBER = r'[0-9]+'
 t_HEX_NUMBER = r'0x[0-9a-fA-F]+'
 t_STRING = r'"[^"]*"'
+t_CHAR_LITTERA = r"'[^']+'"
 t_LPARA = r'\('
 t_RPARA = r'\)'
 t_LCURL = r'\{'

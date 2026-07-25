@@ -26,6 +26,18 @@ class TestParser(unittest.TestCase):
         self.assertEqual(ast[0].value, StringConstant(String("foo")))
         self.assertEqual(ast[0], VariableDefinition(PointerType("char"), "foo", StringConstant(String("foo"))))
 
+    def test_variableDefinition_charLiteral(self):
+        ast = parser.parse("'a';")
+        self.assertEqual(ast[0], Constant("char", 97))
+        ast = parser.parse("'\\t';")
+        self.assertEqual(ast[0], Constant("char", 9))
+        ast = parser.parse("'\\n';")
+        self.assertEqual(ast[0], Constant("char", 10))
+        with self.assertRaises(CompileError) as cts:
+            parser.parse("'aa';")
+        self.assertIn("Character littera longer than one character 'aa'", cts.exception.message)
+        self.assertEqual(cts.exception.location.line, 1)
+
     def test_variableDefinition_pointer(self):
         ast = parser.parse("char* foo;")
         self.assertEqual(ast[0], VariableDefinition(PointerType("char"), "foo"))

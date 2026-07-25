@@ -3,10 +3,10 @@ void printf(char* fmt, ...) {
   va_start(ap, fmt);
   char c = *fmt;
   while (c != 0) {
-    if (c == 37) { // %
+    if (c == '%') {
       fmt = fmt + 1;
       c = *fmt;
-      if (c == 100) { // %d
+      if (c == 'd') {
         int i = va_arg(ap, int);
         printHex16(i);
         fmt = fmt + 1;

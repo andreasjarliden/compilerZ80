@@ -148,16 +148,7 @@ def p_primary_constant(p):
     '''
     primary : constant
     '''
-    # TODO all as char for now
-    if isinstance(p[1], String):
-        p[0] = StringConstant(p[1])
-    else:
-        if p[1] < 255:
-            p[0] = Constant("char", p[1])
-        elif p[1] < 65535:
-            p[0] = Constant("int", p[1])
-        else:
-            error()
+    p[0] = p[1]
 
 def p_primary_variable(p):
     '''
@@ -331,20 +322,41 @@ def p_error(p):
 
 def p_constant_number(p):
     '''
-    constant : NUMBER
+    constant : number
+    '''
+    i = p[1]
+    if i < 255:
+        p[0] = Constant("char", i)
+    elif i < 65535:
+        p[0] = Constant("int", i)
+    else:
+        error()
+
+def p_number_dec(p):
+    '''
+    number : DEC_NUMBER 
     '''
     p[0] = int(p[1])
 
 def p_constant_hex_number(p):
     '''
-    constant : HEX_NUMBER
+    number : HEX_NUMBER
     '''
     p[0] = int(p[1], 0)
+
+def p_constant_char(p):
+    '''
+    constant : CHAR_LITTERA
+    '''
+    s = p[1].encode("utf-8").decode("unicode_escape")
+    if len(s) > 3:
+        raise CompileError(f"Character littera longer than one character {s}", loc(p, 1))
+    p[0] = Constant("char", ord(s[1]))
 
 def p_constant_string(p):
     '''
     constant : STRING
     '''
-    p[0] = String(p[1][1:-1], location=loc(p, 1))
+    p[0] = StringConstant(String(p[1][1:-1], location=loc(p, 1)))
 
 parser = yacc.yacc()
