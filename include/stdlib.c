@@ -169,25 +169,21 @@ void* malloc(int size) {
       puts("chunk to small, checking next\n");
       // node = node->next;
       node = (int*)*(node+1);
-      
-      // TODO: 
-      // continue;
+      continue;
     }
     
-    if (requestedChunkSize == chunkSize) {
-      puts("chunk perfect size, removing from free-list\n");
-      // Remove the chunk from the free list
-      int* prev = (int*)*(pChunk + 1);
-      int* next = (int*)*(pChunk + 2);
+    puts("chunk perfect size, removing from free-list\n");
+    // Remove the chunk from the free list
+    int* prev = (int*)*(pChunk + 1);
+    int* next = (int*)*(pChunk + 2);
 
-      // prev->next = pChunk.next
-      *(prev + 1) = (int)next;
-      // next->prev = pChunk.prev
-      *next = (int)prev;
+    // prev->next = pChunk.next
+    *(prev + 1) = (int)next;
+    // next->prev = pChunk.prev
+    *next = (int)prev;
 
-      writeAllocatedChunk(pChunk, requestedChunkSize);
-      return pChunk+3;
-    }
+    writeAllocatedChunk(pChunk, requestedChunkSize);
+    return pChunk+3;
   }
   return 0;
 }
