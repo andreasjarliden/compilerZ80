@@ -265,6 +265,12 @@ def p_if_expression(p):
     '''
     p[0] = If(p[3], p[5])
 
+def p_if_expression_else(p):
+    '''
+    if_expression : IF LPARA value_expression RPARA block ELSE block
+    '''
+    p[0] = If(p[3], p[5], p[7])
+
 def p_while_expression(p):
     '''
     while_expression : WHILE LPARA value_expression RPARA block

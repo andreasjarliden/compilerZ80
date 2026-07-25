@@ -244,6 +244,65 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(cts.exception.message, "Attempting to reference unknown a")
         self.assertEqual(cts.exception.location.line, 6)
 
+    #
+    # If
+    #
+    def test_if(self):
+        blocks = compileToBlocks("""
+            void main() {
+                char i;
+                if (i == 0)
+                    i=42;
+                i=24;
+            }""")
+        irs = blocks["main_0000"].statements
+        self.assertIsInstance(irs[1], IRIfRelation)
+        elseLabel = irs[1].elseLabel
+        irs = blocks["main_0001"].statements
+        self.assertIsInstance(irs[0], IRAssign)
+        self.assertEqual(irs[0].exprAddr, Constant("char", 42))
+        self.assertIsInstance(irs[1], IRSpillAll)
+        self.assertEqual(len(irs), 2)
+        irs = blocks["main_0002"].statements
+        self.assertIsInstance(irs[0], IRLabel)
+        self.assertEqual(irs[0].label, elseLabel)
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertEqual(irs[1].exprAddr, Constant("char", 24))
+
+    def test_if_else(self):
+        blocks = compileToBlocks("""
+            void main() {
+                char i;
+                if (i == 0)
+                    i=42;
+                else
+                    i=11;
+                i=24;
+            }""")
+        irs = blocks["main_0000"].statements
+        self.assertIsInstance(irs[1], IRIfRelation)
+        elseLabel = irs[1].elseLabel
+        irs = blocks["main_0001"].statements
+        self.assertIsInstance(irs[0], IRAssign)
+        self.assertEqual(irs[0].exprAddr, Constant("char", 42))
+        self.assertIsInstance(irs[1], IRSpillAll)
+        self.assertIsInstance(irs[2], IRJump)
+        afterLabel = irs[2].label
+        self.assertEqual(len(irs), 3)
+        irs = blocks["main_0002"].statements
+        self.assertIsInstance(irs[0], IRLabel)
+        self.assertEqual(irs[0].label, elseLabel)
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertEqual(irs[1].exprAddr, Constant("char", 11))
+        self.assertIsInstance(irs[2], IRSpillAll)
+        self.assertEqual(len(irs), 3)
+
+        irs = blocks["main_0003"].statements
+        self.assertIsInstance(irs[0], IRLabel)
+        self.assertEqual(irs[0].label, afterLabel)
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertEqual(irs[1].exprAddr, Constant("char", 24))
+
 
     #
     # While

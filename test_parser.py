@@ -126,6 +126,32 @@ class TestParser(unittest.TestCase):
                                   Add(Constant("char", 1), Constant("char", 2)),
                                   Add(Constant("char", 3), Constant("char", 4))))
 
+    def test_if_else_simple(self):
+        ast = parser.parse("""
+            if (1) 
+                return 42;
+            else 
+                return 24;
+            """)
+        self.assertEqual(ast[0], If(Constant("char", 1),
+                                    [ Return(Constant("char", 42)) ],
+                                    [ Return(Constant("char", 24)) ]))
+
+    def test_if_else_dangling(self):
+        # else should belong to the nearest if
+        ast = parser.parse("""
+            if (1) 
+                if (2)
+                    return 42;
+                else 
+                    return 24;
+            """)
+        self.assertEqual(ast[0], If(Constant("char", 1),
+                                    [ If(Constant("char", 2),
+                                        [ Return(Constant("char", 42)) ],
+                                        [ Return(Constant("char", 24)) ])
+                                     ]))
+
     #
     # Function call
     #

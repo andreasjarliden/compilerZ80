@@ -9,6 +9,7 @@ reserved = {
         'char': 'CHAR',
         'int': 'INT',
         'if': 'IF',
+        'else': 'ELSE',
         'while': 'WHILE',
         'struct': 'STRUCT',
         'typedef': 'TYPEDEF',

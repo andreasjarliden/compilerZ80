@@ -206,15 +206,16 @@ class FunctionDefinition(Function):
 class If(ASTNode):
     expr : Any
     statements : list
+    elseStatements : list | None = None
 
     def visit(self, context):
-        skipLabel = createLabel(context)
+        elseLabel = createLabel(context)
         if isinstance(self.expr, Relation):
             (lhsAddr, rhsAddr) = self.expr.visit(context)
-            ir = IRIfRelation(self.expr.operation, lhsAddr, rhsAddr, skipLabel)
+            ir = IRIfRelation(self.expr.operation, lhsAddr, rhsAddr, elseLabel)
         else:
             exprAddr = self.expr.visit(context)
-            ir = IRIfVariable(exprAddr, skipLabel)
+            ir = IRIfVariable(exprAddr, elseLabel)
         context.blockFactory.addIR(ir)
         # Note: IRIf handles the spilling
         context.newSubBlock()
@@ -222,8 +223,21 @@ class If(ASTNode):
         for s in self.statements:
             s.visit(context)
         context.blockFactory.addIR(IRSpillAll())
+
+        if self.elseStatements:
+            afterLabel = createLabel(context)
+            context.blockFactory.addIR(IRJump(afterLabel))
+            context.newSubBlock()
+            context.blockFactory.addIR(IRLabel(elseLabel))
+            context.pushFrame()
+            for s in self.elseStatements:
+                s.visit(context)
+            context.blockFactory.addIR(IRSpillAll())
+        else:
+            afterLabel = elseLabel
+
         context.newSubBlock()
-        context.blockFactory.addIR(IRLabel(skipLabel))
+        context.blockFactory.addIR(IRLabel(afterLabel))
         context.popFrame()
 
 
@@ -240,14 +254,14 @@ class While(ASTNode):
         oldContinueLabel = context.continueLabel
         context.continueLabel = loopLabel
         context.blockFactory.addIR(IRLabel(loopLabel))
-        skipLabel = createLabel(context)
+        exitLabel = createLabel(context)
         if isinstance(self.expr, Variable) or isinstance(self.expr, Constant):
             exprAddr = self.expr.visit(context)
-            ir = IRIfVariable(exprAddr, skipLabel)
+            ir = IRIfVariable(exprAddr, exitLabel)
         elif isinstance(self.expr, Relation):
             (lhsAddr, rhsAddr) = self.expr.visit(context)
             assert(lhsAddr.type == rhsAddr.type)
-            ir = IRIfRelation(self.expr.operation, lhsAddr, rhsAddr, skipLabel)
+            ir = IRIfRelation(self.expr.operation, lhsAddr, rhsAddr, exitLabel)
         else:
             error()
         context.blockFactory.addIR(ir)
@@ -258,7 +272,7 @@ class While(ASTNode):
         context.blockFactory.addIR(IRSpillAll())
         context.blockFactory.addIR(IRJump(loopLabel))
         context.newSubBlock()
-        context.blockFactory.addIR(IRLabel(skipLabel))
+        context.blockFactory.addIR(IRLabel(exitLabel))
         context.popFrame()
         context.continueLabel = oldContinueLabel
 

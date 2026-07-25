@@ -192,12 +192,12 @@ class IRFunExit(IR):
         asmWriter.write(f'\tret\n\n')
 
 class IRIfVariable(IR):
-    def __init__(self, lhsAddr, skipLabel):
+    def __init__(self, lhsAddr, elseLabel):
         super().__init__(lhsAddr=lhsAddr)
-        self.skipLabel = skipLabel
+        self.elseLabel = elseLabel
 
     def extraDescription(self):
-        return f"{self.skipLabel}"
+        return f"{self.elseLabel}"
 
     def genCode(self, asmWriter):
         ra = registerAllocator.RA
@@ -218,8 +218,8 @@ class IRIfVariable(IR):
         # be spilled for real. Avoidable?
         ra.spillAll()
         # TODO smart relative jump selection
-        # asmWriter.write(f'\tjr\tz, {self.skipLabel}\n') 
-        asmWriter.write(f'\tjp\tz, {self.skipLabel}\n') 
+        # asmWriter.write(f'\tjr\tz, {self.elseLabel}\n') 
+        asmWriter.write(f'\tjp\tz, {self.elseLabel}\n') 
 
 class IRSpillAll(IR):
     def __init__(self):
@@ -238,13 +238,13 @@ class IRIfRelation(IR):
                   '>=': ("c", False, False),
                   '>':  ("nc", False, True), 
                   '<=':  ("c", False, True) }
-    def __init__(self, operation, lhsAddr, rhsAddr, skipLabel):
+    def __init__(self, operation, lhsAddr, rhsAddr, elseLabel):
         super().__init__(lhsAddr=lhsAddr, rhsAddr=rhsAddr)
-        self.skipLabel = skipLabel
+        self.elseLabel = elseLabel
         self.operation = operation
 
     def extraDescription(self):
-        return f"{self.skipLabel}"
+        return f"else={self.elseLabel}"
 
     def genCode(self, asmWriter):
         ra = registerAllocator.RA
@@ -261,7 +261,7 @@ class IRIfRelation(IR):
             asmWriter.write(f"\tor\ta\n") # Clears Carry flag without changing A
             asmWriter.write(f"\tsbc\thl, {regZ}\n")
         ra.spillAll()
-        asmWriter.write(f'\tjp\t{flag}, {self.skipLabel}\n') 
+        asmWriter.write(f'\tjp\t{flag}, {self.elseLabel}\n') 
 
 class IRLabel(IR):
     def __init__(self, label):

@@ -530,7 +530,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.loadedSymbolInRegister(self.bar16, "bc")
 
         # foo = bar - baz
-        ira = ir.IRIfRelation("==", self.foo16, self.bar16, "skipLabel")
+        ira = ir.IRIfRelation("==", self.foo16, self.bar16, "elseLabel")
         ira.live[self.foo16] = True
         ira.live[self.bar16] = False # Not necessary to spill bar
         registerAllocator.RA.currentInstruction = ira
@@ -538,7 +538,7 @@ class TestIR(unittest.TestCase):
 
         output = self.asmWriter.output()
         print(output)
-        self.assertEqual(output, "\tor\ta\n\tsbc\thl, bc\n\tjp\tnz, skipLabel\n")
+        self.assertEqual(output, "\tor\ta\n\tsbc\thl, bc\n\tjp\tnz, elseLabel\n")
 
     #
     # IRAddressOf
