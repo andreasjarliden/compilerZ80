@@ -181,6 +181,36 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(ctx.exception.message, "Unknown type chur") 
         self.assertEqual(ctx.exception.location.line, 1) 
 
+    def test_function_redefine(self):
+        with self.assertRaises(CompileError) as ctx:
+            output = compile("""char foo() { return 0; }
+                                char foo() { return 0; }
+                              """)
+        self.assertEqual(ctx.exception.message, "Redefinition of foo")
+        self.assertEqual(ctx.exception.location.line, 2) 
+        # This is allowed however
+        compile("""char foo();
+                   char foo() { return 0; }
+                """)
+        # TODO test conflicting function declarations
+
+    def test_function_redefine2(self):
+        with self.assertRaises(CompileError) as ctx:
+            output = compile("""char foo;
+                                char foo() { return 0; }
+                              """)
+        self.assertEqual(ctx.exception.message, "Redefinition of foo")
+        self.assertEqual(ctx.exception.location.line, 2) 
+
+    def test_function_redefine3(self):
+        with self.assertRaises(CompileError) as ctx:
+            output = compile("""char foo();
+                                char foo() { return 0; }
+                                char foo() { return 0; }
+                              """)
+        self.assertEqual(ctx.exception.message, "Redefinition of foo")
+        self.assertEqual(ctx.exception.location.line, 3) 
+
     def test_callingVarArgFunction(self):
         blocks = compileToBlocks("""
             void printf(char* format, ...);

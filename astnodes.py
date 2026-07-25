@@ -168,6 +168,9 @@ class FunctionDefinition(Function):
 
     def visit(self, context):
         verifyType(self.type, self.location, context.typeEnv)
+        oldSymbol = context.symbolTable.lookUp(self.name)
+        if oldSymbol and not isinstance(oldSymbol, FunctionDeclaration):
+            raise CompileError(f"Redefinition of {self.name}", self.location)
         context.symbolTable.addSymbolEntry(self.name, self)
         context.pushFrame()
         context.resetStackFrame()
