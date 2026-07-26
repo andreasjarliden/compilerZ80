@@ -188,10 +188,10 @@ def p_continue(p):
 def p_type(p):
     '''type : base_type pointers
     '''
-    if p[2]>0:
-        p[0] = PointerType(p[1])
-    else:
-        p[0] = p[1]
+    t = p[1]
+    for i in range(0, p[2]):
+        t = PointerType(t)
+    p[0] = t
 
 def p_base_type(p):
     '''base_type : CHAR

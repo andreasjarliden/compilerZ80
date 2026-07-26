@@ -84,6 +84,10 @@ class TestParser(unittest.TestCase):
         self.assertEqual(ast[0],
                          VariableAssignment(Variable("a"),
                                             Cast(PointerType("char"), Constant("char", 42))))
+        ast = parser.parse("a=(char**)42;");
+        self.assertEqual(ast[0],
+                         VariableAssignment(Variable("a"),
+                                            Cast(PointerType(PointerType("char")), Constant("char", 42))))
 
     #
     # Address of
