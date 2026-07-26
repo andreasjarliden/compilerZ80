@@ -13,6 +13,13 @@ void printf(char* fmt, ...) {
         c = *fmt;
         continue;
       }
+      if (c == 's') {
+        char* s = va_arg(ap, char*);
+        puts(s);
+        fmt = fmt + 1;
+        c = *fmt;
+        continue;
+      }
       // TODO error
     }
     putchar(c);
