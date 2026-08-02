@@ -4,6 +4,7 @@ from astnodes import *
 from address import Constant, Temporary
 from blocks import SingleBlockFactory, BlockFactory
 from type_defs import PointerType
+from pprint import pprint
 
 class TestParser(unittest.TestCase):
     #
@@ -241,6 +242,18 @@ class TestParser(unittest.TestCase):
                                                                                       "foo"),
                                                                  "b"),
                                             Constant("char", 42)))
+
+    def test_structInitializer(self):
+        ast = parser.parse("""
+            struct Foo { char a; char b; };
+            struct Foo foo = { 42, 24 };
+            """)
+        pprint(ast)
+        self.assertEqual(ast[1],
+                         VariableDefinition(StructType("Foo", ()),
+                                            "foo",
+                                            StructInitialization([Constant("char", 42),
+                                                                  Constant("char", 24)])))
 
     #
     # Function declaration

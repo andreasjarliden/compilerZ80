@@ -174,8 +174,15 @@ def p_variable_definition_expression(p):
 
 def p_variable_definition_expression_value(p):
     'var_def_expression : type ID ASSIGN value_expression'
-    # 'var_def_expression : type ID ASSIGN constant'
     p[0] = VariableDefinition(p[1], p[2], p[4], location=loc(p, 2))
+
+def p_variable_definition_struct_initializer(p):
+    'var_def_expression : type ID ASSIGN struct_initializer'
+    p[0] = VariableDefinition(p[1], p[2], p[4], location=loc(p, 2))
+
+def p_struct_initializer(p):
+    'struct_initializer : LCURL expr_list RCURL'
+    p[0] = StructInitialization(p[2])
 
 def p_typedef(p):
     'typedef_statement : TYPEDEF type ID'

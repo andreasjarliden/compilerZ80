@@ -1,5 +1,4 @@
-- Parse 'c'
-- Create header files
+- Find out why va_arg(..., char*) doesn't work in printf
 - Add list api
 - Optimize first struct member access
 - Don't create temps when assigning

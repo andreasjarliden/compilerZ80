@@ -286,6 +286,7 @@ void free(void* p) {
 }
 #endif
 
+#if 0
 void main() {
   puts("Creating heap\n");
   createHeap((void*)0xA000, 0x0100);
@@ -326,4 +327,5 @@ void main() {
   puts("Heap walk:\n");
   dumpHeap();
 }
+#endif
 

@@ -711,4 +711,9 @@ class Continue(ASTNode):
         context.blockFactory.addIR(IRSpillAll())
         context.blockFactory.addIR(IRJump(context.continueLabel))
 
+@dataclass(frozen=True)
+class StructInitialization(ASTNode):
+    fields : list
+
+
 
