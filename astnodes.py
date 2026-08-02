@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Never
 from ir import *
 from symbolTable import *
 from blocks import BlockFactory
@@ -34,8 +34,8 @@ class ASTContext:
     blockFactory : Any = field(default_factory=BlockFactory)
     symbolTable : SymbolTable = field(default_factory=SymbolTable)
     typeEnv : Any = field(default_factory=TypeEnv)
-    functionName : str = None
-    continueLabel : str = None
+    functionName : str | None = None
+    continueLabel : str | None = None
     dataSegment : dict[SymEntry, Any] = field(default_factory=dict)
     stringTable : StringTable = field(default_factory=StringTable)
     stackOffset : int = field(default = 0, init=False)
@@ -131,7 +131,7 @@ class Function(ASTNode):
 class FunctionDeclaration(Function):
     type : str
     name : str
-    arguments : tuple[Argument] = field(default_factory=tuple)
+    arguments : tuple[Argument, ...] = field(default_factory=tuple)
     isVarArg : bool = field(init=False)
 
     def __post_init__(self):
@@ -660,27 +660,27 @@ class StructDefinition(ASTNode):
 @dataclass(frozen=True)
 class StructFieldReference(ASTNode):
     structVar : Any
-    field : str
+    fieldName : str
     name : str = field(init=False)
 
     def __post_init__(self):
         if isinstance(self.structVar, Dereference):
             if hasattr(self.structVar.expr, "name"):
-                object.__setattr__(self, "name", f"{self.structVar.expr.name}->{self.field}")
+                object.__setattr__(self, "name", f"{self.structVar.expr.name}->{self.fieldName}")
             else:
                 object.__setattr__(self, "name", Temporary(None).name)
         else:
-            object.__setattr__(self, "name", f"{self.structVar.name}.{self.field}")
+            object.__setattr__(self, "name", f"{self.structVar.name}.{self.fieldName}")
 
     def visit(self, context):
         structAddr = self.structVar.visit(context);
         struct = context.typeEnv.lookupStructName(structAddr.completeType.name)
         try:
-            offset = struct.fields[self.field].offset
+            offset = struct.fields[self.fieldName].offset
         except KeyError:
-            raise CompileError(f"Unknown field {self.field} in struct {struct.name}", self.location)
+            raise CompileError(f"Unknown field {self.fieldName} in struct {struct.name}", self.location)
         if not context.symbolTable.lookUp(self.name):
-            fieldType = struct.fields[self.field].completeType
+            fieldType = struct.fields[self.fieldName].completeType
             symEntry = SymEntry(fieldType, self.name)
             if isinstance(structAddr.impl, PointerAddress):
                 # TODO don't add if offset is zero
