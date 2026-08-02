@@ -286,7 +286,7 @@ class IRJump(IR):
         asmWriter.write(f"\tjp\t{self.label}\n")
 
 class IRReturn(IR):
-    def __init__(self, t, exprAddr, functionName):
+    def __init__(self, t, exprAddr, functionName : str):
         super().__init__(lhsAddr=exprAddr)
         self.type = t
         self.functionName = functionName
@@ -362,7 +362,7 @@ class IRArgument(IR):
 
 class IRFunCall(IR):
     # addr=None creates a procedure call which ignores the return value
-    def __init__(self, t, name, numArgs, addr=None):
+    def __init__(self, t, name : str, numArgs : int, addr=None):
         super().__init__(resultAddr=addr)
         self.type = t
         self.name = name
@@ -395,7 +395,7 @@ class IRFunCall(IR):
             ra.assignedToSymbolWithRegister(self.resultAddr, returnRegisterForType[self.type])
 
 class IRAddressOf(IR):
-    def __init__(self, symEntry, resAddr):
+    def __init__(self, symEntry : SymEntry, resAddr):
         super().__init__(resultAddr=resAddr, lhsAddr=symEntry)
 
     def genCode(self, asmWriter):
@@ -441,7 +441,7 @@ class IRAddressOf(IR):
 # Although, it does update the live tracking. Although is resAddress used?
 class IRDereference(IR):
     # TODO: Fix ordering of arguments!
-    def __init__(self, symEntry, resAddr):
+    def __init__(self, symEntry : SymEntry, resAddr):
         super().__init__(resultAddr=resAddr, lhsAddr=symEntry)
 
     def genCode(self, asmWriter):

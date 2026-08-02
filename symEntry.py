@@ -4,11 +4,11 @@ from type_defs import StructType, PointerType, simpleTypeForComplexType
 
 # Object semantics but with custom equalByValue function
 class SymEntry:
-    def __init__(self, t, n):
+    def __init__(self, t, n : str):
         self.completeType = t
         # TODO maybe name should be optional, only used for debugging?
         self.name = n
-        self.impl = None
+        self.impl : ValueAddress | None = None
 
     def __repr__(self):
         return f"<SymEntry {self.completeType} {self.name} {self.impl}>"
@@ -26,7 +26,7 @@ class SymEntry:
 
 
 class CastSymEntry:
-    def __init__(self, s, completeType):
+    def __init__(self, s : SymEntry, completeType):
         self.symEntry = s
         self.completeType = completeType
 

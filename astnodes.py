@@ -18,7 +18,7 @@ class StringTable:
         self._table = {}
         self._count = 0
 
-    def addString(self, s):
+    def addString(self, s : str) -> None:
         if not s in self._table:
             self._table[s] = f"__str{self._count}"
             self._count += 1
