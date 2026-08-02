@@ -252,12 +252,47 @@ class TestParser(unittest.TestCase):
             struct Foo { char a; char b; };
             struct Foo foo = { 42, 24 };
             """)
-        pprint(ast)
         self.assertEqual(ast[1],
                          VariableDefinition(StructType("Foo", ()),
                                             "foo",
                                             StructInitialization([Constant("char", 42),
                                                                   Constant("char", 24)])))
+
+    def test_structInitializer_named(self):
+        ast = parser.parse("""
+            struct Foo { char a; char b; };
+            struct Foo foo = { .b = 42, .a = 24 };
+            """)
+        self.assertEqual(ast[1],
+                         VariableDefinition(StructType("Foo", ()),
+                                            "foo",
+                                            StructInitialization([("b", Constant("char", 42)),
+                                                                  ("a", Constant("char", 24))])))
+
+    def test_structInitializer_mixed(self):
+        ast = parser.parse("""
+            struct Foo { char a; char b; char c;};
+            struct Foo foo = { .b = 42, 24 };
+            """)
+        self.assertEqual(ast[1],
+                         VariableDefinition(StructType("Foo", ()),
+                                            "foo",
+                                            StructInitialization([("b", Constant("char", 42)),
+                                                                  Constant("char", 24)])))
+
+    def test_structInitializer_nested(self):
+        ast = parser.parse("""
+            struct Foo { char a; char b; };
+            struct Bar { char c; struct Foo foo; };
+            struct Bar bar = { 1, { 2, 3 } };
+            """)
+        self.assertEqual(ast[2],
+                         VariableDefinition(StructType("Bar", ()),
+                                            "bar",
+                                            StructInitialization([Constant("char", 1),
+                                                                  StructInitialization([Constant("char", 2),
+                                                                                        Constant("char", 3)])])))
+
 
     #
     # Function declaration

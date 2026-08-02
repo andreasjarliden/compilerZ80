@@ -181,8 +181,25 @@ def p_variable_definition_struct_initializer(p):
     p[0] = VariableDefinition(p[1], p[2], p[4], location=loc(p, 2))
 
 def p_struct_initializer(p):
-    'struct_initializer : LCURL expr_list RCURL'
+    'struct_initializer : LCURL struct_init_list RCURL'
     p[0] = StructInitialization(p[2])
+
+def p_struct_init_list_single(p):
+    'struct_init_list : struct_init'
+    p[0] = [p[1]]
+
+def p_struct_init_list_multiple(p):
+    'struct_init_list : struct_init_list COMMA struct_init'
+    p[0] = p[1] + [p[3]]
+
+def p_struct_init_value(p):
+    '''struct_init : value_expression
+                   | struct_initializer'''
+    p[0] = p[1]
+
+def p_struct_init_named(p):
+    'struct_init : PERIOD ID ASSIGN value_expression'
+    p[0] = (p[2], p[4])
 
 def p_typedef(p):
     'typedef_statement : TYPEDEF type ID'
