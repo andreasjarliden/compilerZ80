@@ -39,6 +39,7 @@ class ASTContext:
     dataSegment : dict[SymEntry, Any] = field(default_factory=dict)
     stringTable : StringTable = field(default_factory=StringTable)
     stackOffset : int = field(default = 0, init=False)
+    functionLabels : int = field(default = 0, init=False)
 
     def exitBlock(self):
         self.blockFactory._exitBlock(self.symbolTable.allSymbols())
@@ -72,7 +73,7 @@ class ASTContext:
         self.typeEnv.popFrame()
 
 
-def createLabel(context):
+def createLabel(context : ASTContext ):
     context.functionLabels += 1
     return f"{context.functionName}_l{context.functionLabels}"
 
@@ -291,6 +292,13 @@ def verifyType(t, location, typeEnv):
         raise CompileError(f"Unknown type {t}", location)
 
 @dataclass(frozen=True)
+class StructInitialization(ASTNode):
+    fields : list
+
+    def visit(self, context):
+        ...
+
+@dataclass(frozen=True)
 class VariableDefinition(ASTNode):
     completeType : Any
     name : str
@@ -338,8 +346,41 @@ class VariableDefinition(ASTNode):
         else:
             context.addLocal(symbol)
             if self.value:
-                rhsAddr = promoteIfNeededTo(self.value.visit(context), self.type, tComplete, context, "assignment", self.location)
-                context.blockFactory.addIR(IRAssign(symbol, rhsAddr))
+                if isinstance(self.value, StructInitialization):
+                    structInitializer = self.value
+                    structType = symbol.completeType
+                    structType = context.typeEnv.lookupStructName(structType.name)
+                    print(f"{structType=}")
+                    initializeStruct(self.name, structType, structInitializer, context)
+                else:
+                    rhsAddr = promoteIfNeededTo(self.value.visit(context), self.type, tComplete, context, "assignment", self.location)
+                    context.blockFactory.addIR(IRAssign(symbol, rhsAddr))
+
+
+def initializeStruct(name : str,
+                     structType : StructType,
+                     structInitializer : StructInitialization,
+                     context : ASTContext) -> None:
+    print(f"{structType.fields=}")
+    structFields = tuple(structType.fields.keys())
+    lastIndex = 0;
+    for f in structInitializer.fields:
+        if isinstance(f, tuple):
+            fieldName, fieldValue = f
+            lastIndex = structFields.index(fieldName)
+        else:
+            fieldName = structFields[lastIndex]
+            fieldValue = f
+        structFieldReference = StructFieldReference(Variable(name), fieldName)
+        if isinstance(fieldValue, StructInitialization):
+            fieldRefAddr = structFieldReference.visit(context)
+            fieldStructType = context.typeEnv.lookupStructName(fieldRefAddr.completeType.name)
+            # fieldStructType = fieldRefAddr.completeType
+            initializeStruct(structFieldReference.name, fieldStructType, fieldValue, context)
+        else:
+            assignment = VariableAssignment(structFieldReference, fieldValue)
+            assignment.visit(context)
+            lastIndex += 1
 
 
 @dataclass(frozen=True)
@@ -711,9 +752,6 @@ class Continue(ASTNode):
         context.blockFactory.addIR(IRSpillAll())
         context.blockFactory.addIR(IRJump(context.continueLabel))
 
-@dataclass(frozen=True)
-class StructInitialization(ASTNode):
-    fields : list
 
 
 

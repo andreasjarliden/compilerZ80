@@ -541,6 +541,73 @@ class TestErrorHandling(unittest.TestCase):
         irs = blocks["main_0000"].statements
         # TODO
 
+    def test_struct_initializer(self):
+        blocks = compileToBlocks("""
+            struct myStruct { char foo; char bar; };
+            char main() {
+                struct myStruct s = { 42, 24 };
+            }""")
+        irs = blocks["main_0000"].statements
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertEqual(irs[1].resultAddr.name, "s.foo")
+        self.assertEqual(irs[1].resultAddr.impl, StackAddress(-2))
+        self.assertEqual(irs[1].lhsAddr, Constant("char", 42))
+        self.assertIsInstance(irs[2], IRAssign)
+        self.assertEqual(irs[2].resultAddr.name, "s.bar")
+        self.assertEqual(irs[2].resultAddr.impl, StackAddress(-1))
+        self.assertEqual(irs[2].lhsAddr, Constant("char", 24))
+
+    def test_struct_namedInitializer(self):
+        blocks = compileToBlocks("""
+            struct myStruct { char foo; char bar; };
+            char main() {
+                struct myStruct s = { .bar = 42, .foo = 24 };
+            }""")
+        irs = blocks["main_0000"].statements
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertEqual(irs[1].resultAddr.name, "s.bar")
+        self.assertEqual(irs[1].resultAddr.impl, StackAddress(-1))
+        self.assertEqual(irs[1].lhsAddr, Constant("char", 42))
+        self.assertIsInstance(irs[2], IRAssign)
+        self.assertEqual(irs[2].resultAddr.name, "s.foo")
+        self.assertEqual(irs[2].resultAddr.impl, StackAddress(-2))
+        self.assertEqual(irs[2].lhsAddr, Constant("char", 24))
+
+    def test_struct_mixedInitializer(self):
+        blocks = compileToBlocks("""
+            struct myStruct { char foo; char bar; char baz; };
+            char main() {
+                struct myStruct s = { .bar = 42, 24 };
+            }""")
+        irs = blocks["main_0000"].statements
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertEqual(irs[1].resultAddr.name, "s.bar")
+        self.assertEqual(irs[1].lhsAddr, Constant("char", 42))
+        self.assertIsInstance(irs[2], IRAssign)
+        self.assertEqual(irs[2].resultAddr.name, "s.baz")
+        self.assertEqual(irs[2].lhsAddr, Constant("char", 24))
+
+    def test_struct_recursiveInitializer(self):
+        blocks = compileToBlocks("""
+            struct Foo { char a; char b; };
+            struct Bar { char c; struct Foo foo; };
+            char main() {
+                struct Bar s = { 'c', { 'a', 'b' } };
+            }""")
+        irs = blocks["main_0000"].statements
+        pprint(irs)
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertEqual(irs[1].resultAddr.name, "s.c")
+        self.assertEqual(irs[1].lhsAddr, Constant("char", ord("c")))
+        self.assertIsInstance(irs[2], IRAssign)
+        self.assertEqual(irs[2].resultAddr.name, "s.foo.a")
+        self.assertEqual(irs[2].lhsAddr, Constant("char", ord("a")))
+        self.assertIsInstance(irs[3], IRAssign)
+        self.assertEqual(irs[3].resultAddr.name, "s.foo.b")
+        self.assertEqual(irs[3].lhsAddr, Constant("char", ord("b")))
+
+    # Test error conditations, wrong field name, too many initializers, not struct
+
     def test_structPointer_referenceField(self):
         blocks = compileToBlocks("""
             struct myStruct { int a; char b; };

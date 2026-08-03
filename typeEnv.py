@@ -21,10 +21,10 @@ class TypeEnv:
             return self.sizeOfType("int")
         return SIZE_FOR_TYPES[t]
 
-    def addStruct(self, s : StructType):
+    def addStruct(self, s : StructType) -> None:
         self.structEnv[-1][s.name] = s
 
-    def lookupStructName(self, name):
+    def lookupStructName(self, name) -> StructType | None:
         for frame in reversed(self.structEnv):
             try:
                 return frame[name]
