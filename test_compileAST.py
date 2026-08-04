@@ -218,7 +218,6 @@ class TestErrorHandling(unittest.TestCase):
                 printf("foo %d", (int)42);
             }""")
         irs = blocks["main_0000"].statements
-        pprint(irs)
         self.assertIsInstance(irs[0], IRDefFun)
         self.assertIsInstance(irs[1], IRArgument)
         self.assertEqual(irs[1].lhsAddr.completeType, "int")
@@ -595,7 +594,6 @@ class TestErrorHandling(unittest.TestCase):
                 struct Bar s = { 'c', { 'a', 'b' } };
             }""")
         irs = blocks["main_0000"].statements
-        pprint(irs)
         self.assertIsInstance(irs[1], IRAssign)
         self.assertEqual(irs[1].resultAddr.name, "s.c")
         self.assertEqual(irs[1].lhsAddr, Constant("char", ord("c")))
@@ -630,7 +628,6 @@ class TestErrorHandling(unittest.TestCase):
                 ((struct myStruct*)0)->b = 42;
             }""")
         irs = blocks["main_0000"].statements
-        pprint(irs)
         self.assertIsInstance(irs[1], IRDereference)
         self.assertIsInstance(irs[2], IRAssignToPointer)
         self.assertEqual(irs[2].lhsAddr, Constant(PointerType("char"), 2))
@@ -645,7 +642,6 @@ class TestErrorHandling(unittest.TestCase):
                 char b = s->a;
             }""")
         irs = blocks["main_0000"].statements
-        pprint(irs)
         self.assertIsInstance(irs[1], IRDereference) # *s
         self.assertIsInstance(irs[2], IRAdd) # computing s->a
         self.assertIsInstance(irs[3], IRAssign)
@@ -689,8 +685,8 @@ class TestErrorHandling(unittest.TestCase):
                 struct myStruct* pMyStruct;
             };
             """, typeEnv=typeEnv)
-        pprint(typeEnv)
-        self.assertEqual(typeEnv.lookupStructName("myStruct").fields["pMyStruct"].completeType, PointerType(StructType("myStruct", ())))
+        structType = typeEnv.lookupStructName("myStruct")
+        self.assertEqual(structType.fields["pMyStruct"].completeType, PointerType(structType))
 
     def test_struct_nestedStruct(self):
         blocks = compileToBlocks("""
@@ -811,10 +807,11 @@ class TestErrorHandling(unittest.TestCase):
             struct Foo* pFoo = &foo;
         }""")
         irs = blocks["main_0000"].statements[1:]
-        pprint(irs)
         self.assertIsInstance(irs[0], IRAddressOf)
         self.assertIsInstance(irs[1], IRAssign)
-        self.assertEqual(irs[0].resultAddr.completeType, PointerType(StructType("Foo", ())))
+        self.assertEqual(irs[0].resultAddr.completeType,
+                         PointerType(StructType("Foo", {"a": StructField("int", "a", 0),
+                                                        "b": StructField("int", "b", 2)})))
 
     def test_pointerArithmeticDereference(self):
         blocks = compileToBlocks("""
@@ -823,7 +820,6 @@ class TestErrorHandling(unittest.TestCase):
                 char i = *(p+1);
             }""")
         irs = blocks["main_0000"].statements[1:]
-        pprint(irs)
         self.assertIsInstance(irs[0], IRAssign)
         self.assertIsInstance(irs[1], IRAdd)
         self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr)
@@ -838,7 +834,6 @@ class TestErrorHandling(unittest.TestCase):
                 *(p+1) = 42;
             }""")
         irs = blocks["main_0000"].statements[1:]
-        pprint(irs)
         self.assertIsInstance(irs[0], IRAssign)
         self.assertIsInstance(irs[1], IRAdd)
         self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr)
@@ -894,7 +889,6 @@ class TestErrorHandling(unittest.TestCase):
                 int sStringLiteral = sizeof("hello");
             }""")
         irs = blocks["main_0000"].statements[1:]
-        pprint(irs)
         self.assertIsInstance(irs[0], IRAssign)
         self.assertEqual(irs[0].resultAddr.name, "sInt")
         self.assertEqual(irs[0].resultAddr.name, "sInt")

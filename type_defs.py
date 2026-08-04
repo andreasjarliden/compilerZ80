@@ -21,7 +21,7 @@ class StructType:
     fields : dict = field(default_factory=dict)
 
     def __repr__(self):
-        return f"struct {self.name}"
+        return f"struct {self.name} with fields {self.fields}"
 
 # TODO there is commonality between SymEntry and StructField
 @dataclass(frozen=True)

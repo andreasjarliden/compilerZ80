@@ -283,13 +283,16 @@ class While(ASTNode):
 VALID_TYPES = { 'void', 'char', 'int' }
 def verifyType(t, location, typeEnv):
     if isinstance(t, StructType):
-        if not typeEnv.lookupStructName(t.name):
+        structType = typeEnv.lookupStructName(t.name)
+        if not structType:
             raise CompileError(f"Unknown struct {t.name}", location)
-        return True
+        return structType
     elif isinstance(t, PointerType): 
-        return verifyType(t.toType, location, typeEnv);
+        return PointerType(verifyType(t.toType, location, typeEnv));
     if not t in VALID_TYPES:
         raise CompileError(f"Unknown type {t}", location)
+    return t
+
 
 @dataclass(frozen=True)
 class StructInitialization(ASTNode):
@@ -322,7 +325,7 @@ class VariableDefinition(ASTNode):
         if s and isinstance(s.impl, TypeAddress):
             tComplete = s.impl.completeType
         else:
-            verifyType(self.completeType, self.location, context.typeEnv)
+            tComplete = verifyType(tComplete, self.location, context.typeEnv)
         symbol = SymEntry(tComplete, self.name)
         context.symbolTable.addSymbolEntry(self.name, symbol)
         if not context.functionName:
@@ -349,8 +352,6 @@ class VariableDefinition(ASTNode):
                 if isinstance(self.value, StructInitialization):
                     structInitializer = self.value
                     structType = symbol.completeType
-                    structType = context.typeEnv.lookupStructName(structType.name)
-                    print(f"{structType=}")
                     initializeStruct(self.name, structType, structInitializer, context)
                 else:
                     rhsAddr = promoteIfNeededTo(self.value.visit(context), self.type, tComplete, context, "assignment", self.location)
@@ -361,7 +362,6 @@ def initializeStruct(name : str,
                      structType : StructType,
                      structInitializer : StructInitialization,
                      context : ASTContext) -> None:
-    print(f"{structType.fields=}")
     structFields = tuple(structType.fields.keys())
     lastIndex = 0;
     for f in structInitializer.fields:
@@ -374,8 +374,7 @@ def initializeStruct(name : str,
         structFieldReference = StructFieldReference(Variable(name), fieldName)
         if isinstance(fieldValue, StructInitialization):
             fieldRefAddr = structFieldReference.visit(context)
-            fieldStructType = context.typeEnv.lookupStructName(fieldRefAddr.completeType.name)
-            # fieldStructType = fieldRefAddr.completeType
+            fieldStructType = fieldRefAddr.completeType
             initializeStruct(structFieldReference.name, fieldStructType, fieldValue, context)
         else:
             assignment = VariableAssignment(structFieldReference, fieldValue)
@@ -390,12 +389,13 @@ class Cast(ASTNode):
 
     def visit(self, context):
         valueAddr = self.value.visit(context)
+        completeType = verifyType(self.completeType, self.location, context.typeEnv)
         if isinstance(valueAddr, Constant):
             temp = copy(valueAddr)
-            temp.completeType = self.completeType
+            temp.completeType = completeType
             return temp
         else:
-            t = CastSymEntry(valueAddr, self.completeType)
+            t = CastSymEntry(valueAddr, completeType)
             return t
 
 
@@ -692,8 +692,8 @@ class StructDefinition(ASTNode):
         s = StructType(self.name, fields)
         context.typeEnv.addStruct(s)
         for f in self.fields:
-            verifyType(f.completeType, f.location, context.typeEnv)
-            fields[f.name] = StructField(completeType=f.completeType, name=f.name, offset=offset)
+            fieldType = verifyType(f.completeType, f.location, context.typeEnv)
+            fields[f.name] = StructField(completeType=fieldType, name=f.name, offset=offset)
             offset += context.typeEnv.sizeOfType(f.type)
         s.fields = fields
         return s
@@ -715,13 +715,13 @@ class StructFieldReference(ASTNode):
 
     def visit(self, context):
         structAddr = self.structVar.visit(context);
-        struct = context.typeEnv.lookupStructName(structAddr.completeType.name)
+        structType = structAddr.completeType
         try:
-            offset = struct.fields[self.fieldName].offset
+            offset = structType.fields[self.fieldName].offset
         except KeyError:
-            raise CompileError(f"Unknown field {self.fieldName} in struct {struct.name}", self.location)
+            raise CompileError(f"Unknown field {self.fieldName} in struct {structType.name}", self.location)
         if not context.symbolTable.lookUp(self.name):
-            fieldType = struct.fields[self.fieldName].completeType
+            fieldType = structType.fields[self.fieldName].completeType
             symEntry = SymEntry(fieldType, self.name)
             if isinstance(structAddr.impl, PointerAddress):
                 # TODO don't add if offset is zero
