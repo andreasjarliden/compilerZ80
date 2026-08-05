@@ -282,7 +282,7 @@ class While(ASTNode):
 
 VALID_TYPES = { 'void', 'char', 'int' }
 def verifyType(t, location, typeEnv):
-    if isinstance(t, StructType):
+    if isinstance(t, Struct):
         structType = typeEnv.lookupStructName(t.name)
         if not structType:
             raise CompileError(f"Unknown struct {t.name}", location)
@@ -404,7 +404,9 @@ class SizeOf(ASTNode):
     expr : Any
 
     def visit(self, context):
-        if isinstance(self.expr, ASTNode):
+        if isinstance(self.expr, Struct):
+            size = context.typeEnv.sizeOfType(self.expr.visit(context))
+        elif isinstance(self.expr, ASTNode):
             oldDisabledState = context.blockFactory.disable
             context.blockFactory.disable = True
             exprAddr = self.expr.visit(context)
@@ -679,6 +681,15 @@ class TypeDef(ASTNode):
         context.symbolTable.addSymbolEntry(self.name, symbol)
         symbol.impl = TypeAddress(completeType=self.completeType)
 
+
+@dataclass(frozen=True)
+class Struct(ASTNode):
+    name : str
+
+    def visit(self, context) -> StructType:
+        return verifyType(self, self.location, context.typeEnv)
+
+
 @dataclass(frozen=True)
 class StructDefinition(ASTNode):
     name : str
@@ -694,7 +705,7 @@ class StructDefinition(ASTNode):
         for f in self.fields:
             fieldType = verifyType(f.completeType, f.location, context.typeEnv)
             fields[f.name] = StructField(completeType=fieldType, name=f.name, offset=offset)
-            offset += context.typeEnv.sizeOfType(f.type)
+            offset += context.typeEnv.sizeOfType(fieldType)
         s.fields = fields
         return s
 

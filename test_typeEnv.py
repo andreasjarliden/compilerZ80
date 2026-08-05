@@ -31,9 +31,9 @@ class TestTypeEnv(unittest.TestCase):
         s = StructType("myStruct", {"a": StructField(completeType="char", name="a", offset=0),
                                     "b": StructField(completeType="int", name="b", offset=1)})
         typeEnv.addStruct(s)
-        self.assertEqual(typeEnv.sizeOfType(StructType("myStruct")), 3)
-        s2 = StructType("myStruct2", {"a": StructField(completeType=StructType("myStruct"), name="a", offset=0),
-                                     "b": StructField(completeType="int", name="b", offset=3)})
+        self.assertEqual(typeEnv.sizeOfType(s), 3)
+        s2 = StructType("myStruct2", {"a": StructField(completeType=s, name="a", offset=0),
+                                      "b": StructField(completeType="int", name="b", offset=3)})
         typeEnv.addStruct(s2)
-        self.assertEqual(typeEnv.sizeOfType(StructType("myStruct2")), 5)
+        self.assertEqual(typeEnv.sizeOfType(s2), 5)
 

@@ -15,14 +15,6 @@ class PointerType:
     def __repr__(self):
         return f"{self.toType}*"
 
-@dataclass
-class StructType:
-    name : str
-    fields : dict = field(default_factory=dict)
-
-    def __repr__(self):
-        return f"struct {self.name} with fields {self.fields}"
-
 # TODO there is commonality between SymEntry and StructField
 @dataclass(frozen=True)
 class StructField:
@@ -33,4 +25,12 @@ class StructField:
     @property
     def type(self):
         return simpleTypeForComplexType(self.completeType)
+
+@dataclass
+class StructType:
+    name : str
+    fields : dict[str, StructField]
+
+    def __repr__(self):
+        return f"struct {self.name} with fields {self.fields}"
 

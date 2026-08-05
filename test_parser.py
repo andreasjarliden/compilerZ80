@@ -216,7 +216,7 @@ class TestParser(unittest.TestCase):
                          StructDefinition("mystruct",
                                           ( VariableDefinition("char", "foo"), )))
         self.assertEqual(ast[1],
-                         VariableDefinition(StructType("mystruct", ()), "s"))
+                         VariableDefinition(Struct("mystruct"), "s"))
 
     def test_structFieldReference(self):
         ast = parser.parse("""struct mystruct { char foo; };
@@ -253,7 +253,7 @@ class TestParser(unittest.TestCase):
             struct Foo foo = { 42, 24 };
             """)
         self.assertEqual(ast[1],
-                         VariableDefinition(StructType("Foo", ()),
+                         VariableDefinition(Struct("Foo"),
                                             "foo",
                                             StructInitialization([Constant("char", 42),
                                                                   Constant("char", 24)])))
@@ -264,7 +264,7 @@ class TestParser(unittest.TestCase):
             struct Foo foo = { .b = 42, .a = 24 };
             """)
         self.assertEqual(ast[1],
-                         VariableDefinition(StructType("Foo", ()),
+                         VariableDefinition(Struct("Foo"),
                                             "foo",
                                             StructInitialization([("b", Constant("char", 42)),
                                                                   ("a", Constant("char", 24))])))
@@ -275,7 +275,7 @@ class TestParser(unittest.TestCase):
             struct Foo foo = { .b = 42, 24 };
             """)
         self.assertEqual(ast[1],
-                         VariableDefinition(StructType("Foo", ()),
+                         VariableDefinition(Struct("Foo"),
                                             "foo",
                                             StructInitialization([("b", Constant("char", 42)),
                                                                   Constant("char", 24)])))
@@ -287,7 +287,7 @@ class TestParser(unittest.TestCase):
             struct Bar bar = { 1, { 2, 3 } };
             """)
         self.assertEqual(ast[2],
-                         VariableDefinition(StructType("Bar", ()),
+                         VariableDefinition(Struct("Bar"),
                                             "bar",
                                             StructInitialization([Constant("char", 1),
                                                                   StructInitialization([Constant("char", 2),

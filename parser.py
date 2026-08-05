@@ -225,11 +225,11 @@ def p_base_type(p):
     '''
     p[0] = p[1]
 
-def p_base_type_struct(p):
+def p_base_type_struct(p) -> Any:
     # '''base_type | ID'''
     '''base_type : STRUCT ID
     '''
-    p[0] = StructType(p[2], ())
+    p[0] = Struct(p[2])
 
 def p_pointers_empty(p):
     '''
