@@ -2,25 +2,25 @@ from symEntry import SymEntry, StackAddress
 from address import Temporary
 
 class SymbolTable:
-    def __init__(self):
-        self.env = [{}]
+    def __init__(self) ->None :
+        self.env : list[dict[str, SymEntry]] = [{}]
     def addSymbol(self, completeType, name):
         entry = SymEntry(completeType, name)
         self.env[-1][name] = entry
         return entry
-    def addSymbolEntry(self, name, entry):
+    def addSymbolEntry(self, name : str, entry : SymEntry):
         self.env[-1][name] = entry
     # TODO rename
     def currentSymbolTable(self):
         return self.env[-1]
-    def addTemporary(self, completeType):
+    def addTemporary(self, completeType) -> SymEntry:
         temp = Temporary(completeType)
         return self.addSymbol(completeType, temp.name)
-    def pushFrame(self, ):
+    def pushFrame(self) -> None :
         self.env.append({})
-    def popFrame(self, ):
+    def popFrame(self) -> None :
         self.env.pop()
-    def lookUp(self, name):
+    def lookUp(self, name : str) -> SymEntry | None:
         # TODO for preventing looking up StructType which is not hashable. Handle this in a better way.
         if not isinstance(name, str):
             return None
@@ -30,8 +30,8 @@ class SymbolTable:
             except KeyError:
                 pass
         return None
-    def allSymbols(self):
-        symbols = set()
+    def allSymbols(self) -> set[SymEntry] :
+        symbols : set[SymEntry] = set()
         for frame in self.env:
             symbols.update(frame.values())
         return symbols
@@ -40,7 +40,7 @@ class SymbolTable:
         return f"SymbolTable {self.env}"
 
 # Size of all local stack variables
-def stackFrameSize(frame):
+def stackFrameSize(frame) -> int:
     smallestOffset = 0
     for s in frame.values():
         if isinstance(s.impl, StackAddress):

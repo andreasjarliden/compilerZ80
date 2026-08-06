@@ -5,15 +5,16 @@ SIZE_FOR_TYPES = { "char": 1,
 
 class TypeEnv:
     def __init__(self):
-        self.structEnv = [{}]
+        self.structEnv : list[dict[str, StructType]] = [{}]
 
     def __repr__(self):
         return f"TypeEnv structEnv={self.structEnv}"
 
-    def sizeOfType(self, t):
+    def sizeOfType(self, t : StructType | PointerType | str) -> int:
         if isinstance(t, StructType):
             sum = 0
             s = self.lookupStructName(t.name)
+            assert s is not None
             for field in s.fields.values():
                 sum += self.sizeOfType(field.type)
             return sum
@@ -32,8 +33,8 @@ class TypeEnv:
                 pass
         return None
 
-    def pushFrame(self):
+    def pushFrame(self) -> None:
         self.structEnv.append({})
 
-    def popFrame(self):
+    def popFrame(self) -> None:
         self.structEnv.pop()

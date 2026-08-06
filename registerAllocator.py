@@ -13,8 +13,8 @@ ALL_8BIT_REGISTERS = {'a', 'b', 'c', 'd', 'e', 'h', 'l' }
 
 class RegisterAllocator:
     def __init__(self):
-        self.registers = {r: set() for r in ALL_REGISTERS}
-        self.symbols = {}
+        self.registers : dict[str, set[SymEntry]] = {r: set() for r in ALL_REGISTERS}
+        self.symbols : dict[SymEntry, set[str | SymEntry]] = {}
         self.coupledRegisters = { 'bc': {'b', 'c'},
                                  'b': {'bc'},
                                  'c': {'bc',},
@@ -30,12 +30,12 @@ class RegisterAllocator:
         return f"registers: {pformat(self.registers)}\nfree registers: {pformat(self.freeRegisters)}\nsymbols: {pformat(self.symbols)}"
 
     def _verifyRegisters(self):
-        registersForSymbol = {}        
+        registersForSymbol : dict[SymEntry, set[str]] = {}        
         for s in self.symbols:
             registersForSymbol[s] = set()
         for r in self.registers:
             for s in self.registers[r]:
-                regs = registersForSymbol[s].add(r)
+                registersForSymbol[s].add(r)
         for s in self.symbols:
             if (self.symbols[s] & ALL_REGISTERS) != registersForSymbol[s]:
                 print(f"Registers for symbols[{s}] not matching registers!!!")
@@ -58,7 +58,7 @@ class RegisterAllocator:
             error()
         self._verifyRegisters()
 
-    def doStoreToSymbol(self, reg, s):
+    def doStoreToSymbol(self, reg, s, onlyStore=False):
         pass
 
     def isFree(self, r):
@@ -85,6 +85,7 @@ class RegisterAllocator:
 
     def spillRegisterToSymbol(self, r, s):
         # Spill if live and not already in memory
+        assert self.currentInstruction
         if self.currentInstruction.live[s] and not s in self.symbols[s]:
             self.doStoreToSymbol(r, s)
             if len(self.symbols[s]) > 1:
@@ -113,6 +114,7 @@ class RegisterAllocator:
     def removeSymbol(self, s):
         registers = self.symbols.get(s, set()) & ALL_REGISTERS
         for r in registers:
+            assert isinstance(r, str)
             self.registers[r].remove(s)
         self.symbols.pop(s, None)
 
@@ -129,6 +131,7 @@ class RegisterAllocator:
             # if n == ir.resultAddr.name:
             #     continue
             # Is dead?
+            assert self.currentInstruction
             if not self.currentInstruction.live[s]:
                 continue
             # Have to spill to n
@@ -221,7 +224,8 @@ class RegisterAllocator:
 
     # A symbol was loaded from memory into a register, i.e. it exists in both
     # places (cmp assignedToSymbolWithRegister where it is only in register)
-    def loadedSymbolInRegister(self, s, r):
+    def loadedSymbolInRegister(self, s : SymEntry, r) -> None:
+        assert s.impl
         if r not in self.freeRegisters:
             error()
         self.symbols.setdefault(s, set())
@@ -230,17 +234,20 @@ class RegisterAllocator:
         self.registers[r].add(s)
 
     # Example: LD (ix+n), a
-    def storedToSymbol(self, s):
+    def storedToSymbol(self, s : SymEntry) -> None:
+        assert s.impl
         self.symbols.setdefault(s, set())
         self.symbols[s].add(s)
 
     # Assigning to a name means that it is only the register that holds the
     # name, it has not been spilled to memory yet.
-    def assignedToSymbolWithRegister(self, s, r):
+    def assignedToSymbolWithRegister(self, s : SymEntry, r) -> None:
+        assert s.impl
         # As we are replacing the old value for s we remove it from any
         # registers it may have previously been loaded into
         previousRegisters = self.symbols.get(s, set()) & ALL_REGISTERS
         for pr in previousRegisters:
+            assert isinstance(pr, str)
             self.registers[pr].remove(s)
         self.symbols.setdefault(s, set())
         self.symbols[s] = { r }
@@ -259,6 +266,8 @@ class Z80RegisterAllocator(RegisterAllocator):
         self.asmWriter = asmWriter
 
     def doStoreToSymbol(self, r, s, onlyStore=False):
+        assert s.impl
+        assert isinstance(s.impl, StackAddress) or isinstance(s.impl, GlobalAddress)
         if onlyStore:
             self.asmWriter.write(f"; store register {r} to var {s.name}\n")
         else:
@@ -279,13 +288,15 @@ class Z80RegisterAllocator(RegisterAllocator):
                 self.asmWriter.write(f"\tld\t{s.impl.codeArg()}, {r}\n")
             else:
                 error()
-        elif isinstance(s.impl, PointerAddress):
-            pointer = s.impl.pointer
-            if s.type == 'char':
-                self.asmWriter.write(f"\tld\t({s.name}), {r}\n")
-            if s.type == 'int':
-                self.asmWriter.write(f"\tld\t({pointer+1}), {r[0]}\n")
-                self.asmWriter.write(f"\tld\t({pointer}), {r[1]}\n")
+        # TODO The following does not seem to be used. Not sure why, maybe
+        # because we use IRAssignToPointer
+        # elif isinstance(s.impl, PointerAddress):
+        #     pointer = s.impl.pointer
+        #     if s.type == 'char':
+        #         self.asmWriter.write(f"\tld\t({s.name}), {r}\n")
+        #     if s.type == 'int':
+        #         self.asmWriter.write(f"\tld\t({pointer+1}), {r[0]}\n")
+        #         self.asmWriter.write(f"\tld\t({pointer}), {r[1]}\n")
         else:
             error()
 

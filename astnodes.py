@@ -7,7 +7,6 @@ from error import Location, CompileError
 from typeEnv import TypeEnv
 from type_defs import StructType, PointerType, StructField, simpleTypeForComplexType
 import symbolTable
-import registerAllocator
 from address import Temporary
 from copy import copy
 from promotion import promoteIfNeededTo, promoteLhsAndRhs
@@ -251,7 +250,6 @@ class While(ASTNode):
     statements : list
 
     def visit(self, context):
-        ra = registerAllocator.RA
         context.blockFactory.addIR(IRSpillAll())
         context.newSubBlock()
         loopLabel = createLabel(context)

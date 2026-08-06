@@ -351,7 +351,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_structPointerDereferenceArrowSyntax(self):
         output = compile("""
-            struct Foo { char a; char b; };
+            struct Foo { char a; int b; };
             char main() {
                 struct Foo foo;
                 struct Foo* pFoo = &foo;
