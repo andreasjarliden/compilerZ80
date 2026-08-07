@@ -289,14 +289,14 @@ class TestErrorHandling(unittest.TestCase):
         elseLabel = irs[1].elseLabel
         irs = blocks["main_0001"].statements
         self.assertIsInstance(irs[0], IRAssign)
-        self.assertEqual(irs[0].exprAddr, Constant("char", 42))
+        self.assertEqual(irs[0].exprAddr, ConstantOperand("char", 42))
         self.assertIsInstance(irs[1], IRSpillAll)
         self.assertEqual(len(irs), 2)
         irs = blocks["main_0002"].statements
         self.assertIsInstance(irs[0], IRLabel)
         self.assertEqual(irs[0].label, elseLabel)
         self.assertIsInstance(irs[1], IRAssign)
-        self.assertEqual(irs[1].exprAddr, Constant("char", 24))
+        self.assertEqual(irs[1].exprAddr, ConstantOperand("char", 24))
 
     def test_if_else(self):
         blocks = compileToBlocks("""
@@ -313,7 +313,7 @@ class TestErrorHandling(unittest.TestCase):
         elseLabel = irs[1].elseLabel
         irs = blocks["main_0001"].statements
         self.assertIsInstance(irs[0], IRAssign)
-        self.assertEqual(irs[0].exprAddr, Constant("char", 42))
+        self.assertEqual(irs[0].exprAddr, ConstantOperand("char", 42))
         self.assertIsInstance(irs[1], IRSpillAll)
         self.assertIsInstance(irs[2], IRJump)
         afterLabel = irs[2].label
@@ -322,7 +322,7 @@ class TestErrorHandling(unittest.TestCase):
         self.assertIsInstance(irs[0], IRLabel)
         self.assertEqual(irs[0].label, elseLabel)
         self.assertIsInstance(irs[1], IRAssign)
-        self.assertEqual(irs[1].exprAddr, Constant("char", 11))
+        self.assertEqual(irs[1].exprAddr, ConstantOperand("char", 11))
         self.assertIsInstance(irs[2], IRSpillAll)
         self.assertEqual(len(irs), 3)
 
@@ -330,7 +330,7 @@ class TestErrorHandling(unittest.TestCase):
         self.assertIsInstance(irs[0], IRLabel)
         self.assertEqual(irs[0].label, afterLabel)
         self.assertIsInstance(irs[1], IRAssign)
-        self.assertEqual(irs[1].exprAddr, Constant("char", 24))
+        self.assertEqual(irs[1].exprAddr, ConstantOperand("char", 24))
 
 
     #
@@ -367,7 +367,7 @@ class TestErrorHandling(unittest.TestCase):
         loopLabel = irs[0].label
         irs = blocks["main_0002"].statements
         self.assertIsInstance(irs[0], IRAssign)
-        self.assertEqual(irs[0].exprAddr, Constant("char", 42))
+        self.assertEqual(irs[0].exprAddr, ConstantOperand("char", 42))
         self.assertIsInstance(irs[1], IRSpillAll)
         self.assertIsInstance(irs[2], IRJump)
         self.assertEqual(irs[2].label, loopLabel)
@@ -398,7 +398,7 @@ class TestErrorHandling(unittest.TestCase):
         self.assertIsInstance(irs[1], IRJump)
         self.assertEqual(irs[1].label, innerLoopLabel)
         self.assertIsInstance(irs[2], IRAssign)
-        self.assertEqual(irs[2].exprAddr, Constant("char", 24))
+        self.assertEqual(irs[2].exprAddr, ConstantOperand("char", 24))
 
         # Outer block
         irs = blocks["main_0005"].statements
@@ -407,7 +407,7 @@ class TestErrorHandling(unittest.TestCase):
         self.assertIsInstance(irs[2], IRJump)
         self.assertEqual(irs[2].label, outerLoopLabel)
         self.assertIsInstance(irs[3], IRAssign)
-        self.assertEqual(irs[3].exprAddr, Constant("char", 42))
+        self.assertEqual(irs[3].exprAddr, ConstantOperand("char", 42))
 
 
     def test_while_continueOutisdeLoop(self):
@@ -502,16 +502,16 @@ class TestErrorHandling(unittest.TestCase):
         irs = blocks["main_0000"].statements
         self.assertIsInstance(irs[1], IRAssign)
         self.assertEqual(irs[1].resultAddr.impl, StackAddress(-1))
-        self.assertEqual(irs[1].lhsAddr, Constant("char", 0))
+        self.assertEqual(irs[1].lhsAddr, ConstantOperand("char", 0))
         self.assertIsInstance(irs[2], IRAssign)
         self.assertEqual(irs[2].resultAddr.impl, StackAddress(-3))
-        self.assertEqual(irs[2].lhsAddr, Constant("char", 1))
+        self.assertEqual(irs[2].lhsAddr, ConstantOperand("char", 1))
         self.assertIsInstance(irs[3], IRAssign)
         self.assertEqual(irs[3].resultAddr.impl, StackAddress(-2))
-        self.assertEqual(irs[3].lhsAddr, Constant("char", 2))
+        self.assertEqual(irs[3].lhsAddr, ConstantOperand("char", 2))
         self.assertIsInstance(irs[4], IRAssign)
         self.assertEqual(irs[4].resultAddr.impl, StackAddress(-4))
-        self.assertEqual(irs[4].lhsAddr, Constant("char", 3))
+        self.assertEqual(irs[4].lhsAddr, ConstantOperand("char", 3))
 
     def test_globalStruct_assignField(self):
         blocks = compileToBlocks("""
@@ -523,9 +523,9 @@ class TestErrorHandling(unittest.TestCase):
             }""")
         irs = blocks["main_0000"].statements
         self.assertIsInstance(irs[1], IRAssign)
-        self.assertEqual(irs[1].lhsAddr, Constant("int", 1))
+        self.assertEqual(irs[1].lhsAddr, ConstantOperand("int", 1))
         self.assertEqual(irs[1].resultAddr.impl, GlobalAddress("s", 0))
-        self.assertEqual(irs[2].lhsAddr, Constant("char", 2))
+        self.assertEqual(irs[2].lhsAddr, ConstantOperand("char", 2))
         self.assertEqual(irs[2].resultAddr.impl, GlobalAddress("s", 2))
 
     def test_struct_referenceField(self):
@@ -550,11 +550,11 @@ class TestErrorHandling(unittest.TestCase):
         self.assertIsInstance(irs[1], IRAssign)
         self.assertEqual(irs[1].resultAddr.name, "s.foo")
         self.assertEqual(irs[1].resultAddr.impl, StackAddress(-2))
-        self.assertEqual(irs[1].lhsAddr, Constant("char", 42))
+        self.assertEqual(irs[1].lhsAddr, ConstantOperand("char", 42))
         self.assertIsInstance(irs[2], IRAssign)
         self.assertEqual(irs[2].resultAddr.name, "s.bar")
         self.assertEqual(irs[2].resultAddr.impl, StackAddress(-1))
-        self.assertEqual(irs[2].lhsAddr, Constant("char", 24))
+        self.assertEqual(irs[2].lhsAddr, ConstantOperand("char", 24))
 
     def test_struct_namedInitializer(self):
         blocks = compileToBlocks("""
@@ -566,11 +566,11 @@ class TestErrorHandling(unittest.TestCase):
         self.assertIsInstance(irs[1], IRAssign)
         self.assertEqual(irs[1].resultAddr.name, "s.bar")
         self.assertEqual(irs[1].resultAddr.impl, StackAddress(-1))
-        self.assertEqual(irs[1].lhsAddr, Constant("char", 42))
+        self.assertEqual(irs[1].lhsAddr, ConstantOperand("char", 42))
         self.assertIsInstance(irs[2], IRAssign)
         self.assertEqual(irs[2].resultAddr.name, "s.foo")
         self.assertEqual(irs[2].resultAddr.impl, StackAddress(-2))
-        self.assertEqual(irs[2].lhsAddr, Constant("char", 24))
+        self.assertEqual(irs[2].lhsAddr, ConstantOperand("char", 24))
 
     def test_struct_mixedInitializer(self):
         blocks = compileToBlocks("""
@@ -581,10 +581,10 @@ class TestErrorHandling(unittest.TestCase):
         irs = blocks["main_0000"].statements
         self.assertIsInstance(irs[1], IRAssign)
         self.assertEqual(irs[1].resultAddr.name, "s.bar")
-        self.assertEqual(irs[1].lhsAddr, Constant("char", 42))
+        self.assertEqual(irs[1].lhsAddr, ConstantOperand("char", 42))
         self.assertIsInstance(irs[2], IRAssign)
         self.assertEqual(irs[2].resultAddr.name, "s.baz")
-        self.assertEqual(irs[2].lhsAddr, Constant("char", 24))
+        self.assertEqual(irs[2].lhsAddr, ConstantOperand("char", 24))
 
     def test_struct_recursiveInitializer(self):
         blocks = compileToBlocks("""
@@ -596,13 +596,13 @@ class TestErrorHandling(unittest.TestCase):
         irs = blocks["main_0000"].statements
         self.assertIsInstance(irs[1], IRAssign)
         self.assertEqual(irs[1].resultAddr.name, "s.c")
-        self.assertEqual(irs[1].lhsAddr, Constant("char", ord("c")))
+        self.assertEqual(irs[1].lhsAddr, ConstantOperand("char", ord("c")))
         self.assertIsInstance(irs[2], IRAssign)
         self.assertEqual(irs[2].resultAddr.name, "s.foo.a")
-        self.assertEqual(irs[2].lhsAddr, Constant("char", ord("a")))
+        self.assertEqual(irs[2].lhsAddr, ConstantOperand("char", ord("a")))
         self.assertIsInstance(irs[3], IRAssign)
         self.assertEqual(irs[3].resultAddr.name, "s.foo.b")
-        self.assertEqual(irs[3].lhsAddr, Constant("char", ord("b")))
+        self.assertEqual(irs[3].lhsAddr, ConstantOperand("char", ord("b")))
 
     # Test error conditations, wrong field name, too many initializers, not struct
 
@@ -617,7 +617,7 @@ class TestErrorHandling(unittest.TestCase):
         self.assertIsInstance(irs[1], IRDereference)
         self.assertIsInstance(irs[2], IRAdd)
         self.assertTrue(irs[1].resultAddr, irs[2].lhsAddr)
-        self.assertEqual(irs[2].rhsAddr, Constant("int", 2))
+        self.assertEqual(irs[2].rhsAddr, ConstantOperand("int", 2))
         self.assertIsInstance(irs[3], IRAssignToPointer)
         self.assertTrue(irs[2].resultAddr, irs[3].lhsAddr)
 
@@ -630,8 +630,8 @@ class TestErrorHandling(unittest.TestCase):
         irs = blocks["main_0000"].statements
         self.assertIsInstance(irs[1], IRDereference)
         self.assertIsInstance(irs[2], IRAssignToPointer)
-        self.assertEqual(irs[2].lhsAddr, Constant(PointerType("char"), 2))
-        self.assertEqual(irs[2].rhsAddr, Constant("char", 42))
+        self.assertEqual(irs[2].lhsAddr, ConstantOperand(PointerType("char"), 2))
+        self.assertEqual(irs[2].rhsAddr, ConstantOperand("char", 42))
 
     def test_structPointer_repeatedFieldReference(self):
         blocks = compileToBlocks("""
@@ -780,7 +780,7 @@ class TestErrorHandling(unittest.TestCase):
         irs = blocks["main_0000"].statements[1:]
         print(irs)
         self.assertIsInstance(irs[0], IRArgument)
-        self.assertEqual(irs[0].lhsAddr, Constant("int", 42))
+        self.assertEqual(irs[0].lhsAddr, ConstantOperand("int", 42))
 
     def test_argPass_narrowing(self):
         with self.assertRaises(CompileError) as cts:
@@ -797,7 +797,7 @@ class TestErrorHandling(unittest.TestCase):
         irs = compileBlockToIR("""int *p;
         p = (int*)0x8000;""")
         self.assertIsInstance(irs[0], IRAssign)
-        self.assertIsInstance(irs[0].lhsAddr, Constant)
+        self.assertIsInstance(irs[0].lhsAddr, ConstantOperand)
         self.assertEqual(irs[0].lhsAddr.completeType, PointerType("int"))
 
     def test_structPointer(self):
@@ -823,7 +823,7 @@ class TestErrorHandling(unittest.TestCase):
         self.assertIsInstance(irs[0], IRAssign)
         self.assertIsInstance(irs[1], IRAdd)
         self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr)
-        self.assertEqual(irs[1].rhsAddr, Constant(PointerType("char"), 1))
+        self.assertEqual(irs[1].rhsAddr, ConstantOperand(PointerType("char"), 1))
         self.assertIsInstance(irs[2], IRDereference)
         self.assertEqual(irs[2].lhsAddr, irs[1].resultAddr)
 
@@ -837,7 +837,7 @@ class TestErrorHandling(unittest.TestCase):
         self.assertIsInstance(irs[0], IRAssign)
         self.assertIsInstance(irs[1], IRAdd)
         self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr)
-        self.assertEqual(irs[1].rhsAddr, Constant(PointerType("int"), 2))
+        self.assertEqual(irs[1].rhsAddr, ConstantOperand(PointerType("int"), 2))
         self.assertIsInstance(irs[2], IRDereference)
         self.assertEqual(irs[2].lhsAddr, irs[1].resultAddr)
 
@@ -894,16 +894,16 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(irs[0].resultAddr.name, "sInt")
         self.assertIsInstance(irs[1], IRAssign)
         self.assertEqual(irs[1].resultAddr.name, "sChar")
-        self.assertEqual(irs[1].exprAddr, Constant("int", 1))
+        self.assertEqual(irs[1].exprAddr, ConstantOperand("int", 1))
         self.assertIsInstance(irs[2], IRAssign)
         self.assertEqual(irs[2].resultAddr.name, "sCharPointer")
-        self.assertEqual(irs[2].exprAddr, Constant("int", 2))
+        self.assertEqual(irs[2].exprAddr, ConstantOperand("int", 2))
         self.assertIsInstance(irs[3], IRAssign)
         self.assertEqual(irs[3].resultAddr.name, "sStruct")
-        self.assertEqual(irs[3].exprAddr, Constant("int", 3))
+        self.assertEqual(irs[3].exprAddr, ConstantOperand("int", 3))
         self.assertIsInstance(irs[4], IRAssign)
         self.assertEqual(irs[4].resultAddr.name, "sStringLiteral")
-        self.assertEqual(irs[4].exprAddr, Constant("int", 6))
+        self.assertEqual(irs[4].exprAddr, ConstantOperand("int", 6))
 
     def test_sizeof_expression(self):
         blocks = compileToBlocks("""
@@ -915,11 +915,11 @@ class TestErrorHandling(unittest.TestCase):
         irs = blocks["main_0000"].statements[1:]
         self.assertIsInstance(irs[0], IRAssign)
         self.assertEqual(irs[0].resultAddr.name, "sC")
-        self.assertEqual(irs[0].exprAddr, Constant("int", 1))
+        self.assertEqual(irs[0].exprAddr, ConstantOperand("int", 1))
         # Note, this also ensures no code is generated for the addition
         self.assertIsInstance(irs[1], IRAssign)
         self.assertEqual(irs[1].resultAddr.name, "sExpr")
-        self.assertEqual(irs[1].exprAddr, Constant("int", 2))
+        self.assertEqual(irs[1].exprAddr, ConstantOperand("int", 2))
 
     def test_sizeof_missing(self):
         with self.assertRaises(CompileError) as cts:
@@ -969,7 +969,7 @@ class TestErrorHandling(unittest.TestCase):
         irs = compileBlockToIR("int i;i=i*3;")
         self.assertIsInstance(irs[0], IRMul)
         self.assertEqual(irs[0].lhsAddr.name, "i")
-        self.assertEqual(irs[0].rhsAddr, Constant("char", 3))
+        self.assertEqual(irs[0].rhsAddr, ConstantOperand("char", 3))
 
     #
     # Pointer arithmetics
@@ -977,36 +977,36 @@ class TestErrorHandling(unittest.TestCase):
     def test_pointerConstantArithmeticsAdd(self):
         irs = compileBlockToIR("char* p;p=p+1;")
         self.assertIsInstance(irs[0], IRAdd)
-        self.assertEqual(irs[0].rhsAddr, Constant(PointerType("char"), 1))
+        self.assertEqual(irs[0].rhsAddr, ConstantOperand(PointerType("char"), 1))
 
         irs = compileBlockToIR("int* p;p=p+1;")
         self.assertIsInstance(irs[0], IRAdd)
-        self.assertEqual(irs[0].rhsAddr, Constant(PointerType("int"), 2))
+        self.assertEqual(irs[0].rhsAddr, ConstantOperand(PointerType("int"), 2))
 
         irs = compileBlockToIR("int* p;p=2+p;")
         self.assertIsInstance(irs[0], IRAdd)
-        self.assertEqual(irs[0].lhsAddr, Constant(PointerType("int"), 4))
+        self.assertEqual(irs[0].lhsAddr, ConstantOperand(PointerType("int"), 4))
 
         irs = compileBlockToIR("void* p;p=p+1;")
         self.assertIsInstance(irs[0], IRAdd)
-        self.assertEqual(irs[0].rhsAddr, Constant(PointerType("void"), 1))
+        self.assertEqual(irs[0].rhsAddr, ConstantOperand(PointerType("void"), 1))
 
     def test_pointerConstantArithmeticsSub(self):
         irs = compileBlockToIR("char* p;p=p-1;")
         self.assertIsInstance(irs[0], IRSub)
-        self.assertEqual(irs[0].rhsAddr, Constant(PointerType("char"), 1))
+        self.assertEqual(irs[0].rhsAddr, ConstantOperand(PointerType("char"), 1))
 
         irs = compileBlockToIR("int* p;p=p-1;")
         self.assertIsInstance(irs[0], IRSub)
-        self.assertEqual(irs[0].rhsAddr, Constant(PointerType("int"), 2))
+        self.assertEqual(irs[0].rhsAddr, ConstantOperand(PointerType("int"), 2))
 
         irs = compileBlockToIR("int* p;p=2-p;")
         self.assertIsInstance(irs[0], IRSub)
-        self.assertEqual(irs[0].lhsAddr, Constant(PointerType("int"), 4))
+        self.assertEqual(irs[0].lhsAddr, ConstantOperand(PointerType("int"), 4))
 
         irs = compileBlockToIR("void* p;p=p-1;")
         self.assertIsInstance(irs[0], IRSub)
-        self.assertEqual(irs[0].rhsAddr, Constant(PointerType("void"), 1))
+        self.assertEqual(irs[0].rhsAddr, ConstantOperand(PointerType("void"), 1))
 
 
     #

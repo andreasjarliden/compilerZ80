@@ -1,4 +1,4 @@
-from symEntry import Constant
+from symEntry import ConstantOperand
 from type_defs import PointerType
 from ir import IRPromote
 from error import CompileError
@@ -16,8 +16,8 @@ def promoteIfNeededTo(rhsAddr, toType, toCompleteType, context, operation, locat
     # Only IRPromote if we have to change the simple, concrete type
     if rhsAddr.type == toType:
         return rhsAddr
-    if isinstance(rhsAddr, Constant):
-        return Constant(toCompleteType, rhsAddr.value)
+    if isinstance(rhsAddr, ConstantOperand):
+        return ConstantOperand(toCompleteType, rhsAddr.value)
     temp = context.createTemporary(toCompleteType)
     context.blockFactory.addIR(IRPromote(
         temp,

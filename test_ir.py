@@ -84,7 +84,7 @@ class TestIR(unittest.TestCase):
     # IRAssign
 
     def test_IRAssign_constant8(self):
-        ira = ir.IRAssign(self.foo, Constant("char", 42))
+        ira = ir.IRAssign(self.foo, ConstantOperand("char", 42))
         ira.live[self.foo] = True
         ira.genCode(self.asmWriter)
 
@@ -93,7 +93,7 @@ class TestIR(unittest.TestCase):
         self.assertTrue(registerAllocator.RA.isInRegister(self.foo))
 
     def test_IRAssign_constant16(self):
-        ira = ir.IRAssign(self.foo16, Constant("int", 0x1234))
+        ira = ir.IRAssign(self.foo16, ConstantOperand("int", 0x1234))
         ira.live[self.foo16] = True
         ira.genCode(self.asmWriter)
 
@@ -218,7 +218,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.loadedSymbolInRegister(self.bar, "b")
 
         # foo = bar + 42
-        ira = ir.IRAdd(self.foo, self.bar, Constant("char", 42))
+        ira = ir.IRAdd(self.foo, self.bar, ConstantOperand("char", 42))
         ira.live[self.foo] = True
         ira.live[self.bar] = False # Not necessary to spill bar
         registerAllocator.RA.currentInstruction = ira
@@ -313,7 +313,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.loadedSymbolInRegister(self.foo16, "bc")
 
         # bar = foo + 1
-        ira = ir.IRAdd(self.bar16, self.foo16, Constant("char", 1))
+        ira = ir.IRAdd(self.bar16, self.foo16, ConstantOperand("char", 1))
         ira.live[self.foo16] = True
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
@@ -327,7 +327,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.loadedSymbolInRegister(self.foo16, "hl")
 
         # bar = foo + 1
-        ira = ir.IRAdd(self.bar16, self.foo16, Constant("char", 1))
+        ira = ir.IRAdd(self.bar16, self.foo16, ConstantOperand("char", 1))
         ira.live[self.foo16] = True
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
@@ -384,7 +384,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.loadedSymbolInRegister(self.foo16, "bc")
 
         # bar = foo - 1
-        ira = ir.IRSub(self.bar16, self.foo16, Constant("char", 1))
+        ira = ir.IRSub(self.bar16, self.foo16, ConstantOperand("char", 1))
         ira.live[self.foo16] = True
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
@@ -400,7 +400,7 @@ class TestIR(unittest.TestCase):
         registerAllocator.RA.loadedSymbolInRegister(self.foo16, "hl")
 
         # bar = foo - 1
-        ira = ir.IRSub(self.bar16, self.foo16, Constant("char", 1))
+        ira = ir.IRSub(self.bar16, self.foo16, ConstantOperand("char", 1))
         ira.live[self.foo16] = True
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
@@ -453,7 +453,7 @@ class TestIR(unittest.TestCase):
     def test_IRMul_int_constant(self):
         registerAllocator.RA.loadedSymbolInRegister(self.foo16, "de")
 
-        ira = ir.IRMul(self.bar16, self.foo16, Constant("int", 5))
+        ira = ir.IRMul(self.bar16, self.foo16, ConstantOperand("int", 5))
         ira.live[self.foo16] = True
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)
@@ -507,8 +507,8 @@ class TestIR(unittest.TestCase):
         self.assertNotIn(self.foo16, registerAllocator.RA.symbols[self.foo16]) # Only in register
 
     def test_IRPromote_constant(self):
-        # foo16 = (int)Constant 4
-        ira = ir.IRPromote(self.foo16, Constant("char", 4), self.foo16.type)
+        # foo16 = (int)ConstantOperand 4
+        ira = ir.IRPromote(self.foo16, ConstantOperand("char", 4), self.foo16.type)
         ira.live[self.foo16] = True
         registerAllocator.RA.currentInstruction = ira
         ira.genCode(self.asmWriter)

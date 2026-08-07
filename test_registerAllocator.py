@@ -387,7 +387,7 @@ class TestZ80RA(unittest.TestCase):
         self.assertEqual(r, "a")
         self.assertEqual(output, "\tld\ta, b\n")
     def test_loadInA_fromConstant(self):
-        self.ra.loadInA(Constant("char", 42));
+        self.ra.loadInA(ConstantOperand("char", 42));
 
         output = self.asmWriter.output()
         self.assertIn("\tld\ta, 42\n", output)

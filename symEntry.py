@@ -50,13 +50,13 @@ class CastSymbolOperand(Operand):
         return self.name == other.name and self.completeType == other.completeType
 
 
-class Constant(Operand):
+class ConstantOperand(Operand):
     def __init__(self, completeType, value):
         super().__init__(completeType)
         self._value = value
 
     def __eq__(self, other):
-        if not isinstance(other, Constant):
+        if not isinstance(other, ConstantOperand):
             return NotImplemented
         return self.completeType == other.completeType and self.value == other.value
 
@@ -65,7 +65,7 @@ class Constant(Operand):
         return self._value
 
     def __repr__(self):
-        return f"Constant {self.completeType} {self.value}"
+        return f"ConstantOperand {self.completeType} {self.value}"
 
     # Because it doubles an AST Node
     # TODO: Maybe that is a bad idea
@@ -73,7 +73,7 @@ class Constant(Operand):
         return self
 
 
-class StringConstant(Constant):
+class StringConstant(ConstantOperand):
     def __init__(self, value):
         super().__init__(PointerType("char"), value)
 

@@ -331,7 +331,7 @@ class Z80RegisterAllocator(RegisterAllocator):
         return self.doLoadInRegister(address, possibleRegisters, { "bc", "de", "hl" }, { "bc", "de", "hl" })
 
     def doLoadInRegister(self, address, possibleRegisters, allRegisters, allPointerRegisters):
-        if isinstance(address, Constant):
+        if isinstance(address, ConstantOperand):
             regX = self.getTemporaryRegister(possibleRegisters)
             self.asmWriter.write(f'\tld\t{regX}, {address.value}\n')
             return regX

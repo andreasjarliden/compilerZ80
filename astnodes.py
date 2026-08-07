@@ -255,7 +255,7 @@ class While(ASTNode):
         context.continueLabel = loopLabel
         context.blockFactory.addIR(IRLabel(loopLabel))
         exitLabel = createLabel(context)
-        if isinstance(self.expr, Variable) or isinstance(self.expr, Constant):
+        if isinstance(self.expr, Variable) or isinstance(self.expr, ConstantOperand):
             exprAddr = self.expr.visit(context)
             ir = IRIfVariable(exprAddr, exitLabel)
         elif isinstance(self.expr, Relation):
@@ -330,7 +330,7 @@ class VariableDefinition(ASTNode):
                 address = self.value.visit(context)
                 if isinstance(address, SymbolOperand):
                     value = address.name
-                elif isinstance(address, Constant):
+                elif isinstance(address, ConstantOperand):
                     value = address.value
                 else:
                     error()
@@ -340,7 +340,7 @@ class VariableDefinition(ASTNode):
                 #     value = self.value.value
             else:
                 value = 0
-            # value = self.value.visit(context) if self.value else Constant(self.completeType, 0)
+            # value = self.value.visit(context) if self.value else ConstantOperand(self.completeType, 0)
             context.dataSegment[symbol.name] = (symbol.type, value)
         else:
             context.addLocal(symbol)
@@ -386,7 +386,7 @@ class Cast(ASTNode):
     def visit(self, context):
         valueAddr = self.value.visit(context)
         completeType = verifyType(self.completeType, self.location, context.typeEnv)
-        if isinstance(valueAddr, Constant):
+        if isinstance(valueAddr, ConstantOperand):
             temp = copy(valueAddr)
             temp.completeType = completeType
             return temp
@@ -412,7 +412,7 @@ class SizeOf(ASTNode):
             size = len(self.expr.value.string) + 1
         else:
             size = context.typeEnv.sizeOfType(self.expr)
-        return Constant("int", size)
+        return ConstantOperand("int", size)
 
 
 @dataclass(frozen=True)
@@ -443,7 +443,7 @@ class AddressOf(ASTNode):
 
     def visit(self, context):
         exprAddr = self.expr.visit(context)
-        if isinstance(exprAddr.impl, PointerAddress) and isinstance(exprAddr.impl.pointer, Constant):
+        if isinstance(exprAddr.impl, PointerAddress) and isinstance(exprAddr.impl.pointer, ConstantOperand):
             return exprAddr.impl.pointer
         irAddressOf = IRAddressOf(exprAddr, context.createTemporary(PointerType(exprAddr.completeType)))
         context.blockFactory.addIR(irAddressOf)
@@ -537,12 +537,12 @@ class Add(ASTNode):
                 sizeOf = 1
             else:
                 sizeOf = context.typeEnv.sizeOfType(instanceType)
-            if isinstance(address, Constant):
-                return Constant(resultType, address.value * sizeOf)
+            if isinstance(address, ConstantOperand):
+                return ConstantOperand(resultType, address.value * sizeOf)
             else:
                 if sizeOf == 1:
                     return address
-                irMul = IRMul(context.createTemporary(resultType), address, Constant("int", sizeOf))
+                irMul = IRMul(context.createTemporary(resultType), address, ConstantOperand("int", sizeOf))
                 context.blockFactory.addIR(irMul)
                 return irMul.resultAddr
 
@@ -580,12 +580,12 @@ class Subtraction(ASTNode):
                 sizeOf = 1
             else:
                 sizeOf = context.typeEnv.sizeOfType(instanceType)
-            if isinstance(address, Constant):
-                return Constant(resultType, address.value * sizeOf)
+            if isinstance(address, ConstantOperand):
+                return ConstantOperand(resultType, address.value * sizeOf)
             else:
                 if sizeOf == 1:
                     return address
-                irMul = IRMul(context.createTemporary(resultType), address, Constant("int", sizeOf))
+                irMul = IRMul(context.createTemporary(resultType), address, ConstantOperand("int", sizeOf))
                 context.blockFactory.addIR(irMul)
                 return irMul.resultAddr
 
@@ -732,11 +732,11 @@ class StructFieldReference(ASTNode):
             symEntry = SymbolOperand(fieldType, self.name)
             if isinstance(structAddr.impl, PointerAddress):
                 # TODO don't add if offset is zero
-                if isinstance(structAddr.impl.pointer, Constant):
-                    fieldPointer = Constant(PointerType(fieldType), structAddr.impl.pointer.value + offset)
+                if isinstance(structAddr.impl.pointer, ConstantOperand):
+                    fieldPointer = ConstantOperand(PointerType(fieldType), structAddr.impl.pointer.value + offset)
                 else:
                     fieldPointer = context.createTemporary(PointerType(fieldType))
-                    irAdd = IRAdd(fieldPointer, structAddr.impl.pointer, Constant("int", offset))
+                    irAdd = IRAdd(fieldPointer, structAddr.impl.pointer, ConstantOperand("int", offset))
                     context.blockFactory.addIR(irAdd)
                 symEntry.impl = PointerAddress(fieldPointer)
             else:

@@ -19,11 +19,11 @@ class TestParser(unittest.TestCase):
 
     def test_variableDefinition_value(self):
         ast = parser.parse("char foo = 42;")
-        self.assertEqual(ast[0], VariableDefinition("char", "foo", Constant("char", 42)))
+        self.assertEqual(ast[0], VariableDefinition("char", "foo", ConstantOperand("char", 42)))
 
     def test_variableDefinition_hexValue(self):
         ast = parser.parse("int foo = 0x12AB;")
-        self.assertEqual(ast[0], VariableDefinition("int", "foo", Constant("int", 0x12AB)))
+        self.assertEqual(ast[0], VariableDefinition("int", "foo", ConstantOperand("int", 0x12AB)))
 
     def test_variableDefinition_string(self):
         ast = parser.parse('char* foo = "foo";')
@@ -32,11 +32,11 @@ class TestParser(unittest.TestCase):
 
     def test_variableDefinition_charLiteral(self):
         ast = parser.parse("'a';")
-        self.assertEqual(ast[0], Constant("char", 97))
+        self.assertEqual(ast[0], ConstantOperand("char", 97))
         ast = parser.parse("'\\t';")
-        self.assertEqual(ast[0], Constant("char", 9))
+        self.assertEqual(ast[0], ConstantOperand("char", 9))
         ast = parser.parse("'\\n';")
-        self.assertEqual(ast[0], Constant("char", 10))
+        self.assertEqual(ast[0], ConstantOperand("char", 10))
         with self.assertRaises(CompileError) as cts:
             parser.parse("'aa';")
         self.assertIn("Character littera longer than one character 'aa'", cts.exception.message)
@@ -55,19 +55,19 @@ class TestParser(unittest.TestCase):
         ast = parser.parse("a=42;");
         self.assertEqual(ast[0],
                          VariableAssignment(Variable("a"),
-                                            Constant("char", 42)))
+                                            ConstantOperand("char", 42)))
 
     def test_assignmentAsExpression(self):
         ast = parser.parse("*(a=42);");
         self.assertEqual(ast[0],
                          Dereference(VariableAssignment(Variable("a"),
-                                                        Constant("char", 42))))
+                                                        ConstantOperand("char", 42))))
 
     def test_derefAssignment(self):
         ast = parser.parse("*a=42;");
         self.assertEqual(ast[0],
                          VariableAssignment(Dereference(Variable("a")),
-                                            Constant("char", 42)))
+                                            ConstantOperand("char", 42)))
 
     #
     # Variable use
@@ -87,11 +87,11 @@ class TestParser(unittest.TestCase):
         ast = parser.parse("a=(char*)42;");
         self.assertEqual(ast[0],
                          VariableAssignment(Variable("a"),
-                                            Cast(PointerType("char"), Constant("char", 42))))
+                                            Cast(PointerType("char"), ConstantOperand("char", 42))))
         ast = parser.parse("a=(char**)42;");
         self.assertEqual(ast[0],
                          VariableAssignment(Variable("a"),
-                                            Cast(PointerType(PointerType("char")), Constant("char", 42))))
+                                            Cast(PointerType(PointerType("char")), ConstantOperand("char", 42))))
 
     #
     # Address of
@@ -123,19 +123,19 @@ class TestParser(unittest.TestCase):
         self.assertEqual(ast[0],
                          VariableAssignment(Variable("c"),
                                             SizeOf(Add(Variable("a"),
-                                                       Constant("char", 1)))))
+                                                       ConstantOperand("char", 1)))))
 
     # 
     # IF
     #
     def test_if_simple(self):
         ast = parser.parse("""if (1) { }""")
-        self.assertEqual(ast[0], If(Constant("char", 1), []))
+        self.assertEqual(ast[0], If(ConstantOperand("char", 1), []))
 
     def test_if_single_statement(self):
         ast = parser.parse("""if (1) return 42;""")
-        self.assertEqual(ast[0], If(Constant("char", 1),
-                                    [ Return(Constant("char", 42)) ] ))
+        self.assertEqual(ast[0], If(ConstantOperand("char", 1),
+                                    [ Return(ConstantOperand("char", 42)) ] ))
 
     def test_if_equality(self):
         ast = parser.parse("""if (1 + 2 == 3 + 4) return 0;""")
@@ -143,8 +143,8 @@ class TestParser(unittest.TestCase):
         self.assertTrue(isinstance(ast[0].expr, Relation))
         self.assertEqual(ast[0].expr,
                          Relation("==",
-                                  Add(Constant("char", 1), Constant("char", 2)),
-                                  Add(Constant("char", 3), Constant("char", 4))))
+                                  Add(ConstantOperand("char", 1), ConstantOperand("char", 2)),
+                                  Add(ConstantOperand("char", 3), ConstantOperand("char", 4))))
 
     def test_if_else_simple(self):
         ast = parser.parse("""
@@ -153,9 +153,9 @@ class TestParser(unittest.TestCase):
             else 
                 return 24;
             """)
-        self.assertEqual(ast[0], If(Constant("char", 1),
-                                    [ Return(Constant("char", 42)) ],
-                                    [ Return(Constant("char", 24)) ]))
+        self.assertEqual(ast[0], If(ConstantOperand("char", 1),
+                                    [ Return(ConstantOperand("char", 42)) ],
+                                    [ Return(ConstantOperand("char", 24)) ]))
 
     def test_if_else_dangling(self):
         # else should belong to the nearest if
@@ -166,10 +166,10 @@ class TestParser(unittest.TestCase):
                 else 
                     return 24;
             """)
-        self.assertEqual(ast[0], If(Constant("char", 1),
-                                    [ If(Constant("char", 2),
-                                        [ Return(Constant("char", 42)) ],
-                                        [ Return(Constant("char", 24)) ])
+        self.assertEqual(ast[0], If(ConstantOperand("char", 1),
+                                    [ If(ConstantOperand("char", 2),
+                                        [ Return(ConstantOperand("char", 42)) ],
+                                        [ Return(ConstantOperand("char", 24)) ])
                                      ]))
 
     #
@@ -180,7 +180,7 @@ class TestParser(unittest.TestCase):
         ast = parser.parse("""foo(1, 2);""")
         self.assertEqual(ast[0],
                          FunctionCall("foo",
-                                      [ Constant("char", 1), Constant("char", 2)]))
+                                      [ ConstantOperand("char", 1), ConstantOperand("char", 2)]))
 
     def test_funCallString(self):
         ast = parser.parse("""foo("hello");""")
@@ -228,7 +228,7 @@ class TestParser(unittest.TestCase):
         self.assertEqual(funAst[1],
                          VariableAssignment(StructFieldReference(Variable("s"),
                                                                  "foo"),
-                                            Constant("char", 42)))
+                                            ConstantOperand("char", 42)))
 
     def test_nextedStructFieldReference(self):
         ast = parser.parse("""
@@ -244,7 +244,7 @@ class TestParser(unittest.TestCase):
                          VariableAssignment(StructFieldReference(StructFieldReference(Variable("bar"),
                                                                                       "foo"),
                                                                  "b"),
-                                            Constant("char", 42)))
+                                            ConstantOperand("char", 42)))
 
     def test_structInitializer(self):
         ast = parser.parse("""
@@ -254,8 +254,8 @@ class TestParser(unittest.TestCase):
         self.assertEqual(ast[1],
                          VariableDefinition(Struct("Foo"),
                                             "foo",
-                                            StructInitialization([Constant("char", 42),
-                                                                  Constant("char", 24)])))
+                                            StructInitialization([ConstantOperand("char", 42),
+                                                                  ConstantOperand("char", 24)])))
 
     def test_structInitializer_named(self):
         ast = parser.parse("""
@@ -265,8 +265,8 @@ class TestParser(unittest.TestCase):
         self.assertEqual(ast[1],
                          VariableDefinition(Struct("Foo"),
                                             "foo",
-                                            StructInitialization([("b", Constant("char", 42)),
-                                                                  ("a", Constant("char", 24))])))
+                                            StructInitialization([("b", ConstantOperand("char", 42)),
+                                                                  ("a", ConstantOperand("char", 24))])))
 
     def test_structInitializer_mixed(self):
         ast = parser.parse("""
@@ -276,8 +276,8 @@ class TestParser(unittest.TestCase):
         self.assertEqual(ast[1],
                          VariableDefinition(Struct("Foo"),
                                             "foo",
-                                            StructInitialization([("b", Constant("char", 42)),
-                                                                  Constant("char", 24)])))
+                                            StructInitialization([("b", ConstantOperand("char", 42)),
+                                                                  ConstantOperand("char", 24)])))
 
     def test_structInitializer_nested(self):
         ast = parser.parse("""
@@ -288,9 +288,9 @@ class TestParser(unittest.TestCase):
         self.assertEqual(ast[2],
                          VariableDefinition(Struct("Bar"),
                                             "bar",
-                                            StructInitialization([Constant("char", 1),
-                                                                  StructInitialization([Constant("char", 2),
-                                                                                        Constant("char", 3)])])))
+                                            StructInitialization([ConstantOperand("char", 1),
+                                                                  StructInitialization([ConstantOperand("char", 2),
+                                                                                        ConstantOperand("char", 3)])])))
 
 
     #
@@ -320,7 +320,7 @@ class TestParser(unittest.TestCase):
         self.assertFalse(ast[0].isVarArg)
         self.assertEqual(ast[0].frameSize, 0)
         self.assertTrue(isinstance(block.statements[0], IRDefFun))
-        self.assertEqual(block.statements[1], IRReturn("char", Constant("char", 0), "foo"))
+        self.assertEqual(block.statements[1], IRReturn("char", ConstantOperand("char", 0), "foo"))
         self.assertTrue(isinstance(block.statements[2], IRFunExit))
 
     def test_function_varArg(self):

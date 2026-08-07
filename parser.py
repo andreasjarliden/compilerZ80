@@ -349,9 +349,9 @@ def p_constant_number(p):
     '''
     i = p[1]
     if i < 255:
-        p[0] = Constant("char", i)
+        p[0] = ConstantOperand("char", i)
     elif i < 65535:
-        p[0] = Constant("int", i)
+        p[0] = ConstantOperand("int", i)
     else:
         error()
 
@@ -374,7 +374,7 @@ def p_constant_char(p):
     s = p[1].encode("utf-8").decode("unicode_escape")
     if len(s) > 3:
         raise CompileError(f"Character littera longer than one character {s}", loc(p, 1))
-    p[0] = Constant("char", ord(s[1]))
+    p[0] = ConstantOperand("char", ord(s[1]))
 
 def p_constant_string(p):
     '''

@@ -77,7 +77,7 @@ class IR:
     # TODO: Move to registerAllocator?
     def loadRhs8(self, rhsAddr, asmWriter):
         ra = registerAllocator.RA
-        if isinstance(rhsAddr, Constant):
+        if isinstance(rhsAddr, ConstantOperand):
             return rhsAddr.value
         elif isinstance(rhsAddr.impl, PointerAddress):
             # Must have the pointer in hl (or ix/iy). bc & de not supported by Z80
@@ -321,7 +321,7 @@ class IRArgument(IR):
         asmWriter.write(f"\t; Argument {self.lhsAddr}\n")
         ra = registerAllocator.RA
         if self.exprAddr.type == "char":
-            if isinstance(self.lhsAddr, Constant):
+            if isinstance(self.lhsAddr, ConstantOperand):
                 ra.loadInA(self.lhsAddr)
                 asmWriter.write(f'\tpush\taf\n')
             else:
@@ -346,7 +346,7 @@ class IRArgument(IR):
                     ra.loadInA(self.lhsAddr)
                 asmWriter.write(f'\tpush\taf\n')
         elif self.exprAddr.type == "int":
-            if isinstance(self.lhsAddr, Constant):
+            if isinstance(self.lhsAddr, ConstantOperand):
                 # TODO can't this use bc, de also?
                 ra.loadInHL(self.lhsAddr)
                 asmWriter.write(f'\tpush\thl\n')
@@ -479,7 +479,7 @@ class IRAssign(IR):
         else:
             # Stores directly to memory
             if self.resultAddr.type == "char":
-                if isinstance(self.lhsAddr, Constant):
+                if isinstance(self.lhsAddr, ConstantOperand):
                     asmWriter.write(f'\tld\t{self.resultAddr.impl.codeArg()}, {self.lhsAddr.value}\n')
                 else:
                     regY = ra.isInRegister(self.lhsAddr, { "a", "b", "c", "d", "e", "h", "l" })
@@ -522,7 +522,7 @@ class IRAssignToPointer(IR):
         ra = registerAllocator.RA
 
         if self.rhsAddr.type == "char":
-            if isinstance(self.rhsAddr, Constant):
+            if isinstance(self.rhsAddr, ConstantOperand):
                 regX = ra.doLoadInRegister16(pointer, { "bc", "de", "hl" } ) 
                 asmWriter.write(f'\tld\t({regX}), {self.rhsAddr.value}\n')
             else:
@@ -531,7 +531,7 @@ class IRAssignToPointer(IR):
                 regY = ra.doLoadInRegister8(self.rhsAddr, { "a", "b", "c", "d", "e", "h", "l" } - ra.coupledRegisters[regX])
                 asmWriter.write(f'\tld\t({regX}), {regY}\n')
         elif self.rhsAddr.type == "int":
-            if isinstance(self.rhsAddr, Constant):
+            if isinstance(self.rhsAddr, ConstantOperand):
                 # TODO bc, de requires to go via a instead
                 regX = ra.doLoadInRegister16(pointer, { "hl" } ) 
                 # regX = ra.doLoadInRegister16(self.lhsAddr, { "bc", "de", "hl" } ) 
@@ -578,7 +578,7 @@ class IRAdd(IR):
             asmWriter.write(f"\tadd\ta, {regZ}\n")
             ra.assignedToSymbolWithRegister(self.resultAddr, "a")
         elif self.lhsAddr.type == "int":
-            if isinstance(self.rhsAddr, Constant):
+            if isinstance(self.rhsAddr, ConstantOperand):
                 # Unless the lhs is already in HL, prefer to load the constant
                 # in hl as then we can pick the other register freely.
                 if not ra.isInRegister(self.lhsAddr, { "hl" }):
@@ -619,8 +619,8 @@ class IRSub(IR):
             asmWriter.write(f"\tsub\ta, {regZ}\n")
             ra.assignedToSymbolWithRegister(self.resultAddr, "a")
         elif self.lhsAddr.type == "int":
-            if isinstance(self.rhsAddr, Constant):
-                tempAddr = Constant("int", 65536-self.rhsAddr.value)
+            if isinstance(self.rhsAddr, ConstantOperand):
+                tempAddr = ConstantOperand("int", 65536-self.rhsAddr.value)
                 # Unless the lhs is already in HL, prefer to load the constant
                 # in hl as then we can pick the other register freely.
                 if not ra.isInRegister(self.lhsAddr, { "hl" }):
@@ -754,7 +754,7 @@ class IRPromote(IR):
         reg16 = ra.getRegisterForSymbol(self.resultAddr, { "bc", "de", "hl" })
         reg16_hi = reg16[0]
         reg16_lo = reg16[1]
-        if isinstance(self.lhsAddr, Constant):
+        if isinstance(self.lhsAddr, ConstantOperand):
             # TODO must we load it
             asmWriter.write(f"\tld\t{reg16}, {self.lhsAddr.value}\n")
             ra.assignedToSymbolWithRegister(self.resultAddr, reg16)
