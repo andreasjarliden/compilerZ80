@@ -27,8 +27,8 @@ class TestParser(unittest.TestCase):
 
     def test_variableDefinition_string(self):
         ast = parser.parse('char* foo = "foo";')
-        self.assertEqual(ast[0].value, StringConstant(String("foo")))
-        self.assertEqual(ast[0], VariableDefinition(PointerType("char"), "foo", StringConstant(String("foo"))))
+        self.assertEqual(ast[0].value, StringConstantOperand(String("foo")))
+        self.assertEqual(ast[0], VariableDefinition(PointerType("char"), "foo", StringConstantOperand(String("foo"))))
 
     def test_variableDefinition_charLiteral(self):
         ast = parser.parse("'a';")
@@ -186,7 +186,7 @@ class TestParser(unittest.TestCase):
         ast = parser.parse("""foo("hello");""")
         self.assertEqual(ast[0],
                          FunctionCall("foo",
-                                      [ StringConstant(String("hello"))]))
+                                      [ StringConstantOperand(String("hello"))]))
 
     #
     # typedef

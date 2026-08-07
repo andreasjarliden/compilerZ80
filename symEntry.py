@@ -73,12 +73,12 @@ class ConstantOperand(Operand):
         return self
 
 
-class StringConstant(ConstantOperand):
+class StringConstantOperand(ConstantOperand):
     def __init__(self, value):
         super().__init__(PointerType("char"), value)
 
     def __repr__(self):
-        return f"StringConstant {self.completeType} {self.value}"
+        return f"StringConstantOperand {self.completeType} {self.value}"
 
     def visit(self, context):
         name = context.stringTable.addString(self._value)

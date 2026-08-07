@@ -15,20 +15,20 @@ class TestStringTable(unittest.TestCase):
 
 class TestStringConstant(unittest.TestCase):
     def test_stringConstant(self):
-        c = StringConstant("foo")
+        c = StringConstantOperand("foo")
         self.assertEqual(c.completeType, PointerType("char"))
         self.assertEqual(c._value, "foo")
 
     def test_stringConstant_visitAddsToDataSegment(self):
-        c = StringConstant("foo")
+        c = StringConstantOperand("foo")
         context = ASTContext()
         c.visit(context)
         self.assertEqual(len(context.dataSegment), 1)
         self.assertEqual(list(context.dataSegment.values()), [("int", "foo")])
 
     def test_stringConstant_identicalStringsAddedOnce(self):
-        c1 = StringConstant("foo")
-        c2 = StringConstant("foo")
+        c1 = StringConstantOperand("foo")
+        c2 = StringConstantOperand("foo")
         context = ASTContext()
         c1.visit(context)
         c2.visit(context)

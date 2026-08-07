@@ -408,7 +408,7 @@ class SizeOf(ASTNode):
             exprAddr = self.expr.visit(context)
             context.blockFactory.disable = oldDisabledState
             size = context.typeEnv.sizeOfType(exprAddr.completeType)
-        elif isinstance(self.expr, StringConstant):
+        elif isinstance(self.expr, StringConstantOperand):
             size = len(self.expr.value.string) + 1
         else:
             size = context.typeEnv.sizeOfType(self.expr)
