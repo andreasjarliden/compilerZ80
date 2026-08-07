@@ -78,7 +78,7 @@ class TestParser(unittest.TestCase):
         ast = parser.parse("char a;return a;");
         ast[0].visit(context)
         self.assertTrue(ast[1].expr.visit(context).equalByValue(
-            SymEntry("char", "a")))
+            SymbolOperand("char", "a")))
 
     #
     # Casting

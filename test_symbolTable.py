@@ -36,18 +36,18 @@ class TestStringConstant(unittest.TestCase):
         self.assertEqual(list(context.dataSegment.values()), [("int", "foo")])
 
 
-class TestSymEntry(unittest.TestCase):
+class TestSymbolOperand(unittest.TestCase):
     def test_isObject(self):
-        s1 = SymEntry("int", "foo");
+        s1 = SymbolOperand("int", "foo");
         s1.impl = StackAddress(42)
-        s2 = SymEntry("int", "foo");
+        s2 = SymbolOperand("int", "foo");
         s2.impl = PointerAddress(123);
         self.assertNotEqual(s1, s2)
 
     def test_compareByValue(self):
-        s1 = SymEntry("int", "foo");
+        s1 = SymbolOperand("int", "foo");
         s1.impl = StackAddress(42) # equalByValue should ignore impl
-        s2 = SymEntry("int", "foo");
+        s2 = SymbolOperand("int", "foo");
         s2.impl = PointerAddress(123);
         self.assertTrue(s1.equalByValue(s2))
 
@@ -74,8 +74,8 @@ class TestSymbolTable(unittest.TestCase):
         self.assertEqual(self.symbolTable.lookUp("b").type, "int")
 
     def test_allSymbols(self):
-        aOuter = SymEntry("char", "a")
-        aInner = SymEntry("int", "a")
+        aOuter = SymbolOperand("char", "a")
+        aInner = SymbolOperand("int", "a")
         self.symbolTable.addSymbolEntry("a", aOuter)
         self.symbolTable.pushFrame();
         self.symbolTable.addSymbolEntry("a", aInner)
@@ -83,16 +83,16 @@ class TestSymbolTable(unittest.TestCase):
 
     def test_stackFrameSize(self):
         self.assertEqual(stackFrameSize(self.symbolTable.currentSymbolTable()), 0)
-        s1 = SymEntry("char", "charValue");
+        s1 = SymbolOperand("char", "charValue");
         s1.impl = StackAddress(-1)
         self.symbolTable.addSymbolEntry("charValue", s1)
         self.assertEqual(stackFrameSize(self.symbolTable.currentSymbolTable()), 1)
-        s2 = SymEntry("int", "intValue");
+        s2 = SymbolOperand("int", "intValue");
         s2.impl = StackAddress(-3)
         self.symbolTable.addSymbolEntry("intValue", s2)
         self.assertEqual(stackFrameSize(self.symbolTable.currentSymbolTable()), 3)
         # Function argument have positive offsets and shouldn't count
-        s3 = SymEntry("int", "funArgument");
+        s3 = SymbolOperand("int", "funArgument");
         s3.impl = StackAddress(8)
         self.symbolTable.addSymbolEntry("funArgument", s3)
         self.assertEqual(stackFrameSize(self.symbolTable.currentSymbolTable()), 3)

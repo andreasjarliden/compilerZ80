@@ -1,4 +1,4 @@
-from symEntry import SymEntry, StackAddress
+from symEntry import SymbolOperand, StackAddress
 
 class Temporary:
     NUM_TEMPS = 0
@@ -12,24 +12,24 @@ class Temporary:
 
 class SymbolTable:
     def __init__(self) ->None :
-        self.env : list[dict[str, SymEntry]] = [{}]
+        self.env : list[dict[str, SymbolOperand]] = [{}]
     def addSymbol(self, completeType, name):
-        entry = SymEntry(completeType, name)
+        entry = SymbolOperand(completeType, name)
         self.env[-1][name] = entry
         return entry
-    def addSymbolEntry(self, name : str, entry : SymEntry):
+    def addSymbolEntry(self, name : str, entry : SymbolOperand):
         self.env[-1][name] = entry
     # TODO rename
     def currentSymbolTable(self):
         return self.env[-1]
-    def addTemporary(self, completeType) -> SymEntry:
+    def addTemporary(self, completeType) -> SymbolOperand:
         temp = Temporary(completeType)
         return self.addSymbol(completeType, temp.name)
     def pushFrame(self) -> None :
         self.env.append({})
     def popFrame(self) -> None :
         self.env.pop()
-    def lookUp(self, name : str) -> SymEntry | None:
+    def lookUp(self, name : str) -> SymbolOperand | None:
         # TODO for preventing looking up StructType which is not hashable. Handle this in a better way.
         if not isinstance(name, str):
             return None
@@ -39,8 +39,8 @@ class SymbolTable:
             except KeyError:
                 pass
         return None
-    def allSymbols(self) -> set[SymEntry] :
-        symbols : set[SymEntry] = set()
+    def allSymbols(self) -> set[SymbolOperand] :
+        symbols : set[SymbolOperand] = set()
         for frame in self.env:
             symbols.update(frame.values())
         return symbols

@@ -8,9 +8,9 @@ from ir import *
 
 class TestRA(unittest.TestCase):
     def setUp(self):
-        self.foo = SymEntry("char", "foo")
+        self.foo = SymbolOperand("char", "foo")
         self.foo.impl = StackAddress(-1)
-        self.bar = SymEntry("char", "bar")
+        self.bar = SymbolOperand("char", "bar")
         self.bar.impl = StackAddress(-2)
         self.ra = RegisterAllocator()
         self.ra.currentInstruction = IR()
@@ -207,13 +207,13 @@ class TestRA(unittest.TestCase):
     # spillAllMatchingType
 
     def test_storeAllMatchingType_int(self):
-        foo = SymEntry("char", "foo")
+        foo = SymbolOperand("char", "foo")
         foo.impl = "dummyImpl"
-        foo2 = SymEntry("char", "foo")
+        foo2 = SymbolOperand("char", "foo")
         foo2.impl = "dummyImpl"
-        baz = SymEntry("int", "baz")
+        baz = SymbolOperand("int", "baz")
         baz.impl = "dummyImpl"
-        temp = SymEntry("int", "temp001") # should not be spilled
+        temp = SymbolOperand("int", "temp001") # should not be spilled
         temp.impl = "dummyImpl"
         self.ra.currentInstruction.live[foo] = True
         self.ra.currentInstruction.live[foo2] = True
@@ -230,11 +230,11 @@ class TestRA(unittest.TestCase):
         self.assertTrue(baz in self.ra.symbols) # Only store, don't spill
 
     def test_storeAllMatchingType_char(self):
-        foo = SymEntry("char", "foo")
+        foo = SymbolOperand("char", "foo")
         foo.impl = "dummyImpl"
-        foo2 = SymEntry("char", "foo")
+        foo2 = SymbolOperand("char", "foo")
         foo2.impl = "dummyImpl"
-        baz = SymEntry("int", "baz")
+        baz = SymbolOperand("int", "baz")
         baz.impl = "dummyImpl"
         self.ra.currentInstruction.live[foo] = True
         self.ra.currentInstruction.live[foo2] = True
@@ -250,17 +250,17 @@ class TestRA(unittest.TestCase):
 
 class TestZ80RA(unittest.TestCase):
     def setUp(self):
-        self.foo = SymEntry("char", "foo")
+        self.foo = SymbolOperand("char", "foo")
         self.foo.impl = StackAddress(0)
-        self.ptr = SymEntry("int", "ptr")
+        self.ptr = SymbolOperand("int", "ptr")
         self.ptr.impl = StackAddress(2)
-        self.derefPtr = SymEntry("char", "deref")
+        self.derefPtr = SymbolOperand("char", "deref")
         self.derefPtr.impl = PointerAddress(self.ptr)
-        self.derefPtr16 = SymEntry("int", "deref16")
+        self.derefPtr16 = SymbolOperand("int", "deref16")
         self.derefPtr16.impl = PointerAddress(self.ptr)
-        self.bar = SymEntry("char", "bar")
+        self.bar = SymbolOperand("char", "bar")
         self.bar.impl = StackAddress(-11)
-        self.bar16 = SymEntry("char", "bar16")
+        self.bar16 = SymbolOperand("char", "bar16")
         self.bar16.impl = StackAddress(-2)
         self.asmWriter = StringAsmWriter()
         self.ra = Z80RegisterAllocator(self.asmWriter)
@@ -268,14 +268,14 @@ class TestZ80RA(unittest.TestCase):
         self.ra.currentInstruction.live = { self.foo: True, self.bar: True, self.ptr: True }
 
     def test_doStoreToSymbol_StackAddress_char(self):
-        s = SymEntry("char", "foo")
+        s = SymbolOperand("char", "foo")
         s.impl = StackAddress(42)
         self.ra.doStoreToSymbol("a", s)
         output = self.asmWriter.output()
         self.assertIn("ld\t(ix + 42), a", output)
 
     def test_doStoreToSymbol_StackAddress_int(self):
-        s = SymEntry("int", "foo")
+        s = SymbolOperand("int", "foo")
         s.impl = StackAddress(42)
         self.ra.doStoreToSymbol("hl", s)
         output = self.asmWriter.output()
@@ -284,14 +284,14 @@ class TestZ80RA(unittest.TestCase):
 
     def test_doStoreToSymbol_GlobalAddress_char(self):
         # Char
-        s = SymEntry("char", "foo")
+        s = SymbolOperand("char", "foo")
         s.impl = GlobalAddress("label")
         self.ra.doStoreToSymbol("a", s)
         output = self.asmWriter.output()
         self.assertIn("ld\t(label), a", output)
 
     def test_doStoreToSymbol_GlobalAddress_int(self):
-        s = SymEntry("int", "foo")
+        s = SymbolOperand("int", "foo")
         s.impl = GlobalAddress("label")
         self.ra.doStoreToSymbol("hl", s)
         output = self.asmWriter.output()
@@ -323,7 +323,7 @@ class TestZ80RA(unittest.TestCase):
     # More complicated as we might have to use a to spill a different register
     def test_spillGlobalChar(self):
         self.ra.assignedToSymbolWithRegister(self.foo, "a")
-        GLOBAL = SymEntry("char", "GLOBAL")
+        GLOBAL = SymbolOperand("char", "GLOBAL")
         GLOBAL.impl = GlobalAddress("GLOBAL")
         self.ra.currentInstruction.live[GLOBAL] = True
         self.ra.assignedToSymbolWithRegister(GLOBAL, "b")
@@ -338,7 +338,7 @@ class TestZ80RA(unittest.TestCase):
         self.assertTrue(output.find("ld\ta, b") < output.find("ld\t(GLOBAL), a"))
 
     def test_spillGlobalInt(self):
-        GLOBAL = SymEntry("int", "GLOBAL")
+        GLOBAL = SymbolOperand("int", "GLOBAL")
         GLOBAL.impl = GlobalAddress("GLOBAL")
         self.ra.currentInstruction.live[GLOBAL] = True
         self.ra.assignedToSymbolWithRegister(GLOBAL, "bc")
@@ -350,7 +350,7 @@ class TestZ80RA(unittest.TestCase):
 
     # Check the special case where we are spilling reg a directly
     def test_spillGlobalChar_regA(self):
-        GLOBAL = SymEntry("char", "GLOBAL")
+        GLOBAL = SymbolOperand("char", "GLOBAL")
         GLOBAL.impl = GlobalAddress("GLOBAL")
         self.ra.currentInstruction.live[GLOBAL] = True
         self.ra.assignedToSymbolWithRegister(GLOBAL, "a")
@@ -452,9 +452,9 @@ class TestZ80RA(unittest.TestCase):
 
     #  doLoadInRegister8
     def test_doLoadInRegister8(self):
-        ptr = SymEntry(PointerType("char"), "ptr")
+        ptr = SymbolOperand(PointerType("char"), "ptr")
         ptr.impl = "dummy"
-        foo = SymEntry("char", "foo")
+        foo = SymbolOperand("char", "foo")
         foo.impl = PointerAddress(ptr)
 
         # Force an attempt to ld r, (bc/de), when r is not a which is not

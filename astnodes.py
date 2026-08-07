@@ -33,7 +33,7 @@ class ASTContext:
     typeEnv : Any = field(default_factory=TypeEnv)
     functionName : str | None = None
     continueLabel : str | None = None
-    dataSegment : dict[SymEntry, Any] = field(default_factory=dict)
+    dataSegment : dict[SymbolOperand, Any] = field(default_factory=dict)
     stringTable : StringTable = field(default_factory=StringTable)
     stackOffset : int = field(default = 0, init=False)
     functionLabels : int = field(default = 0, init=False)
@@ -55,7 +55,7 @@ class ASTContext:
         self.addLocal(t)
         return t
 
-    def addLocal(self, symbol : SymEntry):
+    def addLocal(self, symbol : SymbolOperand):
         # stack pointer points to last byte written, so first variable starts at one byte below SP
         size = self.typeEnv.sizeOfType(symbol.type)
         self.stackOffset -= size;
@@ -180,7 +180,7 @@ class FunctionDefinition(Function):
         offset = 4
         for a in self.arguments:
             verifyType(a.completeType, a.location, context.typeEnv)
-            symEntry = SymEntry(a.completeType, a.name)
+            symEntry = SymbolOperand(a.completeType, a.name)
             if a.type == "int":
                 symEntry.impl = StackAddress(offset)
             elif a.type == "char":
@@ -322,13 +322,13 @@ class VariableDefinition(ASTNode):
             tComplete = s.impl.completeType
         else:
             tComplete = verifyType(tComplete, self.location, context.typeEnv)
-        symbol = SymEntry(tComplete, self.name)
+        symbol = SymbolOperand(tComplete, self.name)
         context.symbolTable.addSymbolEntry(self.name, symbol)
         if not context.functionName:
             symbol.impl = GlobalAddress(self.name)
             if self.value:
                 address = self.value.visit(context)
-                if isinstance(address, SymEntry):
+                if isinstance(address, SymbolOperand):
                     value = address.name
                 elif isinstance(address, Constant):
                     value = address.value
@@ -391,7 +391,7 @@ class Cast(ASTNode):
             temp.completeType = completeType
             return temp
         else:
-            t = CastSymEntry(valueAddr, completeType)
+            t = CastSymbolOperand(valueAddr, completeType)
             return t
 
 
@@ -673,7 +673,7 @@ class TypeDef(ASTNode):
     completeType : str
 
     def visit(self, context):
-        symbol = SymEntry(self.completeType, self.name)
+        symbol = SymbolOperand(self.completeType, self.name)
         context.symbolTable.addSymbolEntry(self.name, symbol)
         symbol.impl = TypeAddress(completeType=self.completeType)
 
@@ -729,7 +729,7 @@ class StructFieldReference(ASTNode):
             raise CompileError(f"Unknown field {self.fieldName} in struct {structType.name}", self.location)
         if not context.symbolTable.lookUp(self.name):
             fieldType = structType.fields[self.fieldName].completeType
-            symEntry = SymEntry(fieldType, self.name)
+            symEntry = SymbolOperand(fieldType, self.name)
             if isinstance(structAddr.impl, PointerAddress):
                 # TODO don't add if offset is zero
                 if isinstance(structAddr.impl.pointer, Constant):

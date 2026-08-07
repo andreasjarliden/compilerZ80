@@ -12,8 +12,8 @@ ALL_8BIT_REGISTERS = {'a', 'b', 'c', 'd', 'e', 'h', 'l' }
 
 class RegisterAllocator:
     def __init__(self) -> None:
-        self.registers : dict[str, set[SymEntry]] = {r: set() for r in ALL_REGISTERS}
-        self.symbols : dict[SymEntry, set[str | SymEntry]] = {}
+        self.registers : dict[str, set[SymbolOperand]] = {r: set() for r in ALL_REGISTERS}
+        self.symbols : dict[SymbolOperand, set[str | SymbolOperand]] = {}
         self.coupledRegisters = { 'bc': {'b', 'c'},
                                  'b': {'bc'},
                                  'c': {'bc',},
@@ -29,7 +29,7 @@ class RegisterAllocator:
         return f"registers: {pformat(self.registers)}\nfree registers: {pformat(self.freeRegisters)}\nsymbols: {pformat(self.symbols)}"
 
     def _verifyRegisters(self) -> None:
-        registersForSymbol : dict[SymEntry, set[str]] = {}        
+        registersForSymbol : dict[SymbolOperand, set[str]] = {}        
         for s in self.symbols:
             registersForSymbol[s] = set()
         for r in self.registers:
@@ -223,7 +223,7 @@ class RegisterAllocator:
 
     # A symbol was loaded from memory into a register, i.e. it exists in both
     # places (cmp assignedToSymbolWithRegister where it is only in register)
-    def loadedSymbolInRegister(self, s : SymEntry, r) -> None:
+    def loadedSymbolInRegister(self, s : SymbolOperand, r) -> None:
         assert s.impl
         assert r in self.freeRegisters
         self.symbols.setdefault(s, set())
@@ -232,14 +232,14 @@ class RegisterAllocator:
         self.registers[r].add(s)
 
     # Example: LD (ix+n), a
-    def storedToSymbol(self, s : SymEntry) -> None:
+    def storedToSymbol(self, s : SymbolOperand) -> None:
         assert s.impl
         self.symbols.setdefault(s, set())
         self.symbols[s].add(s)
 
     # Assigning to a name means that it is only the register that holds the
     # name, it has not been spilled to memory yet.
-    def assignedToSymbolWithRegister(self, s : SymEntry, r) -> None:
+    def assignedToSymbolWithRegister(self, s : SymbolOperand, r) -> None:
         assert s.impl
         # As we are replacing the old value for s we remove it from any
         # registers it may have previously been loaded into

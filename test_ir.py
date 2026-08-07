@@ -7,14 +7,14 @@ from asmWriter import StringAsmWriter
 
 class TestIR(unittest.TestCase):
     def setUp(self):
-        self.foo = SymEntry("char", "foo")
-        self.foo16 = SymEntry("int", "foo")
-        self.bar = SymEntry("char", "bar")
-        self.bar16 = SymEntry("int", "bar")
-        self.baz = SymEntry("char", "baz")
-        self.baz16 = SymEntry("int", "baz")
-        self.ptr = SymEntry(PointerType("int"), "ptr")
-        self.derefPtr = SymEntry("char", "derefPtr")
+        self.foo = SymbolOperand("char", "foo")
+        self.foo16 = SymbolOperand("int", "foo")
+        self.bar = SymbolOperand("char", "bar")
+        self.bar16 = SymbolOperand("int", "bar")
+        self.baz = SymbolOperand("char", "baz")
+        self.baz16 = SymbolOperand("int", "baz")
+        self.ptr = SymbolOperand(PointerType("int"), "ptr")
+        self.derefPtr = SymbolOperand("char", "derefPtr")
         self.foo.impl = StackAddress(1)
         self.foo16.impl = StackAddress(1)
         self.bar.impl = StackAddress(2)
@@ -30,25 +30,25 @@ class TestIR(unittest.TestCase):
     # drops cast
     #
     def test_dropCast(self):
-        # res, lhs & rhs all drop any CastSymEntry to the direct SymEntry
-        symEntry = SymEntry("char", "foo");
-        castEntry = CastSymEntry(symEntry, "int")
+        # res, lhs & rhs all drop any CastSymbolOperand to the direct SymbolOperand
+        symEntry = SymbolOperand("char", "foo");
+        castEntry = CastSymbolOperand(symEntry, "int")
         irdummy = ir.IR(castEntry, castEntry, castEntry)
         self.assertEqual(irdummy.resultAddr, symEntry)
         self.assertEqual(irdummy.lhsAddr, symEntry)
         self.assertEqual(irdummy.rhsAddr, symEntry)
 
         # Drops multiple casts
-        multipleCast = CastSymEntry(castEntry, "char")
+        multipleCast = CastSymbolOperand(castEntry, "char")
         irdummy = ir.IR(castEntry, castEntry, castEntry)
         self.assertEqual(irdummy.resultAddr, symEntry)
 
         # Drops cast on pointers
-        pointerSymEntry = SymEntry(PointerType("char"), "ptr")
-        castPointerSymEntry = CastSymEntry(pointerSymEntry, PointerType("int"))
-        symEntry.impl = PointerAddress(castPointerSymEntry)
+        pointerSymbolOperand = SymbolOperand(PointerType("char"), "ptr")
+        castPointerSymbolOperand = CastSymbolOperand(pointerSymbolOperand, PointerType("int"))
+        symEntry.impl = PointerAddress(castPointerSymbolOperand)
         irdummy = ir.IR(symEntry, symEntry, symEntry)
-        self.assertEqual(irdummy.resultAddr.impl.pointer, pointerSymEntry)
+        self.assertEqual(irdummy.resultAddr.impl.pointer, pointerSymbolOperand)
 
 
     #
@@ -288,7 +288,7 @@ class TestIR(unittest.TestCase):
 
     # Load rhs via global address
     def test_IRAdd_rhsIsGlobalVariable(self):
-        GLOBAL = SymEntry("char", "global")
+        GLOBAL = SymbolOperand("char", "global")
         GLOBAL.impl = GlobalAddress("global")
         registerAllocator.RA.loadedSymbolInRegister(self.bar, "a")
 
@@ -543,9 +543,9 @@ class TestIR(unittest.TestCase):
     # IRAddressOf
     #
     def test_IRAddressOf_localVariable(self):
-        result = SymEntry(PointerType("char"), "res")
+        result = SymbolOperand(PointerType("char"), "res")
         result.impl = StackAddress(-2)
-        arg = SymEntry("char", "arg")
+        arg = SymbolOperand("char", "arg")
         # Rightmost argument (16-bit) is at ix+5, ix+4
         arg.impl = StackAddress(-4) 
         ira = ir.IRAddressOf(arg, result)
@@ -555,9 +555,9 @@ class TestIR(unittest.TestCase):
         self.assertRegex(output, "push\tix\n\tpop\thl\n\tld\t(bc|de), 0fffch\n\tadd\thl, (bc|de)")
 
     def test_IRAddressOf_stackArgument(self):
-        result = SymEntry(PointerType("char"), "res")
+        result = SymbolOperand(PointerType("char"), "res")
         result.impl = StackAddress(-1)
-        arg = SymEntry("char", "arg")
+        arg = SymbolOperand("char", "arg")
         # Rightmost argument (16-bit) is at ix+5, ix+4
         arg.impl = StackAddress(4) 
         ira = ir.IRAddressOf(arg, result)

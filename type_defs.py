@@ -15,7 +15,7 @@ class PointerType:
     def __repr__(self):
         return f"{self.toType}*"
 
-# TODO there is commonality between SymEntry and StructField
+# TODO there is commonality between SymbolOperand and StructField
 @dataclass(frozen=True)
 class StructField:
     completeType : Any

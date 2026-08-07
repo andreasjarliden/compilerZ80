@@ -16,7 +16,7 @@ class Operand:
 
 
 # Object semantics but with custom equalByValue function
-class SymEntry(Operand):
+class SymbolOperand(Operand):
     def __init__(self, completeType, n : str):
         super().__init__(completeType)
         # TODO maybe name should be optional, only used for debugging?
@@ -24,19 +24,19 @@ class SymEntry(Operand):
         self.impl : ValueAddress | None = None
 
     def __repr__(self):
-        return f"<SymEntry {self.completeType} {self.name} {self.impl}>"
+        return f"<SymbolOperand {self.completeType} {self.name} {self.impl}>"
 
     def equalByValue(self, other):
         return self.name == other.name and self.completeType == other.completeType
 
 
-class CastSymEntry(Operand):
-    def __init__(self, s : SymEntry, completeType):
-        super().__init(completeType)
+class CastSymbolOperand(Operand):
+    def __init__(self, s : SymbolOperand, completeType):
+        super().__init__(completeType)
         self.symEntry = s
 
     def __repr__(self):
-        return f"<CastSymEntry {self.completeType} {self.symEntry}>"
+        return f"<CastSymbolOperand {self.completeType} {self.symEntry}>"
 
     @property
     def name(self):
@@ -84,7 +84,7 @@ class StringConstant(Constant):
         name = context.stringTable.addString(self._value)
         symbol = context.symbolTable.lookUp(name)
         if not symbol:
-            symbol = SymEntry(PointerType("char"), name)
+            symbol = SymbolOperand(PointerType("char"), name)
             symbol.impl = GlobalLabel(name)
             context.symbolTable.addSymbolEntry(name, symbol)
             if not symbol in context.dataSegment:

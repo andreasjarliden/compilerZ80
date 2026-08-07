@@ -4,9 +4,9 @@ from asmWriter import *
 from symbolTable import stackFrameSize
 
 def dropCast(o):
-    if o and isinstance(o, SymEntry) and isinstance(o.impl, PointerAddress):
+    if o and isinstance(o, SymbolOperand) and isinstance(o.impl, PointerAddress):
         o.impl.pointer = dropCast(o.impl.pointer)
-    if isinstance(o, CastSymEntry):
+    if isinstance(o, CastSymbolOperand):
         return dropCast(o.symEntry)
     else:
         return o
@@ -21,33 +21,33 @@ class IR:
         self.resultAddr=dropCast(resultAddr)
         self.lhsAddr=dropCast(lhsAddr)
         self.rhsAddr=dropCast(rhsAddr)
-        self.live : dict[SymEntry, bool] = {}
+        self.live : dict[SymbolOperand, bool] = {}
 
     @property
     def exprAddr(self):
         return self.lhsAddr
 
     def updateLive(self, live):
-        if self.resultAddr and isinstance(self.resultAddr, SymEntry):
+        if self.resultAddr and isinstance(self.resultAddr, SymbolOperand):
             live[self.resultAddr] = False
-        if self.lhsAddr and isinstance(self.lhsAddr, SymEntry):
+        if self.lhsAddr and isinstance(self.lhsAddr, SymbolOperand):
             live[self.lhsAddr] = True
-        if self.rhsAddr and isinstance(self.rhsAddr, SymEntry):
+        if self.rhsAddr and isinstance(self.rhsAddr, SymbolOperand):
             live[self.rhsAddr] = True
         self.live = live.copy()
 
     def liveStr(self):
         if not self.live:
             return ""
-        if self.resultAddr and isinstance(self.resultAddr, SymEntry):
+        if self.resultAddr and isinstance(self.resultAddr, SymbolOperand):
             s1 = "L" if self.live[self.resultAddr] else "D"
         else:
             s1="?"
-        if self.lhsAddr and isinstance(self.lhsAddr, SymEntry):
+        if self.lhsAddr and isinstance(self.lhsAddr, SymbolOperand):
             s2 = "L" if self.live[self.lhsAddr] else "D"
         else:
             s2="?"
-        if self.rhsAddr and isinstance(self.rhsAddr, SymEntry):
+        if self.rhsAddr and isinstance(self.rhsAddr, SymbolOperand):
             s3 = "L" if self.live[self.rhsAddr] else "D"
         else:
             s3="?"
@@ -128,7 +128,7 @@ class IR:
 
         if transitive:
             # if the rhs is already in register a, then swap them
-            if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr, { "a" }):
+            if isinstance(self.rhsAddr, SymbolOperand) and ra.isInRegister(self.rhsAddr, { "a" }):
                 self.lhsAddr, self.rhsAddr = self.rhsAddr, self.lhsAddr
 
         # Load the rhs, first because we might have to temporarily use a, e.g.
@@ -143,7 +143,7 @@ class IR:
 
         if transitive:
             # if the rhs is already in register hl, then swap them
-            if isinstance(self.rhsAddr, SymEntry) and ra.isInRegister(self.rhsAddr, { "hl" } ):
+            if isinstance(self.rhsAddr, SymbolOperand) and ra.isInRegister(self.rhsAddr, { "hl" } ):
                 self.lhsAddr, self.rhsAddr = self.rhsAddr, self.lhsAddr
 
         ra.loadInHL(self.lhsAddr)
@@ -397,7 +397,7 @@ class IRFunCall(IR):
             ra.assignedToSymbolWithRegister(self.resultAddr, returnRegisterForType[self.type])
 
 class IRAddressOf(IR):
-    def __init__(self, symEntry : SymEntry, resAddr):
+    def __init__(self, symEntry : SymbolOperand, resAddr):
         super().__init__(resultAddr=resAddr, lhsAddr=symEntry)
 
     def genCode(self, asmWriter):
@@ -443,7 +443,7 @@ class IRAddressOf(IR):
 # Although, it does update the live tracking. Although is resAddress used?
 class IRDereference(IR):
     # TODO: Fix ordering of arguments!
-    def __init__(self, symEntry : SymEntry, resAddr):
+    def __init__(self, symEntry : SymbolOperand, resAddr):
         super().__init__(resultAddr=resAddr, lhsAddr=symEntry)
 
     def genCode(self, asmWriter):
