@@ -2,7 +2,6 @@ import unittest
 from registerAllocator import *
 from io import StringIO
 from symEntry import *
-from address import *
 from asmWriter import AsmWriter
 from ir import *
 

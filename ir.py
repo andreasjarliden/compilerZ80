@@ -1,4 +1,3 @@
-from address import *
 from symEntry import *
 import registerAllocator
 from asmWriter import *

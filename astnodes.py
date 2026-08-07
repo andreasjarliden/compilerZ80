@@ -6,8 +6,6 @@ from blocks import BlockFactory
 from error import Location, CompileError
 from typeEnv import TypeEnv
 from type_defs import StructType, PointerType, StructField, simpleTypeForComplexType
-import symbolTable
-from address import Temporary
 from copy import copy
 from promotion import promoteIfNeededTo, promoteLhsAndRhs
 
