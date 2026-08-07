@@ -2,7 +2,6 @@ from astnodes import ASTContext
 from blocks import BlockFactory
 from symbolTable import SymbolTable
 from astnodes import String
-from address import StringConstant
 import registerAllocator
 
 def astToThreeCode(ast, astContext):

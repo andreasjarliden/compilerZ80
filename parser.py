@@ -1,6 +1,5 @@
 from lexer import tokens, lexer
 import ply.yacc as yacc
-from address import Constant
 from astnodes import *
 from error import Location, CompileError
 from type_defs import PointerType

@@ -1,4 +1,5 @@
-from address import Constant, PointerType
+from symEntry import Constant
+from type_defs import PointerType
 from ir import IRPromote
 from error import CompileError
 

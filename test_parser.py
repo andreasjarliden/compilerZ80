@@ -2,7 +2,7 @@ import unittest
 from parser import parser
 from lexer import lexer
 from astnodes import *
-from address import Constant, Temporary
+from address import Temporary
 from blocks import SingleBlockFactory, BlockFactory
 from type_defs import PointerType
 from pprint import pprint

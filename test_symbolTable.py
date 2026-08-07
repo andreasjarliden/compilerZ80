@@ -1,7 +1,6 @@
 import unittest
 from symbolTable import *
 from symEntry import *
-from address import StringConstant
 from astnodes import ASTContext, StringTable
 
 class TestStringTable(unittest.TestCase):
