@@ -1,13 +1,14 @@
 from dataclasses import dataclass
 from type_defs import StructType, PointerType, simpleTypeForComplexType
-from abc import ABC, abstractmethod
 from typing import Any
 
-class Operand(ABC):
+class Operand:
+    def __init__(self, completeType):
+        self.completeType = completeType
+
     @property
-    @abstractmethod
-    def type(self) -> Any:
-        ...
+    def type(self):
+        return simpleTypeForComplexType(self.completeType)
 
     @property
     def isPointer(self):
@@ -16,8 +17,8 @@ class Operand(ABC):
 
 # Object semantics but with custom equalByValue function
 class SymEntry(Operand):
-    def __init__(self, t, n : str):
-        self.completeType = t
+    def __init__(self, completeType, n : str):
+        super().__init__(completeType)
         # TODO maybe name should be optional, only used for debugging?
         self.name = n
         self.impl : ValueAddress | None = None
@@ -25,18 +26,14 @@ class SymEntry(Operand):
     def __repr__(self):
         return f"<SymEntry {self.completeType} {self.name} {self.impl}>"
 
-    @property
-    def type(self):
-        return simpleTypeForComplexType(self.completeType)
-
     def equalByValue(self, other):
         return self.name == other.name and self.completeType == other.completeType
 
 
 class CastSymEntry(Operand):
     def __init__(self, s : SymEntry, completeType):
+        super().__init(completeType)
         self.symEntry = s
-        self.completeType = completeType
 
     def __repr__(self):
         return f"<CastSymEntry {self.completeType} {self.symEntry}>"
@@ -49,17 +46,13 @@ class CastSymEntry(Operand):
     def impl(self):
         return self.symEntry.impl
 
-    @property
-    def type(self):
-        return simpleTypeForComplexType(self.completeType)
-
     def equalByValue(self, other):
         return self.name == other.name and self.completeType == other.completeType
 
 
 class Constant(Operand):
     def __init__(self, completeType, value):
-        self.completeType = completeType
+        super().__init__(completeType)
         self._value = value
 
     def __eq__(self, other):
@@ -71,30 +64,18 @@ class Constant(Operand):
     def value(self):
         return self._value
 
-    @property
-    def type(self):
-        if self.isPointer:
-            return "int"
-        else:
-            return self.completeType
-
     def __repr__(self):
         return f"Constant {self.completeType} {self.value}"
 
     # Because it doubles an AST Node
-    # Maybe that is a bad idea
+    # TODO: Maybe that is a bad idea
     def visit(self, context):
         return self
 
 
 class StringConstant(Constant):
-
     def __init__(self, value):
         super().__init__(PointerType("char"), value)
-
-    # @property
-    # def value(self):
-    #     return self._name
 
     def __repr__(self):
         return f"StringConstant {self.completeType} {self.value}"
