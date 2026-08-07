@@ -4,7 +4,7 @@ SIZE_FOR_TYPES = { "char": 1,
                    "int": 2 }
 
 class TypeEnv:
-    def __init__(self):
+    def __init__(self) -> None:
         self.structEnv : list[dict[str, StructType]] = [{}]
 
     def __repr__(self):

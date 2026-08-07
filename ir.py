@@ -14,11 +14,14 @@ def dropCast(o):
 # members:
 # - live[symbol] = bool, whether symbol is live _at_ this instruction.
 class IR:
-    def __init__(self, resultAddr=None, lhsAddr=None, rhsAddr=None):
+    def __init__(self,
+                 resultAddr : Operand | None = None,
+                 lhsAddr : Operand | None = None,
+                 rhsAddr : Operand | None = None):
         self.resultAddr=dropCast(resultAddr)
         self.lhsAddr=dropCast(lhsAddr)
         self.rhsAddr=dropCast(rhsAddr)
-        self.live = {}
+        self.live : dict[SymEntry, bool] = {}
 
     @property
     def exprAddr(self):

@@ -1,9 +1,17 @@
 from dataclasses import dataclass
 from type_defs import StructType, PointerType, simpleTypeForComplexType
+from abc import ABC, abstractmethod
+from typing import Any
+
+class Operand(ABC):
+    @property
+    @abstractmethod
+    def type(self) -> Any:
+        ...
 
 
 # Object semantics but with custom equalByValue function
-class SymEntry:
+class SymEntry(Operand):
     def __init__(self, t, n : str):
         self.completeType = t
         # TODO maybe name should be optional, only used for debugging?
@@ -25,7 +33,7 @@ class SymEntry:
         return self.name == other.name and self.completeType == other.completeType
 
 
-class CastSymEntry:
+class CastSymEntry(Operand):
     def __init__(self, s : SymEntry, completeType):
         self.symEntry = s
         self.completeType = completeType
@@ -57,7 +65,7 @@ class CastSymEntry:
         return self.name == other.name and self.completeType == other.completeType
 
 
-class Constant:
+class Constant(Operand):
     def __init__(self, completeType, value):
         self.completeType = completeType
         self._value = value

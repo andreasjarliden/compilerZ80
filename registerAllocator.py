@@ -11,7 +11,7 @@ ALL_REGISTERS = {'a', 'b', 'c', 'd', 'e', 'h', 'l', 'bc', 'de', 'hl'}
 ALL_8BIT_REGISTERS = {'a', 'b', 'c', 'd', 'e', 'h', 'l' }
 
 class RegisterAllocator:
-    def __init__(self):
+    def __init__(self) -> None:
         self.registers : dict[str, set[SymEntry]] = {r: set() for r in ALL_REGISTERS}
         self.symbols : dict[SymEntry, set[str | SymEntry]] = {}
         self.coupledRegisters = { 'bc': {'b', 'c'},
@@ -28,7 +28,7 @@ class RegisterAllocator:
     def __repr__(self):
         return f"registers: {pformat(self.registers)}\nfree registers: {pformat(self.freeRegisters)}\nsymbols: {pformat(self.symbols)}"
 
-    def _verifyRegisters(self):
+    def _verifyRegisters(self) -> None:
         registersForSymbol : dict[SymEntry, set[str]] = {}        
         for s in self.symbols:
             registersForSymbol[s] = set()
@@ -40,7 +40,7 @@ class RegisterAllocator:
                 print(f"Registers for symbols[{s}] not matching registers!!!")
                 print()
                 print(self)
-                error()
+                assert False
 
     def verify(self):
         symbolsFromRegister = set()
@@ -54,7 +54,7 @@ class RegisterAllocator:
             print(f"RegisterAllocator Error: symbols mismatch")
             print()
             print(self)
-            error()
+            assert False
         self._verifyRegisters()
 
     def doStoreToSymbol(self, reg, s, onlyStore=False):
@@ -225,8 +225,7 @@ class RegisterAllocator:
     # places (cmp assignedToSymbolWithRegister where it is only in register)
     def loadedSymbolInRegister(self, s : SymEntry, r) -> None:
         assert s.impl
-        if r not in self.freeRegisters:
-            error()
+        assert r in self.freeRegisters
         self.symbols.setdefault(s, set())
         self.symbols[s].add(r)
         self.symbols[s].add(s)
