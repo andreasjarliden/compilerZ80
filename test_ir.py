@@ -32,23 +32,23 @@ class TestIR(unittest.TestCase):
     #
     def test_dropCast(self):
         # res, lhs & rhs all drop any CastSymbolOperand to the direct SymbolOperand
-        symEntry = SymbolOperand("char", "foo");
-        castEntry = CastSymbolOperand(symEntry, "int")
+        symbol = SymbolOperand("char", "foo");
+        castEntry = CastSymbolOperand(symbol, "int")
         irdummy = ir.IR(castEntry, castEntry, castEntry)
-        self.assertEqual(irdummy.resultAddr, symEntry)
-        self.assertEqual(irdummy.lhsAddr, symEntry)
-        self.assertEqual(irdummy.rhsAddr, symEntry)
+        self.assertEqual(irdummy.resultAddr, symbol)
+        self.assertEqual(irdummy.lhsAddr, symbol)
+        self.assertEqual(irdummy.rhsAddr, symbol)
 
         # Drops multiple casts
         multipleCast = CastSymbolOperand(castEntry, "char")
         irdummy = ir.IR(castEntry, castEntry, castEntry)
-        self.assertEqual(irdummy.resultAddr, symEntry)
+        self.assertEqual(irdummy.resultAddr, symbol)
 
         # Drops cast on pointers
         pointerSymbolOperand = SymbolOperand(PointerType("char"), "ptr")
         castPointerSymbolOperand = CastSymbolOperand(pointerSymbolOperand, PointerType("int"))
-        symEntry.impl = PointerAddress(castPointerSymbolOperand)
-        irdummy = ir.IR(symEntry, symEntry, symEntry)
+        symbol.impl = PointerAddress(castPointerSymbolOperand)
+        irdummy = ir.IR(symbol, symbol, symbol)
         self.assertEqual(irdummy.resultAddr.impl.pointer, pointerSymbolOperand)
 
 

@@ -180,15 +180,15 @@ class FunctionDefinition(Function):
         offset = 4
         for a in self.arguments:
             verifyType(a.completeType, a.location, context.typeEnv)
-            symEntry = SymbolOperand(a.completeType, a.name)
+            symbol = SymbolOperand(a.completeType, a.name)
             if a.type == "int":
-                symEntry.impl = StackAddress(offset)
+                symbol.impl = StackAddress(offset)
             elif a.type == "char":
                 # 8 bit values are sent in the high byte
-                symEntry.impl = StackAddress(offset+1)
+                symbol.impl = StackAddress(offset+1)
             else:
                 error()
-            context.symbolTable.addSymbolEntry(a.name, symEntry)
+            context.symbolTable.addSymbolEntry(a.name, symbol)
             offset+=2
         symbolTable = context.symbolTable.currentSymbolTable()
         context.blockFactory.addIR(IRDefFun(self))
@@ -729,7 +729,7 @@ class StructFieldReference(ASTNode):
             raise CompileError(f"Unknown field {self.fieldName} in struct {structType.name}", self.location)
         if not context.symbolTable.lookUp(self.name):
             fieldType = structType.fields[self.fieldName].completeType
-            symEntry = SymbolOperand(fieldType, self.name)
+            symbol = SymbolOperand(fieldType, self.name)
             if isinstance(structAddr.impl, PointerAddress):
                 # TODO don't add if offset is zero
                 if isinstance(structAddr.impl.pointer, ConstantOperand):
@@ -738,10 +738,10 @@ class StructFieldReference(ASTNode):
                     fieldPointer = context.createTemporary(PointerType(fieldType))
                     irAdd = IRAdd(fieldPointer, structAddr.impl.pointer, ConstantOperand("int", offset))
                     context.blockFactory.addIR(irAdd)
-                symEntry.impl = PointerAddress(fieldPointer)
+                symbol.impl = PointerAddress(fieldPointer)
             else:
-                symEntry.impl = structAddr.impl.cloneWithOffset(offset)
-            context.symbolTable.addSymbolEntry(symEntry.name, symEntry)
+                symbol.impl = structAddr.impl.cloneWithOffset(offset)
+            context.symbolTable.addSymbolEntry(symbol.name, symbol)
         else:
             if isinstance(structAddr.impl, PointerAddress):
                 # Since we are using the pointer, use IRDereference to ensure

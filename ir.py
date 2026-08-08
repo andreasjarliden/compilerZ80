@@ -8,7 +8,7 @@ def dropCast(o):
     if o and isinstance(o, SymbolOperand) and isinstance(o.impl, PointerAddress):
         o.impl.pointer = dropCast(o.impl.pointer)
     if isinstance(o, CastSymbolOperand):
-        return dropCast(o.symEntry)
+        return dropCast(o.symbol)
     else:
         return o
 
@@ -398,8 +398,8 @@ class IRFunCall(IR):
             ra.assignedToSymbolWithRegister(self.resultAddr, returnRegisterForType[self.type])
 
 class IRAddressOf(IR):
-    def __init__(self, symEntry : SymbolOperand, resAddr):
-        super().__init__(resultAddr=resAddr, lhsAddr=symEntry)
+    def __init__(self, symbol : SymbolOperand, resAddr):
+        super().__init__(resultAddr=resAddr, lhsAddr=symbol)
 
     def genCode(self, asmWriter):
         asmWriter.write(f"\t; Address of {self.exprAddr}\n")
@@ -444,8 +444,8 @@ class IRAddressOf(IR):
 # Although, it does update the live tracking. Although is resAddress used?
 class IRDereference(IR):
     # TODO: Fix ordering of arguments!
-    def __init__(self, symEntry : SymbolOperand, resAddr):
-        super().__init__(resultAddr=resAddr, lhsAddr=symEntry)
+    def __init__(self, symbol : SymbolOperand, resAddr):
+        super().__init__(resultAddr=resAddr, lhsAddr=symbol)
 
     def genCode(self, asmWriter):
         ra = registerAllocator.RA

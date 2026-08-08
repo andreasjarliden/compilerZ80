@@ -32,18 +32,18 @@ class SymbolOperand(Operand):
 class CastSymbolOperand(Operand):
     def __init__(self, s : SymbolOperand, completeType):
         super().__init__(completeType)
-        self.symEntry = s
+        self.symbol = s
 
     def __repr__(self):
-        return f"<CastSymbolOperand {self.completeType} {self.symEntry}>"
+        return f"<CastSymbolOperand {self.completeType} {self.symbol}>"
 
     @property
     def name(self):
-        return self.symEntry.name
+        return self.symbol.name
 
     @property
     def impl(self):
-        return self.symEntry.impl
+        return self.symbol.impl
 
     def equalByValue(self, other):
         return self.name == other.name and self.completeType == other.completeType
