@@ -85,6 +85,13 @@ class ASTNode:
 class MutableASTNode:
     location : Location = field(default_factory=Location, compare=False, kw_only=True)
 
+@dataclass(frozen=True)
+class Constant:
+    completeType : Any
+    value : Any
+
+    def visit(self, context):
+        return ConstantOperand(self.completeType, self.value)
 
 @dataclass(frozen=True)
 class String(ASTNode):
@@ -255,7 +262,7 @@ class While(ASTNode):
         context.continueLabel = loopLabel
         context.blockFactory.addIR(IRLabel(loopLabel))
         exitLabel = createLabel(context)
-        if isinstance(self.expr, Variable) or isinstance(self.expr, ConstantOperand):
+        if isinstance(self.expr, Variable) or isinstance(self.expr, Constant):
             exprAddr = self.expr.visit(context)
             ir = IRIfVariable(exprAddr, exitLabel)
         elif isinstance(self.expr, Relation):

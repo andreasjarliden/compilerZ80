@@ -66,11 +66,6 @@ class ConstantOperand(Operand):
     def __repr__(self):
         return f"ConstantOperand {self.completeType} {self.value}"
 
-    # Because it doubles an AST Node
-    # TODO: Maybe that is a bad idea
-    def visit(self, context):
-        return self
-
 
 class StringConstantOperand(ConstantOperand):
     def __init__(self, value):
