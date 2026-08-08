@@ -1,4 +1,4 @@
-from symEntry import ConstantOperand
+from operand import ConstantOperand
 from type_defs import PointerType
 from ir import IRPromote
 from error import CompileError

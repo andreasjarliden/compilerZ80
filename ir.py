@@ -1,3 +1,4 @@
+from operand import *
 from symEntry import *
 import registerAllocator
 from asmWriter import *

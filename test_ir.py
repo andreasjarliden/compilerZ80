@@ -1,5 +1,6 @@
 import unittest
 from io import StringIO
+from operand import *
 from symEntry import *
 import ir
 import registerAllocator

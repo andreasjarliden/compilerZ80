@@ -1,6 +1,7 @@
 import unittest
 from symbolTable import *
 from symEntry import *
+from operand import *
 from astnodes import ASTContext, StringTable
 
 class TestStringTable(unittest.TestCase):

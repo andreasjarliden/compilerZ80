@@ -1,4 +1,5 @@
-from symEntry import SymbolOperand, StackAddress
+from operand import SymbolOperand
+from symEntry import StackAddress
 
 class Temporary:
     NUM_TEMPS = 0
