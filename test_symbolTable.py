@@ -2,7 +2,7 @@ import unittest
 from symbolTable import *
 from address import *
 from operand import *
-from astnodes import ASTContext, StringTable
+from astnodes import ASTContext, StringTable, StringConstant
 
 class TestStringTable(unittest.TestCase):
     def test(self):
@@ -15,21 +15,16 @@ class TestStringTable(unittest.TestCase):
         self.assertEqual(name3, "__str0")
 
 class TestStringConstant(unittest.TestCase):
-    def test_stringConstant(self):
-        c = StringConstantOperand("foo")
-        self.assertEqual(c.completeType, PointerType("char"))
-        self.assertEqual(c._value, "foo")
-
     def test_stringConstant_visitAddsToDataSegment(self):
-        c = StringConstantOperand("foo")
+        c = StringConstant("foo")
         context = ASTContext()
         c.visit(context)
         self.assertEqual(len(context.dataSegment), 1)
         self.assertEqual(list(context.dataSegment.values()), [("int", "foo")])
 
     def test_stringConstant_identicalStringsAddedOnce(self):
-        c1 = StringConstantOperand("foo")
-        c2 = StringConstantOperand("foo")
+        c1 = StringConstant("foo")
+        c2 = StringConstant("foo")
         context = ASTContext()
         c1.visit(context)
         c2.visit(context)

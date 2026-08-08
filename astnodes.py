@@ -85,6 +85,7 @@ class ASTNode:
 class MutableASTNode:
     location : Location = field(default_factory=Location, compare=False, kw_only=True)
 
+
 @dataclass(frozen=True)
 class Constant:
     completeType : Any
@@ -93,6 +94,23 @@ class Constant:
     def visit(self, context):
         return ConstantOperand(self.completeType, self.value)
 
+
+@dataclass(frozen=True)
+class StringConstant:
+    value : str
+
+    def visit(self, context):
+        name = context.stringTable.addString(self.value)
+        symbol = context.symbolTable.lookUp(name)
+        if not symbol:
+            symbol = SymbolOperand(PointerType("char"), name)
+            symbol.impl = GlobalLabel(name)
+            context.symbolTable.addSymbolEntry(name, symbol)
+            if not symbol in context.dataSegment:
+                context.dataSegment[symbol.name] = (symbol.type, self.value)
+        return symbol
+
+#TODO remove
 @dataclass(frozen=True)
 class String(ASTNode):
     string : str
@@ -415,7 +433,7 @@ class SizeOf(ASTNode):
             exprAddr = self.expr.visit(context)
             context.blockFactory.disable = oldDisabledState
             size = context.typeEnv.sizeOfType(exprAddr.completeType)
-        elif isinstance(self.expr, StringConstantOperand):
+        elif isinstance(self.expr, StringConstant):
             size = len(self.expr.value.string) + 1
         else:
             size = context.typeEnv.sizeOfType(self.expr)

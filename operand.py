@@ -66,22 +66,3 @@ class ConstantOperand(Operand):
     def __repr__(self):
         return f"ConstantOperand {self.completeType} {self.value}"
 
-
-class StringConstantOperand(ConstantOperand):
-    def __init__(self, value):
-        super().__init__(PointerType("char"), value)
-
-    def __repr__(self):
-        return f"StringConstantOperand {self.completeType} {self.value}"
-
-    def visit(self, context):
-        name = context.stringTable.addString(self._value)
-        symbol = context.symbolTable.lookUp(name)
-        if not symbol:
-            symbol = SymbolOperand(PointerType("char"), name)
-            symbol.impl = GlobalLabel(name)
-            context.symbolTable.addSymbolEntry(name, symbol)
-            if not symbol in context.dataSegment:
-                # context.dataSegment[symbol] = self._value
-                context.dataSegment[symbol.name] = (symbol.type, self._value)
-        return symbol
