@@ -3,7 +3,7 @@ from io import StringIO
 from operand import *
 from asmWriter import AsmWriter
 from ir import *
-from symEntry import StackAddress, PointerAddress
+from address import StackAddress, PointerAddress
 from pprint import pformat
 
 RA = None

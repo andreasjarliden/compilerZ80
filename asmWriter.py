@@ -1,4 +1,4 @@
-from symEntry import *
+from address import *
 from io import StringIO
 
 class AsmWriter:

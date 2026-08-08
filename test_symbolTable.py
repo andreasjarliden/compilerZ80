@@ -1,6 +1,6 @@
 import unittest
 from symbolTable import *
-from symEntry import *
+from address import *
 from operand import *
 from astnodes import ASTContext, StringTable
 

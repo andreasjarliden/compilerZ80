@@ -1,5 +1,5 @@
 from operand import *
-from symEntry import *
+from address import *
 import registerAllocator
 from asmWriter import *
 from symbolTable import stackFrameSize

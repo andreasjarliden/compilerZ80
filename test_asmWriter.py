@@ -1,5 +1,5 @@
 from asmWriter import AsmWriter
-from symEntry import StackAddress
+from address import StackAddress
 import unittest
 from io import StringIO
 

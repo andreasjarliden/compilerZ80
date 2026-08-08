@@ -1,5 +1,5 @@
 from operand import SymbolOperand
-from symEntry import StackAddress
+from address import StackAddress
 
 class Temporary:
     NUM_TEMPS = 0

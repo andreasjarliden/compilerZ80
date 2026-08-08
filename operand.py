@@ -1,4 +1,4 @@
-from symEntry import PointerType, GlobalLabel
+from address import PointerType, GlobalLabel
 from type_defs import simpleTypeForComplexType
 
 class Operand:
