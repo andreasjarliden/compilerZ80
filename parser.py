@@ -380,6 +380,6 @@ def p_constant_string(p):
     '''
     constant : STRING
     '''
-    p[0] = StringConstant(String(p[1][1:-1], location=loc(p, 1)))
+    p[0] = StringConstant(p[1][1:-1])
 
 parser = yacc.yacc()

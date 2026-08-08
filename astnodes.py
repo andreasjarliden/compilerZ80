@@ -107,13 +107,8 @@ class StringConstant:
             symbol.impl = GlobalLabel(name)
             context.symbolTable.addSymbolEntry(name, symbol)
             if not symbol in context.dataSegment:
-                context.dataSegment[symbol.name] = (symbol.type, self.value)
+                context.dataSegment[symbol.name] = (symbol.type, self)
         return symbol
-
-#TODO remove
-@dataclass(frozen=True)
-class String(ASTNode):
-    string : str
 
 
 @dataclass(frozen=True)
@@ -434,7 +429,7 @@ class SizeOf(ASTNode):
             context.blockFactory.disable = oldDisabledState
             size = context.typeEnv.sizeOfType(exprAddr.completeType)
         elif isinstance(self.expr, StringConstant):
-            size = len(self.expr.value.string) + 1
+            size = len(self.expr.value) + 1
         else:
             size = context.typeEnv.sizeOfType(self.expr)
         return ConstantOperand("int", size)

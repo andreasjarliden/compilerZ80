@@ -20,7 +20,7 @@ class TestStringConstant(unittest.TestCase):
         context = ASTContext()
         c.visit(context)
         self.assertEqual(len(context.dataSegment), 1)
-        self.assertEqual(list(context.dataSegment.values()), [("int", "foo")])
+        self.assertEqual(list(context.dataSegment.values()), [("int", StringConstant("foo"))])
 
     def test_stringConstant_identicalStringsAddedOnce(self):
         c1 = StringConstant("foo")
@@ -29,7 +29,7 @@ class TestStringConstant(unittest.TestCase):
         c1.visit(context)
         c2.visit(context)
         self.assertEqual(len(context.dataSegment), 1)
-        self.assertEqual(list(context.dataSegment.values()), [("int", "foo")])
+        self.assertEqual(list(context.dataSegment.values()), [("int", StringConstant("foo"))])
 
 
 class TestSymbolOperand(unittest.TestCase):
