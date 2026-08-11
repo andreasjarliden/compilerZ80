@@ -9,7 +9,7 @@ def removeComments(s):
 class TestIntegration(unittest.TestCase):
     def test_localVariable(self):
         output = compile("""
-            char main() {
+            void main() {
                 char FOO;
                 FOO=1;
             }""")
@@ -19,7 +19,7 @@ class TestIntegration(unittest.TestCase):
     def test_globalVariable_assignChar(self):
         output = compile("""
             char FOO;
-            char main() {
+            void main() {
                 FOO=1;
             }""")
         self.assertRegex(output, r"ld\t., 1")
@@ -47,7 +47,7 @@ class TestIntegration(unittest.TestCase):
     def test_globalVariable_int(self):
         output = compile("""
             int FOO;
-            char main() {
+            void main() {
                 FOO=1;
             }""")
         self.assertRegex(output, r"ld\t(bc|de|hl), 1")
@@ -130,7 +130,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_stringArgument(self):
         output = compile("""
-            char main(char* str) {
+            void main(char* str) {
                 main("foo");
             }""")
         self.assertIn("ld\thl, __str0\n\tpush\thl", output)
@@ -139,7 +139,7 @@ class TestIntegration(unittest.TestCase):
     def test_globalStringAssignment(self):
         output = compile("""
             char* FOO = "foo";
-            char main(char* str) {
+            void main(char* str) {
                 main(FOO);
                 FOO = "bar";
             }""")
@@ -154,7 +154,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_identicalStringsReused(self):
         output = compile("""
-            char main(char* str, char* str2) {
+            void main(char* str, char* str2) {
                 main("foo", "foo");
             }""")
         self.assertIn("ld\thl, __str0\n", output)
@@ -164,7 +164,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_localStrings(self):
         output = compile("""
-            char main(char* foo) {
+            void main(char* foo) {
                 char* str;
                 str = "foo";
                 main(str);
@@ -175,7 +175,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_localStrings2(self):
         output = compile("""
-            char main(char* foo) {
+            void main(char* foo) {
                 char* str = "foo";
                 main(str);
             }""")
@@ -208,7 +208,7 @@ class TestIntegration(unittest.TestCase):
         self.assertIn("jp\tz, main_l1", output)
 
     def test_while(self):
-        output = compile("""char main() {
+        output = compile("""void main() {
                               char a=0;
                               while (a<5) {
                                   a = a + 1;
@@ -223,7 +223,7 @@ class TestIntegration(unittest.TestCase):
         self.assertRegex(output, r"\tjp\tmain_l1\n")
 
     def test_function_preamble_postamble(self):
-        output = compile("""char main() {
+        output = compile("""void main() {
                               char a=0;
                           }
                             """)
@@ -249,7 +249,7 @@ class TestIntegration(unittest.TestCase):
     def test_localVariableWithTypeDef(self):
         output = compile("""
             typedef char MyChar;
-            char main() {
+            void main() {
                 MyChar FOO;
                 FOO=1;
             }""")
@@ -259,7 +259,7 @@ class TestIntegration(unittest.TestCase):
     def test_struct_fieldReference(self):
         output = compile("""
             struct myStruct { char a; };
-            char main() {
+            void main() {
                 char a;
                 struct myStruct s;
                 s.a = 1;
@@ -268,7 +268,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_pointerWithCast(self):
         output = compile("""
-            char main() {
+            void main() {
                 char* p;
                 p = (char*)0x8000;
             }""")
@@ -276,7 +276,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_castToVoidPtr(self):
         output = compile("""
-            char main() {
+            void main() {
                 int i;
                 void* p;
                 p = (void*)i;
@@ -288,7 +288,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_dereference(self):
         output = compile("""
-            char main() {
+            void main() {
                 int* a = (int*)0x8000;
                 int b = 42;
                 int c = *(a + b - 2);
@@ -298,7 +298,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_dereference2(self):
         output = compile("""
-            char main() {
+            void main() {
                 int* a = (int*)0x8000;
                 int b = 42;
                 int c = *(b - 2 + a);
@@ -308,7 +308,7 @@ class TestIntegration(unittest.TestCase):
 
     def test_assignDereference(self):
         output = compile("""
-            char main() {
+            void main() {
                 char* a = (char*)0x8000;
                 int b = 24;
                 *(a + b - 2) = 42;
@@ -333,7 +333,7 @@ class TestIntegration(unittest.TestCase):
     def test_structPointerDereferenceAnonymousAndConstant(self):
         output = compile("""
             struct myStruct { int a; char b; };
-            char main() {
+            void main() {
                 ((struct myStruct*)0)->b = 42;
             }""")
         # ld bc/de/hl, 2
@@ -343,7 +343,7 @@ class TestIntegration(unittest.TestCase):
     def test_structPointerAddressOfConstantAddress(self):
         output = compile("""
             struct myStruct { int a; char b; };
-            char main() {
+            void main() {
                 char* fieldPtr = &((struct myStruct*)0)->b;
             }""")
         # ld bc/de/hl, 2
@@ -352,7 +352,7 @@ class TestIntegration(unittest.TestCase):
     def test_structPointerDereferenceArrowSyntax(self):
         output = compile("""
             struct Foo { char a; int b; };
-            char main() {
+            void main() {
                 struct Foo foo;
                 struct Foo* pFoo = &foo;
                 pFoo->b = 42;

@@ -384,6 +384,8 @@ class IRFunCall(IR):
             asmWriter.write('\tpop\tbc\n') # Use a register we don't care about (yet)
         returnRegisterForType = { "char": "a",
                                   "int": "hl" }
+        if self.type == "void":
+            return
         if self.type == "char":
             reg = "a"
         elif self.type == "int":

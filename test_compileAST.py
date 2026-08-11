@@ -128,7 +128,7 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(irs[2].exprAddr, result)
 
     def test_functionCallVoid(self):
-        blocks = compileToBlocks("""void foo() { 1; }
+        blocks = compileToBlocks("""void foo() {}
                                     void main() {
                                         foo();
                                   }""")
@@ -203,18 +203,18 @@ class TestErrorHandling(unittest.TestCase):
 
     def test_function_redefine(self):
         with self.assertRaises(CompileError) as ctx:
-            output = compile("""char foo() { return 0; }
-                                char foo() { return 0; }
+            output = compile("""void foo() {}
+                                void foo() {}
                               """)
         self.assertEqual(ctx.exception.message, "Redefinition of foo")
         self.assertEqual(ctx.exception.location.line, 2) 
         # This is allowed however
-        compile("""char foo();
-                   char foo() { return 0; }
+        compile("""void foo();
+                   void foo() {}
                 """)
         # TODO test conflicting function declarations
 
-    def test_function_redefine2(self):
+    def test_function_redefine_var_as_function(self):
         with self.assertRaises(CompileError) as ctx:
             output = compile("""char foo;
                                 char foo() { return 0; }
@@ -224,10 +224,9 @@ class TestErrorHandling(unittest.TestCase):
 
     def test_function_redefine3(self):
         with self.assertRaises(CompileError) as ctx:
-            output = compile("""char foo();
-                                char foo() { return 0; }
-                                char foo() { return 0; }
-                              """)
+            output = compile("""void foo();
+                                void foo() {}
+                                void foo() {}""")
         self.assertEqual(ctx.exception.message, "Redefinition of foo")
         self.assertEqual(ctx.exception.location.line, 3) 
 
@@ -793,19 +792,18 @@ class TestErrorHandling(unittest.TestCase):
 
     def test_argPass_charToIntPromotion(self):
         blocks = compileToBlocks("""
-            char f(int i) { return 0; } 
+            void f(int i) {} 
             void main() {
                 f(42);
             }""")
         irs = blocks["main_0000"].statements[1:]
-        print(irs)
         self.assertIsInstance(irs[0], IRArgument)
         self.assertEqual(irs[0].lhsAddr, ConstantOperand("int", 42))
 
     def test_argPass_narrowing(self):
         with self.assertRaises(CompileError) as cts:
             compileToBlocks("""
-            char f(char c) { return 0; } 
+            void f(char c) {} 
             void main() {
                 int i;
                 f(i);
@@ -864,7 +862,7 @@ class TestErrorHandling(unittest.TestCase):
     def test_dereferenceNonPointer(self):
         with self.assertRaises(CompileError) as cts:
             compileToBlocks("""
-            char main() {
+            void main() {
                 char i;
                 char t = *i;
             }""");
@@ -874,7 +872,7 @@ class TestErrorHandling(unittest.TestCase):
     def test_dereferenceVoidPointer(self):
         with self.assertRaises(CompileError) as cts:
             compileToBlocks("""
-            char main() {
+            void main() {
                 void* p;
                 char t = *p;
             }""");
@@ -884,7 +882,7 @@ class TestErrorHandling(unittest.TestCase):
     def test_pointerWithPointerArithmetics(self):
         with self.assertRaises(CompileError) as cts:
             compileToBlocks("""
-            char main() {
+            void main() {
                 void* p1;
                 void* p2;
                 void* p3 = p1 + p2;
@@ -944,7 +942,7 @@ class TestErrorHandling(unittest.TestCase):
     def test_sizeof_missing(self):
         with self.assertRaises(CompileError) as cts:
             compileToBlocks("""
-            char main() {
+            void main() {
                 int s = sizeof(foo);
             }""");
         self.assertEqual(cts.exception.message, "Attempting to reference unknown foo")
@@ -1035,7 +1033,7 @@ class TestErrorHandling(unittest.TestCase):
     def test_comparison_pointerAndNonPointer(self):
         with self.assertRaises(CompileError) as cts:
             compileToBlocks("""
-            char main() {
+            void main() {
                 char* cp;
                 char c;
                 if (c == cp) {
@@ -1048,7 +1046,7 @@ class TestErrorHandling(unittest.TestCase):
     def test_comparison_differentPointers(self):
         with self.assertRaises(CompileError) as cts:
             compileToBlocks("""
-            char main() {
+            void main() {
                 char* cp;
                 int* ip;
                 if (ip == cp) {
