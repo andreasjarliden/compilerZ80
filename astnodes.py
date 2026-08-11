@@ -81,11 +81,6 @@ class ASTNode:
     location : Location = field(default_factory=Location, compare=False, kw_only=True)
 
 
-@dataclass
-class MutableASTNode:
-    location : Location = field(default_factory=Location, compare=False, kw_only=True)
-
-
 @dataclass(frozen=True)
 class Constant:
     completeType : Any
@@ -491,16 +486,10 @@ class Dereference(ASTNode):
         return ir.resultAddr
 
 
-@dataclass
-class FunctionCall(MutableASTNode):
+@dataclass(frozen=True)
+class FunctionCall(ASTNode):
     name : str
     arguments : list[Argument] = field(default_factory=list)
-
-    def __post_init__(self):
-        self.storeResult = False
-
-    def setStoreResult(self):
-        self.storeResult = True
 
     def visit(self, context):
         fun = context.symbolTable.lookUp(self.name)
@@ -524,13 +513,13 @@ class FunctionCall(MutableASTNode):
             exprAddress = promoteIfNeededTo(a.visit(context), fa.type, fa.completeType, context, f"argument {fa.name}", self.location)
             context.blockFactory.addIR(IRArgument(exprAddress))
         t = simpleTypeForComplexType(fun.type)
-        if self.storeResult:
-            irfuncall = IRFunCall(t, self.name, len(self.arguments), addr=context.createTemporary(fun.type))
-            context.blockFactory.addIR(irfuncall)
-            return irfuncall.resultAddr
+        if t == "void":
+            resultAddr = None
         else:
-            irfuncall = IRFunCall(t, self.name, len(self.arguments))
-            context.blockFactory.addIR(irfuncall)
+            resultAddr = context.createTemporary(fun.type)
+        irfuncall = IRFunCall(t, self.name, len(self.arguments), resultAddr)
+        context.blockFactory.addIR(irfuncall)
+        return irfuncall.resultAddr
 
 
 @dataclass(frozen=True)

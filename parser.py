@@ -159,8 +159,6 @@ def p_primary_fun_call(p):
     '''
     primary : function_expression
     '''
-    f = p[1]
-    f.setStoreResult()
     p[0] = p[1]
 
 def p_struct_definition_expression(p):

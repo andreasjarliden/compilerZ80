@@ -365,7 +365,7 @@ class IRArgument(IR):
 
 class IRFunCall(IR):
     # addr=None creates a procedure call which ignores the return value
-    def __init__(self, t, name : str, numArgs : int, addr=None):
+    def __init__(self, t, name : str, numArgs : int, addr):
         super().__init__(resultAddr=addr)
         self.type = t
         self.name = name
@@ -382,20 +382,15 @@ class IRFunCall(IR):
         asmWriter.write(f'\tcall\t{self.name}\n')
         for i in range(self.numArgs):
             asmWriter.write('\tpop\tbc\n') # Use a register we don't care about (yet)
-        # if self.numArgs > 0:
-            # asmWriter.write(f'\tld\thl, {2*self.numArgs}\n')
-            # asmWriter.write(f'\tadd\thl, sp\n')
-            # asmWriter.write(f'\tld\tsp, hl\n')
-        if self.resultAddr:
-            returnRegisterForType = { "char": "a",
-                                      "int": "hl" }
-            if self.type == "char":
-                reg = "a"
-            elif self.type == "int":
-                reg = "hl"
-            else:
-                error()
-            ra.assignedToSymbolWithRegister(self.resultAddr, returnRegisterForType[self.type])
+        returnRegisterForType = { "char": "a",
+                                  "int": "hl" }
+        if self.type == "char":
+            reg = "a"
+        elif self.type == "int":
+            reg = "hl"
+        else:
+            error()
+        ra.assignedToSymbolWithRegister(self.resultAddr, returnRegisterForType[self.type])
 
 class IRAddressOf(IR):
     def __init__(self, symbol : SymbolOperand, resAddr):

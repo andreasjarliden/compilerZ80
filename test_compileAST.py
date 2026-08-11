@@ -115,6 +115,26 @@ class TestErrorHandling(unittest.TestCase):
     #
     # Functions
     # 
+    def test_functionCallWithReturnValue(self):
+        blocks = compileToBlocks("""char foo() { return 1; }
+                                    void main() {
+                                        char c = foo();
+                                  }""")
+        irs = blocks["main_0000"].statements
+        pprint(irs)
+        self.assertIsInstance(irs[1], IRFunCall)
+        result = irs[1].resultAddr
+        self.assertIsInstance(irs[2], IRAssign)
+        self.assertEqual(irs[2].exprAddr, result)
+
+    def test_functionCallVoid(self):
+        blocks = compileToBlocks("""void foo() { 1; }
+                                    void main() {
+                                        foo();
+                                  }""")
+        irs = blocks["main_0000"].statements
+        self.assertIsInstance(irs[1], IRFunCall)
+        result = irs[1].resultAddr
 
     def test_missingFunction(self):
         with self.assertRaises(CompileError) as ctx:

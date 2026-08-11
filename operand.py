@@ -1,8 +1,9 @@
-from address import PointerType, GlobalLabel
+from address import PointerType, GlobalLabel, ValueAddress
 from type_defs import simpleTypeForComplexType
 
 class Operand:
     def __init__(self, completeType):
+        # TODO is complete type really needed for IRs?
         self.completeType = completeType
 
     @property

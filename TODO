@@ -1,10 +1,8 @@
-- Find out why va_arg(..., char*) doesn't work in printf
 - Add list api
 - Optimize first struct member access
 - Don't create temps when assigning
 - Compile block inside function test utiltiy
 - Add c library for rom functions.
-- Rename address.py
 - Store live in IR again and update a complete list when traversing the IRs
   during generation.
 - ... and keep track of next use.
