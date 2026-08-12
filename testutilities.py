@@ -20,6 +20,10 @@ def compileToBlocks(code, symbolTable = None, typeEnv = None):
     blocks, dataSegment = astToThreeCode(ast, astContext)
     return blocks
 
+def compileToIR(code, blockId = "main_0000", symbolTable = None, typeEnv = None):
+    blocks = compileToBlocks(code, symbolTable, typeEnv)
+    return blocks[blockId].statements
+
 def compile(code):
     lexer.lineno = 1
     ast = parser.parse(code)

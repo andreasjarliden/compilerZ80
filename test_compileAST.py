@@ -1,5 +1,5 @@
 import unittest
-from testutilities import compileBlockToIR, compileToBlocks, compile
+from testutilities import *
 from symbolTable import SymbolTable
 from astnodes import *
 from promotion import isConvertableTo, promotedType
@@ -69,14 +69,13 @@ A=2;""")
         self.assertTrue(self.isLive(irs[3], "B")) # A=2
 
     def test_assignToPointer(self):
-        blocks = compileToBlocks("""
+        irs = compileToIR("""
         void main() {
             int tag = 0x8000;
             int* pChunkStart = (int*)42;
             *pChunkStart = tag;
             pChunkStart = (int*)0;
-        }""", symbolTable = self.symbolTable)
-        irs = blocks["main_0000"].statements
+        }""")
         self.assertIsInstance(irs[1], IRAssign)
         self.assertIsInstance(irs[2], IRAssign)
         self.assertIsInstance(irs[3], IRDereference)
@@ -116,23 +115,21 @@ class TestErrorHandling(unittest.TestCase):
     # Functions
     # 
     def test_functionCallWithReturnValue(self):
-        blocks = compileToBlocks("""char foo() { return 1; }
-                                    void main() {
-                                        char c = foo();
-                                  }""")
-        irs = blocks["main_0000"].statements
-        pprint(irs)
+        irs = compileToIR("""
+        char foo() { return 1; }
+        void main() {
+            char c = foo();
+        }""")
         self.assertIsInstance(irs[1], IRFunCall)
         result = irs[1].resultAddr
         self.assertIsInstance(irs[2], IRAssign)
         self.assertEqual(irs[2].exprAddr, result)
 
     def test_functionCallVoid(self):
-        blocks = compileToBlocks("""void foo() {}
-                                    void main() {
-                                        foo();
-                                  }""")
-        irs = blocks["main_0000"].statements
+        irs = compileToIR("""void foo() {}
+                            void main() {
+                                foo();
+                          }""")
         self.assertIsInstance(irs[1], IRFunCall)
         result = irs[1].resultAddr
 
@@ -231,12 +228,11 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(ctx.exception.location.line, 3) 
 
     def test_callingVarArgFunction(self):
-        blocks = compileToBlocks("""
+        irs = compileToIR("""
             void printf(char* format, ...);
             void main() {
                 printf("foo %d", (int)42);
             }""")
-        irs = blocks["main_0000"].statements
         self.assertIsInstance(irs[0], IRDefFun)
         self.assertIsInstance(irs[1], IRArgument)
         self.assertEqual(irs[1].lhsAddr.completeType, "int")
@@ -245,16 +241,15 @@ class TestErrorHandling(unittest.TestCase):
         self.assertIsInstance(irs[3], IRFunCall)
 
     def test_functionFrameSize(self):
-        blocks = compileToBlocks("""void main() {
-                                        char c;
-                                        while (1) {
-                                            int i;
-                                        }
-                                        while (1) {
-                                            int i;
-                                        }
-                                      }""")
-        irs = blocks["main_0000"].statements
+        irs = compileToIR("""void main() {
+                                char c;
+                                while (1) {
+                                    int i;
+                                }
+                                while (1) {
+                                    int i;
+                                }
+                              }""")
         self.assertEqual(irs[0].function.frameSize, 5);
 
 
@@ -344,13 +339,11 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(irs[1].exprAddr, ConstantOperand("char", 11))
         self.assertIsInstance(irs[2], IRSpillAll)
         self.assertEqual(len(irs), 3)
-
         irs = blocks["main_0003"].statements
         self.assertIsInstance(irs[0], IRLabel)
         self.assertEqual(irs[0].label, afterLabel)
         self.assertIsInstance(irs[1], IRAssign)
         self.assertEqual(irs[1].exprAddr, ConstantOperand("char", 24))
-
 
     #
     # While
@@ -447,15 +440,15 @@ class TestErrorHandling(unittest.TestCase):
     #
     def test_vardef_unknownType(self):
         with self.assertRaises(CompileError) as cts:
-            compileBlockToIR("""int b;
-                            chur a;""")
+            compile("""int b;
+                       chur a;""")
         self.assertEqual(cts.exception.message, "Unknown type chur")
         self.assertEqual(cts.exception.location.line, 2)
 
     def test_vardef_alreadyDefined(self):
         with self.assertRaises(CompileError) as cts:
-            compileBlockToIR("""int a;
-                            int a;""")
+            compile("""int a;
+                       int a;""")
         self.assertEqual(cts.exception.message, "Attempt to define already defined a")
         self.assertEqual(cts.exception.location.line, 2)
 
@@ -507,7 +500,7 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(cts.exception.location.line, 6)
 
     def test_struct_assignField(self):
-        blocks = compileToBlocks("""
+        irs = compileToIR("""
             struct myStruct{ char a; char b; };
             char main() {
                 char a;
@@ -518,7 +511,6 @@ class TestErrorHandling(unittest.TestCase):
                 s.b = 2;
                 c = 3;
             }""")
-        irs = blocks["main_0000"].statements
         self.assertIsInstance(irs[1], IRAssign)
         self.assertEqual(irs[1].resultAddr.impl, StackAddress(-1))
         self.assertEqual(irs[1].lhsAddr, ConstantOperand("char", 0))
@@ -533,14 +525,13 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(irs[4].lhsAddr, ConstantOperand("char", 3))
 
     def test_globalStruct_assignField(self):
-        blocks = compileToBlocks("""
+        irs = compileToIR("""
             struct myStruct{ int a; char b; };
             struct myStruct s;
             char main() {
                 s.a = (int)1;
                 s.b = 2;
             }""")
-        irs = blocks["main_0000"].statements
         self.assertIsInstance(irs[1], IRAssign)
         self.assertEqual(irs[1].lhsAddr, ConstantOperand("int", 1))
         self.assertEqual(irs[1].resultAddr.impl, GlobalAddress("s", 0))
@@ -548,7 +539,7 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(irs[2].resultAddr.impl, GlobalAddress("s", 2))
 
     def test_struct_referenceField(self):
-        blocks = compileToBlocks("""
+        irs = compileToIR("""
             struct myStruct { char a; };
             char main() {
                 char a;
@@ -556,16 +547,14 @@ class TestErrorHandling(unittest.TestCase):
                 s.a = 1;
                 a = s.a;
             }""")
-        irs = blocks["main_0000"].statements
         # TODO
 
     def test_struct_initializer(self):
-        blocks = compileToBlocks("""
+        irs = compileToIR("""
             struct myStruct { char foo; char bar; };
             char main() {
                 struct myStruct s = { 42, 24 };
             }""")
-        irs = blocks["main_0000"].statements
         self.assertIsInstance(irs[1], IRAssign)
         self.assertEqual(irs[1].resultAddr.name, "s.foo")
         self.assertEqual(irs[1].resultAddr.impl, StackAddress(-2))
@@ -576,12 +565,11 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(irs[2].lhsAddr, ConstantOperand("char", 24))
 
     def test_struct_namedInitializer(self):
-        blocks = compileToBlocks("""
+        irs = compileToIR("""
             struct myStruct { char foo; char bar; };
             char main() {
                 struct myStruct s = { .bar = 42, .foo = 24 };
             }""")
-        irs = blocks["main_0000"].statements
         self.assertIsInstance(irs[1], IRAssign)
         self.assertEqual(irs[1].resultAddr.name, "s.bar")
         self.assertEqual(irs[1].resultAddr.impl, StackAddress(-1))
@@ -592,12 +580,11 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(irs[2].lhsAddr, ConstantOperand("char", 24))
 
     def test_struct_mixedInitializer(self):
-        blocks = compileToBlocks("""
+        irs = compileToIR("""
             struct myStruct { char foo; char bar; char baz; };
             char main() {
                 struct myStruct s = { .bar = 42, 24 };
             }""")
-        irs = blocks["main_0000"].statements
         self.assertIsInstance(irs[1], IRAssign)
         self.assertEqual(irs[1].resultAddr.name, "s.bar")
         self.assertEqual(irs[1].lhsAddr, ConstantOperand("char", 42))
@@ -606,13 +593,12 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(irs[2].lhsAddr, ConstantOperand("char", 24))
 
     def test_struct_recursiveInitializer(self):
-        blocks = compileToBlocks("""
+        irs = compileToIR("""
             struct Foo { char a; char b; };
             struct Bar { char c; struct Foo foo; };
             char main() {
                 struct Bar s = { 'c', { 'a', 'b' } };
             }""")
-        irs = blocks["main_0000"].statements
         self.assertIsInstance(irs[1], IRAssign)
         self.assertEqual(irs[1].resultAddr.name, "s.c")
         self.assertEqual(irs[1].lhsAddr, ConstantOperand("char", ord("c")))
@@ -626,13 +612,12 @@ class TestErrorHandling(unittest.TestCase):
     # Test error conditations, wrong field name, too many initializers, not struct
 
     def test_structPointer_referenceField(self):
-        blocks = compileToBlocks("""
+        irs = compileToIR("""
             struct myStruct { int a; char b; };
             char main() {
                 struct myStruct* s;
                 s->b = 1;
             }""")
-        irs = blocks["main_0000"].statements
         self.assertIsInstance(irs[1], IRDereference)
         self.assertIsInstance(irs[2], IRAdd)
         self.assertTrue(irs[1].resultAddr, irs[2].lhsAddr)
@@ -641,26 +626,24 @@ class TestErrorHandling(unittest.TestCase):
         self.assertTrue(irs[2].resultAddr, irs[3].lhsAddr)
 
     def test_structPointer_anonymousStruct(self):
-        blocks = compileToBlocks("""
+        irs = compileToIR("""
             struct myStruct { int a; char b; };
             char main() {
                 ((struct myStruct*)0)->b = 42;
             }""")
-        irs = blocks["main_0000"].statements
         self.assertIsInstance(irs[1], IRDereference)
         self.assertIsInstance(irs[2], IRAssignToPointer)
         self.assertEqual(irs[2].lhsAddr, ConstantOperand(PointerType("char"), 2))
         self.assertEqual(irs[2].rhsAddr, ConstantOperand("char", 42))
 
     def test_structPointer_repeatedFieldReference(self):
-        blocks = compileToBlocks("""
+        irs = compileToIR("""
             struct myStruct { char a; };
             void main() {
                 struct myStruct* s;
                 char a = s->a;
                 char b = s->a;
             }""")
-        irs = blocks["main_0000"].statements
         self.assertIsInstance(irs[1], IRDereference) # *s
         self.assertIsInstance(irs[2], IRAdd) # computing s->a
         self.assertIsInstance(irs[3], IRAssign)
@@ -685,7 +668,7 @@ class TestErrorHandling(unittest.TestCase):
 
     def test_struct_unknownFieldType(self):
         with self.assertRaises(CompileError) as cts:
-            blocks = compileToBlocks("""
+            compile("""
                 struct myStruct {
                     chur a;
                 };
@@ -708,7 +691,7 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(structType.fields["pMyStruct"].completeType, PointerType(structType))
 
     def test_struct_nestedStruct(self):
-        blocks = compileToBlocks("""
+        irs = compileToIR("""
             struct Foo {
                 char a;
                 char b;
@@ -722,7 +705,6 @@ class TestErrorHandling(unittest.TestCase):
                bar.f.b = 42;
                bar.c = 24;
             }""")
-        irs = blocks["main_0000"].statements
         self.assertIsInstance(irs[1], IRAssign)
         self.assertEqual(irs[1].resultAddr.impl, StackAddress(-1))
         self.assertIsInstance(irs[2], IRAssign)
@@ -733,12 +715,11 @@ class TestErrorHandling(unittest.TestCase):
     #
 
     def test_assignmentAsExpression(self):
-        blocks = compileToBlocks("""
+        irs = compileToIR("""
             void main() {
                 int* a;
                 int b = *(a = (int*)42);
             }""")
-        irs = blocks["main_0000"].statements
         self.assertIsInstance(irs[1], IRAssign)
         self.assertIsInstance(irs[2], IRDereference)
         self.assertEqual(irs[2].resultAddr.impl.pointer, irs[1].resultAddr)
@@ -747,13 +728,13 @@ class TestErrorHandling(unittest.TestCase):
 
     def test_assing_nonLValue(self):
         with self.assertRaises(CompileError) as cts:
-            compileBlockToIR("""1 = 2;""")
+            compile("""1 = 2;""")
         self.assertIn("Can't assign to non-lvalue", cts.exception.message)
         self.assertEqual(cts.exception.location.line, 1)
 
     def test_conflictingTypes(self):
         with self.assertRaises(CompileError) as cts:
-            compileBlockToIR("""char a;
+            compile("""char a;
                     int *p;
                     p = a;""")
         self.assertEqual(cts.exception.message, "Can't convert char to int* in assignment")
@@ -767,7 +748,7 @@ class TestErrorHandling(unittest.TestCase):
 
     def test_assignment_narrowing(self):
         with self.assertRaises(CompileError) as cts:
-            compileBlockToIR("""
+            compile("""
             int i;
             char c;
             c = i;""")
@@ -775,15 +756,14 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(cts.exception.location.line, 4)
 
     def test_varDef_charToIntPromotion(self):
-        blocks = compileToBlocks("void main() { char c;int i = c; }")
-        irs = blocks["main_0000"].statements[1:]
-        self.assertIsInstance(irs[0], IRPromote)
-        self.assertIsInstance(irs[1], IRAssign)
-        self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr) 
+        irs = compileToIR("void main() { char c;int i = c; }")
+        self.assertIsInstance(irs[1], IRPromote)
+        self.assertIsInstance(irs[2], IRAssign)
+        self.assertEqual(irs[2].lhsAddr, irs[1].resultAddr) 
 
     def test_varDef_narrowing(self):
         with self.assertRaises(CompileError) as cts:
-            compileToBlocks("""void main() {
+            compile("""void main() {
             int i;
             char c = i;
         }""");
@@ -791,18 +771,17 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(cts.exception.location.line, 3)
 
     def test_argPass_charToIntPromotion(self):
-        blocks = compileToBlocks("""
+        irs = compileToIR("""
             void f(int i) {} 
             void main() {
                 f(42);
             }""")
-        irs = blocks["main_0000"].statements[1:]
-        self.assertIsInstance(irs[0], IRArgument)
-        self.assertEqual(irs[0].lhsAddr, ConstantOperand("int", 42))
+        self.assertIsInstance(irs[1], IRArgument)
+        self.assertEqual(irs[1].lhsAddr, ConstantOperand("int", 42))
 
     def test_argPass_narrowing(self):
         with self.assertRaises(CompileError) as cts:
-            compileToBlocks("""
+            compile("""
             void f(char c) {} 
             void main() {
                 int i;
@@ -819,49 +798,46 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(irs[0].lhsAddr.completeType, PointerType("int"))
 
     def test_structPointer(self):
-        blocks = compileToBlocks("""struct Foo { int a; int b; };
+        irs = compileToIR("""struct Foo { int a; int b; };
         void main() {
             struct Foo foo;
             struct Foo* pFoo = &foo;
         }""")
-        irs = blocks["main_0000"].statements[1:]
-        self.assertIsInstance(irs[0], IRAddressOf)
-        self.assertIsInstance(irs[1], IRAssign)
-        self.assertEqual(irs[0].resultAddr.completeType,
+        self.assertIsInstance(irs[1], IRAddressOf)
+        self.assertIsInstance(irs[2], IRAssign)
+        self.assertEqual(irs[1].resultAddr.completeType,
                          PointerType(StructType("Foo", {"a": StructField("int", "a", 0),
                                                         "b": StructField("int", "b", 2)})))
 
     def test_pointerArithmeticDereference(self):
-        blocks = compileToBlocks("""
+        irs = compileToIR("""
             void main() {
                 char *p = (char*)0x8000;
                 char i = *(p+1);
             }""")
-        irs = blocks["main_0000"].statements[1:]
-        self.assertIsInstance(irs[0], IRAssign)
-        self.assertIsInstance(irs[1], IRAdd)
-        self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr)
-        self.assertEqual(irs[1].rhsAddr, ConstantOperand(PointerType("char"), 1))
-        self.assertIsInstance(irs[2], IRDereference)
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertIsInstance(irs[2], IRAdd)
         self.assertEqual(irs[2].lhsAddr, irs[1].resultAddr)
+        self.assertEqual(irs[2].rhsAddr, ConstantOperand(PointerType("char"), 1))
+        self.assertIsInstance(irs[3], IRDereference)
+        self.assertEqual(irs[3].lhsAddr, irs[2].resultAddr)
 
     def test_pointerArithmeticDereference2(self):
-        blocks = compileToBlocks("""
+        irs = compileToIR("""
             void main() {
                 int *p = (int*)0x8000;
                 *(p+1) = 42;
             }""")
-        irs = blocks["main_0000"].statements[1:]
-        self.assertIsInstance(irs[0], IRAssign)
-        self.assertIsInstance(irs[1], IRAdd)
-        self.assertEqual(irs[1].lhsAddr, irs[0].resultAddr)
-        self.assertEqual(irs[1].rhsAddr, ConstantOperand(PointerType("int"), 2))
-        self.assertIsInstance(irs[2], IRDereference)
+        self.assertIsInstance(irs[1], IRAssign)
+        self.assertIsInstance(irs[2], IRAdd)
         self.assertEqual(irs[2].lhsAddr, irs[1].resultAddr)
+        self.assertEqual(irs[2].rhsAddr, ConstantOperand(PointerType("int"), 2))
+        self.assertIsInstance(irs[3], IRDereference)
+        self.assertEqual(irs[3].lhsAddr, irs[2].resultAddr)
 
     def test_dereferenceNonPointer(self):
         with self.assertRaises(CompileError) as cts:
-            compileToBlocks("""
+            compile("""
             void main() {
                 char i;
                 char t = *i;
@@ -871,7 +847,7 @@ class TestErrorHandling(unittest.TestCase):
 
     def test_dereferenceVoidPointer(self):
         with self.assertRaises(CompileError) as cts:
-            compileToBlocks("""
+            compile("""
             void main() {
                 void* p;
                 char t = *p;
@@ -881,7 +857,7 @@ class TestErrorHandling(unittest.TestCase):
 
     def test_pointerWithPointerArithmetics(self):
         with self.assertRaises(CompileError) as cts:
-            compileToBlocks("""
+            compile("""
             void main() {
                 void* p1;
                 void* p2;
@@ -894,7 +870,7 @@ class TestErrorHandling(unittest.TestCase):
     # sizeof
     #
     def test_sizeof_types(self):
-        blocks = compileToBlocks("""
+        irs = compileToIR("""
             struct myStruct {
                 int i;
                 char c;
@@ -906,42 +882,40 @@ class TestErrorHandling(unittest.TestCase):
                 int sStruct = sizeof(struct myStruct);
                 int sStringLiteral = sizeof("hello");
             }""")
-        irs = blocks["main_0000"].statements[1:]
-        self.assertIsInstance(irs[0], IRAssign)
-        self.assertEqual(irs[0].resultAddr.name, "sInt")
-        self.assertEqual(irs[0].resultAddr.name, "sInt")
         self.assertIsInstance(irs[1], IRAssign)
-        self.assertEqual(irs[1].resultAddr.name, "sChar")
-        self.assertEqual(irs[1].exprAddr, ConstantOperand("int", 1))
+        self.assertEqual(irs[1].resultAddr.name, "sInt")
+        self.assertEqual(irs[1].resultAddr.name, "sInt")
         self.assertIsInstance(irs[2], IRAssign)
-        self.assertEqual(irs[2].resultAddr.name, "sCharPointer")
-        self.assertEqual(irs[2].exprAddr, ConstantOperand("int", 2))
+        self.assertEqual(irs[2].resultAddr.name, "sChar")
+        self.assertEqual(irs[2].exprAddr, ConstantOperand("int", 1))
         self.assertIsInstance(irs[3], IRAssign)
-        self.assertEqual(irs[3].resultAddr.name, "sStruct")
-        self.assertEqual(irs[3].exprAddr, ConstantOperand("int", 3))
+        self.assertEqual(irs[3].resultAddr.name, "sCharPointer")
+        self.assertEqual(irs[3].exprAddr, ConstantOperand("int", 2))
         self.assertIsInstance(irs[4], IRAssign)
-        self.assertEqual(irs[4].resultAddr.name, "sStringLiteral")
-        self.assertEqual(irs[4].exprAddr, ConstantOperand("int", 6))
+        self.assertEqual(irs[4].resultAddr.name, "sStruct")
+        self.assertEqual(irs[4].exprAddr, ConstantOperand("int", 3))
+        self.assertIsInstance(irs[5], IRAssign)
+        self.assertEqual(irs[5].resultAddr.name, "sStringLiteral")
+        self.assertEqual(irs[5].exprAddr, ConstantOperand("int", 6))
 
     def test_sizeof_expression(self):
-        blocks = compileToBlocks("""
+        irs = compileToIR("""
             void main() {
                 char c;
                 int sC = sizeof(c);
                 int sExpr = sizeof(c+(int)1);
             }""")
-        irs = blocks["main_0000"].statements[1:]
-        self.assertIsInstance(irs[0], IRAssign)
-        self.assertEqual(irs[0].resultAddr.name, "sC")
-        self.assertEqual(irs[0].exprAddr, ConstantOperand("int", 1))
-        # Note, this also ensures no code is generated for the addition
         self.assertIsInstance(irs[1], IRAssign)
-        self.assertEqual(irs[1].resultAddr.name, "sExpr")
-        self.assertEqual(irs[1].exprAddr, ConstantOperand("int", 2))
+        self.assertEqual(irs[1].resultAddr.name, "sC")
+        self.assertEqual(irs[1].exprAddr, ConstantOperand("int", 1))
+        # Note, this also ensures no code is generated for the addition
+        self.assertIsInstance(irs[2], IRAssign)
+        self.assertEqual(irs[2].resultAddr.name, "sExpr")
+        self.assertEqual(irs[2].exprAddr, ConstantOperand("int", 2))
 
     def test_sizeof_missing(self):
         with self.assertRaises(CompileError) as cts:
-            compileToBlocks("""
+            compile("""
             void main() {
                 int s = sizeof(foo);
             }""");
@@ -1032,28 +1006,25 @@ class TestErrorHandling(unittest.TestCase):
     #
     def test_comparison_pointerAndNonPointer(self):
         with self.assertRaises(CompileError) as cts:
-            compileToBlocks("""
-            void main() {
+            compileBlockToIR("""
                 char* cp;
                 char c;
                 if (c == cp) {
                     c = 42;
                 }
-            }""");
+            """);
         self.assertEqual(cts.exception.message, "Comparisson between pointer and non-pointer: char and char*")
-        self.assertEqual(cts.exception.location.line, 5)
+        self.assertEqual(cts.exception.location.line, 4)
 
     def test_comparison_differentPointers(self):
         with self.assertRaises(CompileError) as cts:
-            compileToBlocks("""
-            void main() {
+            compileBlockToIR("""
                 char* cp;
                 int* ip;
                 if (ip == cp) {
                     c = 42;
-                }
-            }""");
+                }""");
         self.assertEqual(cts.exception.message, "Comparisson between different pointer types: int* and char*")
-        self.assertEqual(cts.exception.location.line, 5)
+        self.assertEqual(cts.exception.location.line, 4)
 
 
