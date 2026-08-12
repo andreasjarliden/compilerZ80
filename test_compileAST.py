@@ -139,8 +139,7 @@ class TestErrorHandling(unittest.TestCase):
                                 foo();
                                 return 0;
                               }""")
-        self.assertEqual(ctx.exception.location.line, 2) 
-        self.assertEqual(ctx.exception.message, "Attempting to call unknown function foo") 
+        self.assertEqual(ctx.exception, CompileError("Attempting to call unknown function foo", Location(line=2))) 
 
     def test_callingNonFunction(self):
         with self.assertRaises(CompileError) as ctx:
@@ -148,8 +147,9 @@ class TestErrorHandling(unittest.TestCase):
                                     char foo;
                                     foo();
                               }""")
-        self.assertEqual(ctx.exception.location.line, 3) 
-        self.assertEqual(ctx.exception.message, "Attempting to call non-function foo") 
+        self.assertEqual(ctx.exception,
+                         CompileError("Attempting to call non-function foo",
+                                      Location(line=3))) 
 
     def test_callingWrongNumberOfArguments(self):
         with self.assertRaises(CompileError) as ctx:
@@ -157,8 +157,9 @@ class TestErrorHandling(unittest.TestCase):
                                 void main() {
                                     foo(1);
                               }""")
-        self.assertEqual(ctx.exception.location.line, 3) 
-        self.assertEqual(ctx.exception.message, "Attempting to call function foo with 1 arguments but expected 2") 
+        self.assertEqual(ctx.exception,
+                         CompileError("Attempting to call function foo with 1 arguments but expected 2",
+                                      Location(line=3))) 
 
     def test_functionWithUnknownArgumentType1(self):
         with self.assertRaises(CompileError) as ctx:
@@ -168,8 +169,7 @@ class TestErrorHandling(unittest.TestCase):
                                 void main() {
                                     foo(1);
                               }""")
-        self.assertEqual(ctx.exception.message, "Unknown type chur") 
-        self.assertEqual(ctx.exception.location.line, 1) 
+        self.assertEqual(ctx.exception, CompileError("Unknown type chur", Location(line=1))) 
 
     def test_functionWithUnknownArgumentType2(self):
         with self.assertRaises(CompileError) as ctx:
@@ -177,8 +177,7 @@ class TestErrorHandling(unittest.TestCase):
                                 void main() {
                                     foo(1);
                               }""")
-        self.assertEqual(ctx.exception.message, "Unknown type chur") 
-        self.assertEqual(ctx.exception.location.line, 1) 
+        self.assertEqual(ctx.exception, CompileError("Unknown type chur", Location(line=1))) 
 
     def test_functionWithUnknownReturnType1(self):
         with self.assertRaises(CompileError) as ctx:
@@ -186,8 +185,7 @@ class TestErrorHandling(unittest.TestCase):
                                 void main() {
                                     foo();
                               }""")
-        self.assertEqual(ctx.exception.message, "Unknown type chur") 
-        self.assertEqual(ctx.exception.location.line, 1) 
+        self.assertEqual(ctx.exception, CompileError("Unknown type chur", Location(line=1))) 
 
     def test_functionWithUnknownReturnType2(self):
         with self.assertRaises(CompileError) as ctx:
@@ -195,16 +193,14 @@ class TestErrorHandling(unittest.TestCase):
                                 void main() {
                                     foo();
                               }""")
-        self.assertEqual(ctx.exception.message, "Unknown type chur") 
-        self.assertEqual(ctx.exception.location.line, 1) 
+        self.assertEqual(ctx.exception, CompileError("Unknown type chur", Location(line=1))) 
 
     def test_function_redefine(self):
         with self.assertRaises(CompileError) as ctx:
             output = compile("""void foo() {}
                                 void foo() {}
                               """)
-        self.assertEqual(ctx.exception.message, "Redefinition of foo")
-        self.assertEqual(ctx.exception.location.line, 2) 
+        self.assertEqual(ctx.exception, CompileError("Redefinition of foo", Location(line=2)))
         # This is allowed however
         compile("""void foo();
                    void foo() {}
@@ -216,16 +212,14 @@ class TestErrorHandling(unittest.TestCase):
             output = compile("""char foo;
                                 char foo() { return 0; }
                               """)
-        self.assertEqual(ctx.exception.message, "Redefinition of foo")
-        self.assertEqual(ctx.exception.location.line, 2) 
+        self.assertEqual(ctx.exception, CompileError("Redefinition of foo", Location(line=2)))
 
     def test_function_redefine3(self):
         with self.assertRaises(CompileError) as ctx:
             output = compile("""void foo();
                                 void foo() {}
                                 void foo() {}""")
-        self.assertEqual(ctx.exception.message, "Redefinition of foo")
-        self.assertEqual(ctx.exception.location.line, 3) 
+        self.assertEqual(ctx.exception, CompileError("Redefinition of foo", Location(line=3)))
 
     def test_callingVarArgFunction(self):
         irs = compileToIR("""
@@ -261,8 +255,7 @@ class TestErrorHandling(unittest.TestCase):
             compile("""char main() {
                          return 1 + a;
                        }""")
-        self.assertEqual(cts.exception.message, "Attempting to reference unknown a")
-        self.assertEqual(cts.exception.location.line, 2)
+        self.assertEqual(cts.exception, CompileError("Attempting to reference unknown a", Location(line=2)))
 
     def test_ifLocalScope(self):
         with self.assertRaises(CompileError) as cts:
@@ -272,8 +265,7 @@ class TestErrorHandling(unittest.TestCase):
                             }
                             int b = a;
                        }""")
-        self.assertEqual(cts.exception.message, "Attempting to reference unknown a")
-        self.assertEqual(cts.exception.location.line, 5)
+        self.assertEqual(cts.exception, CompileError("Attempting to reference unknown a", Location(line=5)))
 
     def test_whileLocalScope(self):
         with self.assertRaises(CompileError) as cts:
@@ -284,8 +276,7 @@ class TestErrorHandling(unittest.TestCase):
                             }
                             int b = a;
                        }""")
-        self.assertEqual(cts.exception.message, "Attempting to reference unknown a")
-        self.assertEqual(cts.exception.location.line, 6)
+        self.assertEqual(cts.exception, CompileError("Attempting to reference unknown a", Location(line=6)))
 
     #
     # If
@@ -432,8 +423,7 @@ class TestErrorHandling(unittest.TestCase):
                 }
                 continue;
             }""")
-        self.assertEqual(cts.exception.message, "Continue outside loop")
-        self.assertEqual(cts.exception.location.line, 7)
+        self.assertEqual(cts.exception, CompileError("Continue outside loop", Location(line=7)))
 
     #
     # Variable definition
@@ -442,15 +432,13 @@ class TestErrorHandling(unittest.TestCase):
         with self.assertRaises(CompileError) as cts:
             compile("""int b;
                        chur a;""")
-        self.assertEqual(cts.exception.message, "Unknown type chur")
-        self.assertEqual(cts.exception.location.line, 2)
+        self.assertEqual(cts.exception, CompileError("Unknown type chur", Location(line=2)))
 
     def test_vardef_alreadyDefined(self):
         with self.assertRaises(CompileError) as cts:
             compile("""int a;
                        int a;""")
-        self.assertEqual(cts.exception.message, "Attempt to define already defined a")
-        self.assertEqual(cts.exception.location.line, 2)
+        self.assertEqual(cts.exception, CompileError("Attempt to define already defined a", Location(line=2)))
 
         # Allowed
         compile("""
@@ -478,14 +466,12 @@ class TestErrorHandling(unittest.TestCase):
     def test_struct_unknown(self):
         with self.assertRaises(CompileError) as cts:
             compileBlockToIR("struct missing s;");
-        self.assertEqual(cts.exception.message, "Unknown struct missing")
-        self.assertEqual(cts.exception.location.line, 1)
+        self.assertEqual(cts.exception, CompileError("Unknown struct missing", Location(line=1)))
 
     def test_struct_redefine(self):
         with self.assertRaises(CompileError) as cts:
             compileBlockToIR("struct foo { char a; }; struct foo { char b; };")
-        self.assertEqual(cts.exception.message, "Redefinition of struct foo")
-        self.assertEqual(cts.exception.location.line, 1)
+        self.assertEqual(cts.exception, CompileError("Redefinition of struct foo", Location(line=1)))
 
     def test_struct_localToScope(self):
         with self.assertRaises(CompileError) as cts:
@@ -496,8 +482,7 @@ class TestErrorHandling(unittest.TestCase):
                 void bar() {
                     struct foo s;
                 }""")
-        self.assertEqual(cts.exception.message, "Unknown struct foo")
-        self.assertEqual(cts.exception.location.line, 6)
+        self.assertEqual(cts.exception, CompileError("Unknown struct foo", Location(line=6)))
 
     def test_struct_assignField(self):
         irs = compileToIR("""
@@ -663,8 +648,7 @@ class TestErrorHandling(unittest.TestCase):
                     struct myStruct s;
                     s.b = 1;
                 }""")
-        self.assertEqual(cts.exception.message, "Unknown field b in struct myStruct")
-        self.assertEqual(cts.exception.location.line, 6)
+        self.assertEqual(cts.exception, CompileError("Unknown field b in struct myStruct", Location(line=6)))
 
     def test_struct_unknownFieldType(self):
         with self.assertRaises(CompileError) as cts:
@@ -677,8 +661,7 @@ class TestErrorHandling(unittest.TestCase):
                     struct myStruct s;
                     s.b = 1;
                 }""")
-        self.assertEqual(cts.exception.message, "Unknown type chur")
-        self.assertEqual(cts.exception.location.line, 3)
+        self.assertEqual(cts.exception, CompileError("Unknown type chur", Location(line=3)))
 
     def test_recursiveStruct(self):
         typeEnv = TypeEnv()
@@ -737,8 +720,8 @@ class TestErrorHandling(unittest.TestCase):
             compile("""char a;
                     int *p;
                     p = a;""")
-        self.assertEqual(cts.exception.message, "Can't convert char to int* in assignment")
-        self.assertEqual(cts.exception.location.line, 3)
+        self.assertEqual(cts.exception,
+                         CompileError("Can't convert char to int* in assignment", Location(line=3)))
 
     def test_assignment_charToIntPromotion(self):
         irs = compileBlockToIR("int i; char c; i = c;")
@@ -752,8 +735,7 @@ class TestErrorHandling(unittest.TestCase):
             int i;
             char c;
             c = i;""")
-        self.assertEqual(cts.exception.message, "Can't convert int to char in assignment")
-        self.assertEqual(cts.exception.location.line, 4)
+        self.assertEqual(cts.exception, CompileError("Can't convert int to char in assignment", Location(line=4)))
 
     def test_varDef_charToIntPromotion(self):
         irs = compileToIR("void main() { char c;int i = c; }")
@@ -767,8 +749,7 @@ class TestErrorHandling(unittest.TestCase):
             int i;
             char c = i;
         }""");
-        self.assertEqual(cts.exception.message, "Can't convert int to char in assignment")
-        self.assertEqual(cts.exception.location.line, 3)
+        self.assertEqual(cts.exception, CompileError("Can't convert int to char in assignment", Location(line=3)))
 
     def test_argPass_charToIntPromotion(self):
         irs = compileToIR("""
@@ -787,8 +768,7 @@ class TestErrorHandling(unittest.TestCase):
                 int i;
                 f(i);
             }""");
-        self.assertEqual(cts.exception.message, "Can't convert int to char in argument c")
-        self.assertEqual(cts.exception.location.line, 5)
+        self.assertEqual(cts.exception, CompileError("Can't convert int to char in argument c", Location(line=5)))
 
     def test_pointerWithAbsoluteValue(self):
         irs = compileBlockToIR("""int *p;
@@ -842,8 +822,8 @@ class TestErrorHandling(unittest.TestCase):
                 char i;
                 char t = *i;
             }""");
-        self.assertEqual(cts.exception.message, "Attempt to dereference non-pointer i of type char")
-        self.assertEqual(cts.exception.location.line, 4)
+        self.assertEqual(cts.exception,
+                         CompileError("Attempt to dereference non-pointer i of type char", Location(line=4)))
 
     def test_dereferenceVoidPointer(self):
         with self.assertRaises(CompileError) as cts:
@@ -852,8 +832,7 @@ class TestErrorHandling(unittest.TestCase):
                 void* p;
                 char t = *p;
             }""");
-        self.assertEqual(cts.exception.message, "Attempt to dereference void pointer p")
-        self.assertEqual(cts.exception.location.line, 4)
+        self.assertEqual(cts.exception, CompileError("Attempt to dereference void pointer p", Location(line=4)))
 
     def test_pointerWithPointerArithmetics(self):
         with self.assertRaises(CompileError) as cts:
@@ -863,8 +842,7 @@ class TestErrorHandling(unittest.TestCase):
                 void* p2;
                 void* p3 = p1 + p2;
             }""");
-        self.assertEqual(cts.exception.message, "Can't add void* and void*")
-        self.assertEqual(cts.exception.location.line, 5)
+        self.assertEqual(cts.exception, CompileError("Can't add void* and void*", Location(line=5)))
 
     #
     # sizeof
@@ -919,8 +897,7 @@ class TestErrorHandling(unittest.TestCase):
             void main() {
                 int s = sizeof(foo);
             }""");
-        self.assertEqual(cts.exception.message, "Attempting to reference unknown foo")
-        self.assertEqual(cts.exception.location.line, 3)
+        self.assertEqual(cts.exception, CompileError("Attempting to reference unknown foo", Location(line=3)))
 
     #
     # Arithmetics
@@ -1013,8 +990,9 @@ class TestErrorHandling(unittest.TestCase):
                     c = 42;
                 }
             """);
-        self.assertEqual(cts.exception.message, "Comparisson between pointer and non-pointer: char and char*")
-        self.assertEqual(cts.exception.location.line, 4)
+        self.assertEqual(cts.exception,
+                         CompileError("Comparisson between pointer and non-pointer: char and char*",
+                                      Location(line=4)))
 
     def test_comparison_differentPointers(self):
         with self.assertRaises(CompileError) as cts:
@@ -1024,7 +1002,8 @@ class TestErrorHandling(unittest.TestCase):
                 if (ip == cp) {
                     c = 42;
                 }""");
-        self.assertEqual(cts.exception.message, "Comparisson between different pointer types: int* and char*")
-        self.assertEqual(cts.exception.location.line, 4)
+        self.assertEqual(cts.exception,
+                         CompileError("Comparisson between different pointer types: int* and char*",
+                                      Location(line=4)))
 
 
