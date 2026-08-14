@@ -75,11 +75,11 @@ def p_bitwise_single(p):
 
 def p_bitwise_or(p):
     '''bitwise : bitwise OR additive'''
-    p[0] = BitwiseOr(p[1], p[3])        
+    p[0] = Bitwise(BitwiseKind.OR, p[1], p[3])        
 
 def p_bitwise_and(p):
     '''bitwise : bitwise AMPERSAND additive'''
-    p[0] = BitwiseAnd(p[1], p[3])        
+    p[0] = Bitwise(BitwiseKind.AND, p[1], p[3])        
 
 def p_additive_single(p):
     'additive : multiplicative'

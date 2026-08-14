@@ -941,6 +941,41 @@ class TestErrorHandling(unittest.TestCase):
         self.assertEqual(irs[0].rhsAddr, ConstantOperand("char", 3))
 
     #
+    # Bitwise
+    #
+    def test_bitwise_or_char(self):
+        irs = compileToIR("""void main() {
+                char a;char b = a | 2;
+            }""")
+        pprint(irs)
+        self.assertIsInstance(irs[1], IRBitwiseOr)
+        self.assertEqual(irs[1].lhsAddr.name, "a")
+        self.assertEqual(irs[1].rhsAddr, ConstantOperand("char", 2))
+
+    def test_bitwise_or_int_with_promotion(self):
+        irs = compileToIR("""void main() {
+                int a;
+                int b = a | 2;
+                int c = 2 | a;
+            }""")
+        pprint(irs)
+        self.assertIsInstance(irs[1], IRBitwiseOr)
+        self.assertEqual(irs[1].lhsAddr.name, "a")
+        self.assertEqual(irs[1].rhsAddr, ConstantOperand("int", 2))
+        self.assertIsInstance(irs[3], IRBitwiseOr)
+        self.assertEqual(irs[3].lhsAddr, ConstantOperand("int", 2))
+        self.assertEqual(irs[3].rhsAddr.name, "a")
+
+    def test_bitwise_and(self):
+        irs = compileToIR("""void main() {
+                char a;char b = a & 2;
+            }""")
+        pprint(irs)
+        self.assertIsInstance(irs[1], IRBitwiseAnd)
+        self.assertEqual(irs[1].lhsAddr.name, "a")
+        self.assertEqual(irs[1].rhsAddr, ConstantOperand("char", 2))
+
+    #
     # Pointer arithmetics
     #
     def test_pointerConstantArithmeticsAdd(self):

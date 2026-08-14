@@ -8,6 +8,7 @@ from typeEnv import TypeEnv
 from type_defs import StructType, PointerType, StructField, simpleTypeForComplexType
 from copy import copy
 from promotion import promoteIfNeededTo, promoteLhsAndRhs
+from enum import Enum, auto
 
 class StringTable:
     def __init__(self):
@@ -616,31 +617,25 @@ class Subtraction(ASTNode):
         context.blockFactory.addIR(ir)
         return ir.resultAddr
 
+class BitwiseKind(Enum):
+    OR = auto()
+    AND = auto()
+
+_BITWISE_TO_IR = { BitwiseKind.OR: IRBitwiseOr,
+                 BitwiseKind.AND: IRBitwiseAnd }
 
 @dataclass(frozen=True)
-class BitwiseOr(ASTNode):
+class Bitwise(ASTNode):
+    kind : BitwiseKind
     lhs : Any
     rhs : Any
 
     def visit(self, context):
         lhsAddr = self.lhs.visit(context)
         rhsAddr = self.rhs.visit(context)
-        ct = lhsAddr.completeType
-        ir = IRBitwiseOr(context.createTemporary(ct), lhsAddr, rhsAddr)
-        context.blockFactory.addIR(ir)
-        return ir.resultAddr
-
-
-@dataclass(frozen=True)
-class BitwiseAnd(ASTNode):
-    lhs : Any
-    rhs : Any
-
-    def visit(self, context):
-        lhsAddr = self.lhs.visit(context)
-        rhsAddr = self.rhs.visit(context)
-        ct = lhsAddr.completeType
-        ir = IRBitwiseAnd(context.createTemporary(ct), lhsAddr, rhsAddr)
+        lhsAddr, rhsAddr, resultType = promoteLhsAndRhs(lhsAddr, rhsAddr, context, "bitwise operation", self.location)
+        IRClass = _BITWISE_TO_IR[self.kind]
+        ir = IRClass(context.createTemporary(resultType), lhsAddr, rhsAddr)
         context.blockFactory.addIR(ir)
         return ir.resultAddr
 
