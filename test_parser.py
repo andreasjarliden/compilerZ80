@@ -302,8 +302,8 @@ class TestParser(unittest.TestCase):
         context = ASTContext(blockFactory)
         ast[0].visit(context)
         foo = context.symbolTable.lookUp("foo")
-        self.assertEqual(foo, FunctionDeclaration("void", "foo", (Argument("char", "a"),
-                                                                  Argument("int", "b"))))
+        self.assertEqual(foo, FunctionType("void", "foo", (Argument("char", "a"),
+                                                           Argument("int", "b")), False))
 
     #
     # Function definition
@@ -316,8 +316,6 @@ class TestParser(unittest.TestCase):
         blocks = blockFactory.blocks()
         block = blocks["foo_0000"]
         self.assertIsInstance(ast[0], FunctionDefinition)
-        self.assertFalse(ast[0].isVarArg)
-        self.assertFalse(ast[0].isVarArg)
         self.assertEqual(ast[0].frameSize, 0)
         self.assertTrue(isinstance(block.statements[0], IRDefFun))
         self.assertEqual(block.statements[1], IRReturn("char", ConstantOperand("char", 0), "foo"))
@@ -329,7 +327,6 @@ class TestParser(unittest.TestCase):
         context = ASTContext(blockFactory)
         symbolTable = ast[0].visit(context)
         self.assertIsInstance(ast[0], FunctionDefinition)
-        self.assertTrue(ast[0].isVarArg)
         self.assertEqual(symbolTable["arg1"].impl.offset, +4) # First int arg at ix+4, ix+5
 
     def test_function_stackFrame(self):
@@ -341,7 +338,6 @@ class TestParser(unittest.TestCase):
         block = blocks["foo_0000"]
         self.assertEqual(ast[0].frameSize, 2)
         self.assertTrue(isinstance(block.statements[0], IRDefFun))
-        self.assertFalse(ast[0].isVarArg)
         self.assertTrue(isinstance(block.statements[1], IRFunExit))
 
     def test_function_stackLayout_byteArgs(self):
@@ -449,8 +445,9 @@ class TestParser(unittest.TestCase):
         ast = parser.parse("a=b|c;");
         self.assertEqual(ast[0],
                          VariableAssignment(Variable("a"),
-                                            BitwiseOr(Variable("b"),
-                                                      Variable("c"))))
+                                            Bitwise(BitwiseKind.OR,
+                                                    Variable("b"),
+                                                    Variable("c"))))
 
     def test_paranthesis(self):
         ast = parser.parse("a=b-(c+d);");
@@ -467,8 +464,9 @@ class TestParser(unittest.TestCase):
         ast = parser.parse("return a & b != c;")
         self.assertEqual(ast[0],
                          Return(Relation("!=",
-                                         BitwiseAnd(Variable("a"),
-                                                    Variable("b")),
+                                         Bitwise(BitwiseKind.AND,
+                                                 Variable("a"),
+                                                 Variable("b")),
                                          Variable("c"))))
 
     #

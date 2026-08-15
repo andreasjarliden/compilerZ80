@@ -5,7 +5,7 @@ from symbolTable import *
 from blocks import BlockFactory
 from error import Location, CompileError
 from typeEnv import TypeEnv
-from type_defs import StructType, PointerType, StructField, simpleTypeForComplexType
+from type_defs import *
 from copy import copy
 from promotion import promoteIfNeededTo, promoteLhsAndRhs
 from enum import Enum, auto
@@ -76,8 +76,7 @@ def createLabel(context : ASTContext ):
     return f"{context.functionName}_l{context.functionLabels}"
 
 
-
-@dataclass(frozen=True)
+@dataclass
 class ASTNode:
     location : Location = field(default_factory=Location, compare=False, kw_only=True)
 
@@ -107,7 +106,7 @@ class StringConstant:
         return symbol
 
 
-@dataclass(frozen=True)
+@dataclass
 class Variable(ASTNode):
     name : str
 
@@ -118,64 +117,43 @@ class Variable(ASTNode):
         return s
 
 
-@dataclass(frozen=True)
-class Argument(ASTNode):
-    completeType : Any
-    name : str
-
-    @property
-    def type(self):
-        if isinstance(self.completeType, PointerType):
-            # Pointers are handled as int
-            return "int"
-        else:
-            return self.completeType
-
-@dataclass(frozen=True)
+@dataclass
 class VarArg(ASTNode):
     pass
 
 
-@dataclass(frozen=True)
+@dataclass
 class Function(ASTNode):
     pass
 
 
-@dataclass(frozen=True)
+@dataclass
 class FunctionDeclaration(Function):
     type : str
     name : str
     arguments : tuple[Argument, ...] = field(default_factory=tuple)
-    isVarArg : bool = field(init=False)
 
-    def __post_init__(self):
-        if len(self.arguments) > 0 and isinstance(self.arguments[-1], VarArg):
-            object.__setattr__(self, "arguments", self.arguments[0:-1])
-            object.__setattr__(self, "isVarArg", True)
-        else:
-            object.__setattr__(self, "isVarArg", False)
-
+    # TODO much duplication with FunctionDefinition
     def visit(self, context):
+        if len(self.arguments) > 0 and isinstance(self.arguments[-1], VarArg):
+            self.arguments = self.arguments[0:-1]
+            isVarArg = True
+        else:
+            isVarArg = False
         verifyType(self.type, self.location, context.typeEnv)
         for a in self.arguments:
-            verifyType(a.completeType, a.location, context.typeEnv)
-        # TODO, don't add self but a Function but without any statements
-        context.symbolTable.addSymbolEntry(self.name, self)
+            verifyType(a.completeType, self.location, context.typeEnv)
+        funType = FunctionType(self.type, self.name, self.arguments, isVarArg)
+        context.symbolTable.addSymbolEntry(self.name, funType)
 
 
 class FunctionDefinition(Function):
-    def __init__(self, t, name, statements, arguments=[], *, location):
+    def __init__(self, t, name, arguments : tuple, statements, *, location):
         super().__init__(location=location)
         self.type = t
         self.name = name
         self.statements = statements
         self.arguments = arguments
-
-        if len(arguments) > 0 and isinstance(arguments[-1], VarArg):
-            object.__setattr__(self, "arguments", arguments[0:-1])
-            self.isVarArg = True
-        else:
-            self.isVarArg = False
 
     def __repr__(self):
         return "FunctionDefinition " + self.name + " with statements " + str(self.statements)
@@ -183,9 +161,16 @@ class FunctionDefinition(Function):
     def visit(self, context):
         verifyType(self.type, self.location, context.typeEnv)
         oldSymbol = context.symbolTable.lookUp(self.name)
-        if oldSymbol and not isinstance(oldSymbol, FunctionDeclaration):
+        if oldSymbol and (not isinstance(oldSymbol, FunctionType)
+                          or (isinstance(oldSymbol, FunctionType) and oldSymbol.isDefined)):
             raise CompileError(f"Redefinition of {self.name}", self.location)
-        context.symbolTable.addSymbolEntry(self.name, self)
+        if len(self.arguments) > 0 and isinstance(self.arguments[-1], VarArg):
+            self.arguments = self.arguments[0:-1]
+            isVarArg = True
+        else:
+            isVarArg = False
+        funType = FunctionType(self.type, self.name, self.arguments, isVarArg, True)
+        context.symbolTable.addSymbolEntry(self.name, funType)
         context.pushFrame()
         context.resetStackFrame()
         context.functionName = self.name
@@ -195,7 +180,7 @@ class FunctionDefinition(Function):
         # If pushing AF, then A is at ix+5
         offset = 4
         for a in self.arguments:
-            verifyType(a.completeType, a.location, context.typeEnv)
+            verifyType(a.completeType, self.location, context.typeEnv)
             symbol = SymbolOperand(a.completeType, a.name)
             if a.type == "int":
                 symbol.impl = StackAddress(offset)
@@ -219,7 +204,7 @@ class FunctionDefinition(Function):
         return symbolTable # for testing
 
 
-@dataclass(frozen=True)
+@dataclass
 class If(ASTNode):
     expr : Any
     statements : list
@@ -258,7 +243,7 @@ class If(ASTNode):
         context.popFrame()
 
 
-@dataclass(frozen=True)
+@dataclass
 class While(ASTNode):
     expr : Any
     statements : list
@@ -306,14 +291,15 @@ def verifyType(t, location, typeEnv):
     return t
 
 
-@dataclass(frozen=True)
+@dataclass
 class StructInitialization(ASTNode):
     fields : list
 
     def visit(self, context):
         ...
 
-@dataclass(frozen=True)
+
+@dataclass
 class VariableDefinition(ASTNode):
     completeType : Any
     name : str
@@ -394,7 +380,7 @@ def initializeStruct(name : str,
             lastIndex += 1
 
 
-@dataclass(frozen=True)
+@dataclass
 class Cast(ASTNode):
     completeType : Any
     value : Any = None 
@@ -411,7 +397,7 @@ class Cast(ASTNode):
             return t
 
 
-@dataclass(frozen=True)
+@dataclass
 class SizeOf(ASTNode):
     expr : Any
 
@@ -431,7 +417,7 @@ class SizeOf(ASTNode):
         return ConstantOperand("int", size)
 
 
-@dataclass(frozen=True)
+@dataclass
 class VariableAssignment(ASTNode):
     lvalue : Any
     rhs : Any
@@ -453,7 +439,8 @@ class VariableAssignment(ASTNode):
             context.blockFactory.addIR(IRAssign(lvalue, rhsAddr))
         return lvalue
 
-@dataclass(frozen=True)
+
+@dataclass
 class AddressOf(ASTNode):
     expr : Any
 
@@ -470,7 +457,7 @@ class AddressOf(ASTNode):
 # It doesn't read anything itself, but creates an IRDereference instruction
 # which updates the live tracking for the pointer and stores any symbols with
 # matching types).
-@dataclass(frozen=True)
+@dataclass
 class Dereference(ASTNode):
     expr : Any
 
@@ -487,7 +474,7 @@ class Dereference(ASTNode):
         return ir.resultAddr
 
 
-@dataclass(frozen=True)
+@dataclass
 class FunctionCall(ASTNode):
     name : str
     arguments : list[Argument] = field(default_factory=list)
@@ -496,7 +483,7 @@ class FunctionCall(ASTNode):
         fun = context.symbolTable.lookUp(self.name)
         if not fun:
             raise CompileError(f"Attempting to call unknown function {self.name}", self.location)
-        if not isinstance(fun, Function):
+        if not isinstance(fun, FunctionType):
             raise CompileError(f"Attempting to call non-function {self.name}", self.location)
         numVarArgs = 0
         if fun.isVarArg:
@@ -523,7 +510,7 @@ class FunctionCall(ASTNode):
         return irfuncall.resultAddr
 
 
-@dataclass(frozen=True)
+@dataclass
 class Return(ASTNode):
     expr : Any
 
@@ -535,7 +522,7 @@ class Return(ASTNode):
 
 
 # TODO much duplication for the binary operations
-@dataclass(frozen=True)
+@dataclass
 class Add(ASTNode):
     lhs : Any
     rhs : Any
@@ -578,7 +565,7 @@ class Add(ASTNode):
 
 
 # TODO duplication with Add
-@dataclass(frozen=True)
+@dataclass
 class Subtraction(ASTNode):
     lhs : Any
     rhs : Any
@@ -617,6 +604,7 @@ class Subtraction(ASTNode):
         context.blockFactory.addIR(ir)
         return ir.resultAddr
 
+
 class BitwiseKind(Enum):
     OR = auto()
     AND = auto()
@@ -624,7 +612,7 @@ class BitwiseKind(Enum):
 _BITWISE_TO_IR = { BitwiseKind.OR: IRBitwiseOr,
                  BitwiseKind.AND: IRBitwiseAnd }
 
-@dataclass(frozen=True)
+@dataclass
 class Bitwise(ASTNode):
     kind : BitwiseKind
     lhs : Any
@@ -640,7 +628,7 @@ class Bitwise(ASTNode):
         return ir.resultAddr
 
 
-@dataclass(frozen=True)
+@dataclass
 class Mul(ASTNode):
     lhs : Any
     rhs : Any
@@ -653,7 +641,7 @@ class Mul(ASTNode):
         return ir.resultAddr
 
 
-@dataclass(frozen=True)
+@dataclass
 class Relation(ASTNode):
     operation : str
     lhs : Any
@@ -671,7 +659,8 @@ class Relation(ASTNode):
         lhsAddr, rhsAddr, resultType = promoteLhsAndRhs(lhsAddr, rhsAddr, context, self.operation, self.location)
         return (lhsAddr, rhsAddr)
 
-@dataclass(frozen=True)
+
+@dataclass
 class TypeDef(ASTNode):
     name : str
     completeType : str
@@ -682,7 +671,7 @@ class TypeDef(ASTNode):
         symbol.impl = TypeAddress(completeType=self.completeType)
 
 
-@dataclass(frozen=True)
+@dataclass
 class Struct(ASTNode):
     name : str
 
@@ -690,7 +679,7 @@ class Struct(ASTNode):
         return verifyType(self, self.location, context.typeEnv)
 
 
-@dataclass(frozen=True)
+@dataclass
 class StructDefinition(ASTNode):
     name : str
     fields : tuple[VariableDefinition]
@@ -709,7 +698,8 @@ class StructDefinition(ASTNode):
         s.fields = fields
         return s
 
-@dataclass(frozen=True)
+
+@dataclass
 class StructFieldReference(ASTNode):
     structVar : Any
     fieldName : str
@@ -755,6 +745,7 @@ class StructFieldReference(ASTNode):
                 irDeref = IRDereference(fieldPointer, None)
                 context.blockFactory.addIR(irDeref)
         return context.symbolTable.lookUp(self.name)
+
 
 class Continue(ASTNode):
     def visit(self, context):

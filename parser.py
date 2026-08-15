@@ -263,12 +263,12 @@ def p_function_declaration_args(p):
 
 def p_function_definition_no_args(p):
     'function_definition : type ID LPARA RPARA block'
-    node = FunctionDefinition(p[1], p[2], p[5], location=loc(p, 2))
+    node = FunctionDefinition(p[1], p[2], (), p[5], location=loc(p, 2))
     p[0] = node
 
 def p_function_definition_args(p):
     'function_definition : type ID LPARA arg_list RPARA block'
-    node = FunctionDefinition(p[1], p[2], p[6], p[4], location=loc(p, 2))
+    node = FunctionDefinition(p[1], p[2], p[4], p[6], location=loc(p, 2))
     p[0] = node
 
 def p_if_expression(p):
