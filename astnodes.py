@@ -123,53 +123,41 @@ class VarArg(ASTNode):
 
 
 @dataclass
-class Function(ASTNode):
-    pass
-
-
-@dataclass
-class FunctionDeclaration(Function):
+class FunctionBase(ASTNode):
     type : str
     name : str
-    arguments : tuple[Argument, ...] = field(default_factory=tuple)
+    arguments : tuple[Argument, ...]
 
-    # TODO much duplication with FunctionDefinition
-    def visit(self, context):
+    def functionType(self, context, isDefined : bool):
+        verifyType(self.type, self.location, context.typeEnv)
         if len(self.arguments) > 0 and isinstance(self.arguments[-1], VarArg):
             self.arguments = self.arguments[0:-1]
             isVarArg = True
         else:
             isVarArg = False
-        verifyType(self.type, self.location, context.typeEnv)
         for a in self.arguments:
             verifyType(a.completeType, self.location, context.typeEnv)
-        funType = FunctionType(self.type, self.name, self.arguments, isVarArg)
-        context.symbolTable.addSymbolEntry(self.name, funType)
+        return FunctionType(self.type, self.name, self.arguments, isVarArg, isDefined)
 
 
-class FunctionDefinition(Function):
-    def __init__(self, t, name, arguments : tuple, statements, *, location):
-        super().__init__(location=location)
-        self.type = t
-        self.name = name
-        self.statements = statements
-        self.arguments = arguments
+@dataclass
+class FunctionDeclaration(FunctionBase):
 
-    def __repr__(self):
-        return "FunctionDefinition " + self.name + " with statements " + str(self.statements)
+    # TODO much duplication with FunctionDefinition
+    def visit(self, context):
+        context.symbolTable.addSymbolEntry(self.name, self.functionType(context, False))
+
+
+@dataclass
+class FunctionDefinition(FunctionBase):
+    statements : tuple
 
     def visit(self, context):
-        verifyType(self.type, self.location, context.typeEnv)
         oldSymbol = context.symbolTable.lookUp(self.name)
         if oldSymbol and (not isinstance(oldSymbol, FunctionType)
                           or (isinstance(oldSymbol, FunctionType) and oldSymbol.isDefined)):
             raise CompileError(f"Redefinition of {self.name}", self.location)
-        if len(self.arguments) > 0 and isinstance(self.arguments[-1], VarArg):
-            self.arguments = self.arguments[0:-1]
-            isVarArg = True
-        else:
-            isVarArg = False
-        funType = FunctionType(self.type, self.name, self.arguments, isVarArg, True)
+        funType = self.functionType(context, True)
         context.symbolTable.addSymbolEntry(self.name, funType)
         context.pushFrame()
         context.resetStackFrame()
@@ -195,13 +183,48 @@ class FunctionDefinition(Function):
         context.blockFactory.addIR(IRDefFun(self))
         for s in self.statements:
             s.visit(context)
-        # TODO mutable state
         self.frameSize = -context.stackOffset;
         context.blockFactory.addIR(IRFunExit(self))
         context.exitBlock()
         context.popFrame()
         context.functionName = None
         return symbolTable # for testing
+
+
+@dataclass
+class FunctionCall(ASTNode):
+    name : str
+    arguments : list[Argument] = field(default_factory=list)
+
+    def visit(self, context):
+        fun = context.symbolTable.lookUp(self.name)
+        if not fun:
+            raise CompileError(f"Attempting to call unknown function {self.name}", self.location)
+        if not isinstance(fun, FunctionType):
+            raise CompileError(f"Attempting to call non-function {self.name}", self.location)
+        numVarArgs = 0
+        if fun.isVarArg:
+            numVarArgs = len(self.arguments) - len(fun.arguments)
+            if numVarArgs < 0:
+                raise CompileError(f"Attempting to call function {self.name} with {len(self.arguments)} arguments but expected {len(fun.arguments)}", self.location)
+        else:
+            if len(fun.arguments) != len(self.arguments):
+                raise CompileError(f"Attempting to call function {self.name} with {len(self.arguments)} arguments but expected {len(fun.arguments)}", self.location)
+        numRegularArgs = len(fun.arguments)
+        for a in reversed(self.arguments[numRegularArgs:len(self.arguments)]):
+            exprAddress = a.visit(context)
+            context.blockFactory.addIR(IRArgument(exprAddress))
+        for fa, a in zip(reversed(fun.arguments), reversed(self.arguments[0:numRegularArgs])):
+            exprAddress = promoteIfNeededTo(a.visit(context), fa.type, fa.completeType, context, f"argument {fa.name}", self.location)
+            context.blockFactory.addIR(IRArgument(exprAddress))
+        t = simpleTypeForComplexType(fun.type)
+        if t == "void":
+            resultAddr = None
+        else:
+            resultAddr = context.createTemporary(fun.type)
+        irfuncall = IRFunCall(t, self.name, len(self.arguments), resultAddr)
+        context.blockFactory.addIR(irfuncall)
+        return irfuncall.resultAddr
 
 
 @dataclass
@@ -472,42 +495,6 @@ class Dereference(ASTNode):
         context.blockFactory.addIR(ir)
         ir.resultAddr.impl = PointerAddress(pointer)
         return ir.resultAddr
-
-
-@dataclass
-class FunctionCall(ASTNode):
-    name : str
-    arguments : list[Argument] = field(default_factory=list)
-
-    def visit(self, context):
-        fun = context.symbolTable.lookUp(self.name)
-        if not fun:
-            raise CompileError(f"Attempting to call unknown function {self.name}", self.location)
-        if not isinstance(fun, FunctionType):
-            raise CompileError(f"Attempting to call non-function {self.name}", self.location)
-        numVarArgs = 0
-        if fun.isVarArg:
-            numVarArgs = len(self.arguments) - len(fun.arguments)
-            if numVarArgs < 0:
-                raise CompileError(f"Attempting to call function {self.name} with {len(self.arguments)} arguments but expected {len(fun.arguments)}", self.location)
-        else:
-            if len(fun.arguments) != len(self.arguments):
-                raise CompileError(f"Attempting to call function {self.name} with {len(self.arguments)} arguments but expected {len(fun.arguments)}", self.location)
-        numRegularArgs = len(fun.arguments)
-        for a in reversed(self.arguments[numRegularArgs:len(self.arguments)]):
-            exprAddress = a.visit(context)
-            context.blockFactory.addIR(IRArgument(exprAddress))
-        for fa, a in zip(reversed(fun.arguments), reversed(self.arguments[0:numRegularArgs])):
-            exprAddress = promoteIfNeededTo(a.visit(context), fa.type, fa.completeType, context, f"argument {fa.name}", self.location)
-            context.blockFactory.addIR(IRArgument(exprAddress))
-        t = simpleTypeForComplexType(fun.type)
-        if t == "void":
-            resultAddr = None
-        else:
-            resultAddr = context.createTemporary(fun.type)
-        irfuncall = IRFunCall(t, self.name, len(self.arguments), resultAddr)
-        context.blockFactory.addIR(irfuncall)
-        return irfuncall.resultAddr
 
 
 @dataclass

@@ -253,7 +253,7 @@ def p_function_expression_args(p):
 
 def p_function_declaration_no_args(p):
     'function_declaration : type ID LPARA RPARA SEMI'
-    node = FunctionDeclaration(p[1], p[2])
+    node = FunctionDeclaration(p[1], p[2], ())
     p[0] = node
 
 def p_function_declaration_args(p):

@@ -1,3 +1,5 @@
+- Remove duplication between FunctionDeclaration and FunctionDefinition
+- Remove duplicacation in binary operations
 - Add list api
 - Optimize first struct member access
 - Don't create temps when assigning
