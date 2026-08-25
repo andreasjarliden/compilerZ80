@@ -178,7 +178,6 @@ class FunctionDefinition(FunctionBase):
         # If pushing AF, then A is at ix+5
         offset = 4
         for a in self.arguments:
-            verifyType(a.completeType, self.location, context.typeEnv)
             symbol = SymbolOperand(a.completeType, a.name)
             if a.type == "int":
                 symbol.impl = StackAddress(offset)
