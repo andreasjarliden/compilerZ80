@@ -142,9 +142,9 @@ class TestParser(unittest.TestCase):
         self.assertTrue(isinstance(ast[0], If))
         self.assertTrue(isinstance(ast[0].expr, Relation))
         self.assertEqual(ast[0].expr,
-                         Relation("==",
-                                  Add(Constant("char", 1), Constant("char", 2)),
-                                  Add(Constant("char", 3), Constant("char", 4))))
+                         Relation(Add(Constant("char", 1), Constant("char", 2)),
+                                  Add(Constant("char", 3), Constant("char", 4)),
+                                  "=="))
 
     def test_if_else_simple(self):
         ast = parser.parse("""
@@ -445,9 +445,9 @@ class TestParser(unittest.TestCase):
         ast = parser.parse("a=b|c;");
         self.assertEqual(ast[0],
                          VariableAssignment(Variable("a"),
-                                            Bitwise(BitwiseKind.OR,
-                                                    Variable("b"),
-                                                    Variable("c"))))
+                                            Bitwise(Variable("b"),
+                                                    Variable("c"),
+                                                    BitwiseKind.OR)))
 
     def test_paranthesis(self):
         ast = parser.parse("a=b-(c+d);");
@@ -463,11 +463,11 @@ class TestParser(unittest.TestCase):
     def test_priority1(self):
         ast = parser.parse("return a & b != c;")
         self.assertEqual(ast[0],
-                         Return(Relation("!=",
-                                         Bitwise(BitwiseKind.AND,
-                                                 Variable("a"),
-                                                 Variable("b")),
-                                         Variable("c"))))
+                         Return(Relation(Bitwise(Variable("a"),
+                                                 Variable("b"),
+                                                 BitwiseKind.AND),
+                                         Variable("c"),
+                                         "!=")))
 
     #
     # Control flow

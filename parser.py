@@ -67,7 +67,7 @@ def p_comparisson_op(p):
                    | comparisson LESS_OR_EQUAL bitwise
                    | comparisson GREATER bitwise
                    | comparisson GREATER_OR_EQUAL bitwise'''
-    p[0] = Relation(p[2], p[1], p[3], location=loc(p, 2))
+    p[0] = Relation(p[1], p[3], p[2], location=loc(p, 2))
 
 def p_bitwise_single(p):
     'bitwise : additive'
@@ -75,11 +75,11 @@ def p_bitwise_single(p):
 
 def p_bitwise_or(p):
     '''bitwise : bitwise OR additive'''
-    p[0] = Bitwise(BitwiseKind.OR, p[1], p[3])        
+    p[0] = Bitwise(p[1], p[3], BitwiseKind.OR)        
 
 def p_bitwise_and(p):
     '''bitwise : bitwise AMPERSAND additive'''
-    p[0] = Bitwise(BitwiseKind.AND, p[1], p[3])        
+    p[0] = Bitwise(p[1], p[3], BitwiseKind.AND)        
 
 def p_additive_single(p):
     'additive : multiplicative'

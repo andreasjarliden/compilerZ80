@@ -506,12 +506,14 @@ class Return(ASTNode):
         context.blockFactory.addIR(IRReturn(simpleType, exprAddress, context.functionName))
 
 
-# TODO much duplication for the binary operations
 @dataclass
-class Add(ASTNode):
+class BinaryOperation(ASTNode):
     lhs : Any
     rhs : Any
 
+# TODO much duplication for the binary operations
+@dataclass
+class Add(BinaryOperation):
     def visit(self, context):
         def computeByteOffset(address, resultType):
             instanceType = resultType.toType
@@ -551,10 +553,7 @@ class Add(ASTNode):
 
 # TODO duplication with Add
 @dataclass
-class Subtraction(ASTNode):
-    lhs : Any
-    rhs : Any
-
+class Subtraction(BinaryOperation):
     def visit(self, context):
         def computeByteOffset(address, resultType):
             instanceType = resultType.toType
@@ -598,10 +597,8 @@ _BITWISE_TO_IR = { BitwiseKind.OR: IRBitwiseOr,
                  BitwiseKind.AND: IRBitwiseAnd }
 
 @dataclass
-class Bitwise(ASTNode):
+class Bitwise(BinaryOperation):
     kind : BitwiseKind
-    lhs : Any
-    rhs : Any
 
     def visit(self, context):
         lhsAddr = self.lhs.visit(context)
@@ -614,10 +611,7 @@ class Bitwise(ASTNode):
 
 
 @dataclass
-class Mul(ASTNode):
-    lhs : Any
-    rhs : Any
-
+class Mul(BinaryOperation):
     def visit(self, context):
         lhsAddr = self.lhs.visit(context)
         rhsAddr = self.rhs.visit(context)
@@ -627,10 +621,8 @@ class Mul(ASTNode):
 
 
 @dataclass
-class Relation(ASTNode):
+class Relation(BinaryOperation):
     operation : str
-    lhs : Any
-    rhs : Any
 
     def visit(self, context):
         lhsAddr = self.lhs.visit(context)
