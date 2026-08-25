@@ -70,6 +70,16 @@ class ASTContext:
         self.symbolTable.popFrame()
         self.typeEnv.popFrame()
 
+    def subBlockWithStatements(self, statements, label=None):
+        self.newSubBlock()
+        if label:
+            self.blockFactory.addIR(IRLabel(label))
+        self.pushFrame()
+        for s in statements:
+            s.visit(self)
+        self.blockFactory.addIR(IRSpillAll())
+
+
 
 def createLabel(context : ASTContext ):
     context.functionLabels += 1
@@ -243,21 +253,13 @@ class If(ASTNode):
             ir = IRIfVariable(exprAddr, elseLabel)
         context.blockFactory.addIR(ir)
         # Note: IRIf handles the spilling
-        context.newSubBlock()
-        context.pushFrame()
-        for s in self.statements:
-            s.visit(context)
-        context.blockFactory.addIR(IRSpillAll())
+
+        context.subBlockWithStatements(self.statements)
 
         if self.elseStatements:
             afterLabel = createLabel(context)
             context.blockFactory.addIR(IRJump(afterLabel))
-            context.newSubBlock()
-            context.blockFactory.addIR(IRLabel(elseLabel))
-            context.pushFrame()
-            for s in self.elseStatements:
-                s.visit(context)
-            context.blockFactory.addIR(IRSpillAll())
+            context.subBlockWithStatements(self.elseStatements, label=elseLabel)
         else:
             afterLabel = elseLabel
 
@@ -289,11 +291,7 @@ class While(ASTNode):
         else:
             error()
         context.blockFactory.addIR(ir)
-        context.newSubBlock()
-        context.pushFrame()
-        for s in self.statements:
-            s.visit(context)
-        context.blockFactory.addIR(IRSpillAll())
+        context.subBlockWithStatements(self.statements)
         context.blockFactory.addIR(IRJump(loopLabel))
         context.newSubBlock()
         context.blockFactory.addIR(IRLabel(exitLabel))
